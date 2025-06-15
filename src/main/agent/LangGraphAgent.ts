@@ -119,14 +119,17 @@ Always be helpful and provide clear, informative responses.`,
       console.log("LangGraphAgent: Retrieved MCP tools:", mcpTools);
 
       // Debug: Show server mapping for each tool
-      mcpTools.forEach(tool => {
+      mcpTools.forEach((tool) => {
         console.log(`Tool '${tool.name}' belongs to server '${tool.serverId}'`);
       });
 
       for (const mcpTool of mcpTools) {
         try {
           // Convert JSON Schema to Zod schema for better type safety
-          const zodSchema = this.convertJsonSchemaToZod(mcpTool.inputSchema, mcpTool.name);
+          const zodSchema = this.convertJsonSchemaToZod(
+            mcpTool.inputSchema,
+            mcpTool.name
+          );
 
           // Use the modern tool() function for better reliability
           const langchainTool = tool(
@@ -271,7 +274,10 @@ Always be helpful and provide clear, informative responses.`,
   }
 
   // Convert JSON Schema to Zod schema for better type safety
-  private convertJsonSchemaToZod(jsonSchema: any, toolName?: string): z.ZodSchema {
+  private convertJsonSchemaToZod(
+    jsonSchema: any,
+    toolName?: string
+  ): z.ZodSchema {
     if (!jsonSchema || !jsonSchema.properties) {
       return z.object({});
     }
@@ -323,9 +329,9 @@ Always be helpful and provide clear, informative responses.`,
       }
 
       // Make optional if not required OR if it's repo_path for git tools
-      const isGitTool = toolName?.startsWith('git_');
-      const isRepoPath = key === 'repo_path';
-      
+      const isGitTool = toolName?.startsWith("git_");
+      const isRepoPath = key === "repo_path";
+
       if (!required.includes(key) || (isGitTool && isRepoPath)) {
         zodSchema = zodSchema.optional();
       }
@@ -338,19 +344,20 @@ Always be helpful and provide clear, informative responses.`,
 
   private enhanceToolDescription(tool: Tool): string {
     let description = tool.description || "No description available";
-    
+
     // For git tools, add context about automatic repo_path injection
-    if (tool.name.startsWith('git_')) {
-      description += "\n\nNote: The repository path is automatically configured and doesn't need to be specified. You can call this tool without providing repo_path parameter.";
-      
+    if (tool.name.startsWith("git_")) {
+      description +=
+        "\n\nNote: The repository path is automatically configured and doesn't need to be specified. You can call this tool without providing repo_path parameter.";
+
       // Remove repo_path from required parameters in the description if present
-      if (description.includes('repo_path')) {
-        description = description.replace(/repo_path[^,.\n]*/g, '');
-        description = description.replace(/,\s*,/g, ','); // Clean up double commas
-        description = description.replace(/^,\s*/gm, ''); // Clean up leading commas
+      if (description.includes("repo_path")) {
+        description = description.replace(/repo_path[^,.\n]*/g, "");
+        description = description.replace(/,\s*,/g, ","); // Clean up double commas
+        description = description.replace(/^,\s*/gm, ""); // Clean up leading commas
       }
     }
-    
+
     return description;
   }
 }

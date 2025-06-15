@@ -1,36 +1,41 @@
 export enum IpcChannels {
   // Server management
-  ADD_SERVER = 'add-server',
-  REMOVE_SERVER = 'remove-server',
-  LIST_SERVERS = 'list-servers',
-  GET_SERVER_CONFIG = 'get-server-config',
-  UPDATE_SERVER = 'update-server',
-  CONNECT_SERVER = 'connect-server',
-  DISCONNECT_SERVER = 'disconnect-server',
-  
+  ADD_SERVER = "add-server",
+  REMOVE_SERVER = "remove-server",
+  LIST_SERVERS = "list-servers",
+  GET_SERVER_CONFIG = "get-server-config",
+  UPDATE_SERVER = "update-server",
+  CONNECT_SERVER = "connect-server",
+  DISCONNECT_SERVER = "disconnect-server",
+
   // Tool operations
-  LIST_TOOLS = 'list-tools',
-  EXECUTE_TOOL = 'execute-tool',
-  
+  LIST_TOOLS = "list-tools",
+  EXECUTE_TOOL = "execute-tool",
+
   // Agent operations
-  SEND_MESSAGE = 'send-message',
-  
+  SEND_MESSAGE = "send-message",
+
   // Resource operations
-  LIST_RESOURCES = 'list-resources',
-  READ_RESOURCE = 'read-resource',
-  
+  LIST_RESOURCES = "list-resources",
+  READ_RESOURCE = "read-resource",
+
   // Prompt operations
-  LIST_PROMPTS = 'list-prompts',
-  GET_PROMPT = 'get-prompt',
-  
+  LIST_PROMPTS = "list-prompts",
+  GET_PROMPT = "get-prompt",
+
   // Context parameter discovery
-  DISCOVER_CONTEXT_PARAMS = 'discover-context-params'
+  DISCOVER_CONTEXT_PARAMS = "discover-context-params",
+
+  // Logging
+  GET_LOGS = "get-logs",
+  CLEAR_LOGS = "clear-logs",
+  LOG_EVENT = "log-event",
 }
 
 export interface ServerConfig {
   id?: string;
   name: string;
-  type: 'stdio' | 'sse';
+  type: "stdio" | "sse";
   command?: string;
   args?: string[];
   url?: string;
@@ -63,6 +68,23 @@ export interface Prompt {
   }>;
 }
 
+export interface LogEntry {
+  id: string;
+  timestamp: Date;
+  level: "info" | "warning" | "error" | "success" | "debug";
+  source: string;
+  message: string;
+  details?: any;
+}
+
+export interface ContextParam {
+  name: string;
+  description?: string;
+  type: "string" | "number" | "boolean" | "object" | "array";
+  required?: boolean;
+  default?: any;
+}
+
 export interface ServerStatus {
   id: string;
   name: string;
@@ -75,7 +97,7 @@ export interface ServerStatus {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: Date;
   toolCalls?: ToolCall[];

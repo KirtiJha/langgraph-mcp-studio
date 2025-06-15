@@ -1,6 +1,6 @@
 /**
  * Common MCP Context Parameters Knowledge Base
- * 
+ *
  * This file contains common context parameters used by various MCP servers
  * to help users configure their servers correctly.
  */
@@ -20,37 +20,37 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Path to the git repository",
     example: "/Users/username/my-project",
     required: true,
-    serverTypes: ["git", "github"]
+    serverTypes: ["git", "github"],
   },
   {
-    name: "repository_path", 
+    name: "repository_path",
     description: "Alternative name for git repository path",
     example: "/Users/username/my-project",
     required: true,
-    serverTypes: ["git"]
+    serverTypes: ["git"],
   },
-  
+
   // GitHub-specific parameters
   {
     name: "github_token",
     description: "GitHub personal access token",
     example: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     required: false,
-    serverTypes: ["github"]
+    serverTypes: ["github"],
   },
   {
     name: "repo_owner",
     description: "GitHub repository owner/organization",
     example: "microsoft",
     required: false,
-    serverTypes: ["github"]
+    serverTypes: ["github"],
   },
   {
     name: "repo_name",
     description: "GitHub repository name",
     example: "vscode",
     required: false,
-    serverTypes: ["github"]
+    serverTypes: ["github"],
   },
 
   // Database parameters
@@ -59,42 +59,42 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Database connection URL",
     example: "postgresql://user:password@localhost:5432/dbname",
     required: true,
-    serverTypes: ["postgres", "mysql", "database"]
+    serverTypes: ["postgres", "mysql", "database"],
   },
   {
     name: "db_host",
     description: "Database host address",
     example: "localhost",
     required: true,
-    serverTypes: ["postgres", "mysql", "database"]
+    serverTypes: ["postgres", "mysql", "database"],
   },
   {
     name: "db_port",
     description: "Database port number",
     example: "5432",
     required: true,
-    serverTypes: ["postgres", "mysql", "database"]
+    serverTypes: ["postgres", "mysql", "database"],
   },
   {
     name: "db_name",
     description: "Database name",
     example: "myapp_db",
     required: true,
-    serverTypes: ["postgres", "mysql", "database"]
+    serverTypes: ["postgres", "mysql", "database"],
   },
   {
     name: "db_user",
     description: "Database username",
     example: "dbuser",
     required: true,
-    serverTypes: ["postgres", "mysql", "database"]
+    serverTypes: ["postgres", "mysql", "database"],
   },
   {
     name: "db_password",
     description: "Database password",
     example: "secretpassword",
     required: true,
-    serverTypes: ["postgres", "mysql", "database"]
+    serverTypes: ["postgres", "mysql", "database"],
   },
 
   // File system parameters
@@ -103,14 +103,14 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Working directory for file operations",
     example: "/Users/username/workspace",
     required: false,
-    serverTypes: ["filesystem", "files"]
+    serverTypes: ["filesystem", "files"],
   },
   {
     name: "base_path",
     description: "Base path for relative file operations",
     example: "/Users/username/documents",
     required: false,
-    serverTypes: ["filesystem", "files"]
+    serverTypes: ["filesystem", "files"],
   },
 
   // Web/API parameters
@@ -119,21 +119,21 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Base URL for API requests",
     example: "https://api.example.com",
     required: true,
-    serverTypes: ["web", "api", "http"]
+    serverTypes: ["web", "api", "http"],
   },
   {
     name: "api_key",
     description: "API key for authentication",
     example: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     required: true,
-    serverTypes: ["web", "api", "openai", "anthropic"]
+    serverTypes: ["web", "api", "openai", "anthropic"],
   },
   {
     name: "auth_token",
     description: "Authentication token",
     example: "Bearer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     required: true,
-    serverTypes: ["web", "api"]
+    serverTypes: ["web", "api"],
   },
 
   // Project/workspace parameters
@@ -142,14 +142,14 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Project identifier",
     example: "my-project-123",
     required: true,
-    serverTypes: ["gcp", "project"]
+    serverTypes: ["gcp", "project"],
   },
   {
     name: "workspace_id",
-    description: "Workspace identifier", 
+    description: "Workspace identifier",
     example: "workspace-456",
     required: true,
-    serverTypes: ["slack", "notion", "workspace"]
+    serverTypes: ["slack", "notion", "workspace"],
   },
 
   // Time/timezone parameters
@@ -158,7 +158,7 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Timezone for time-based operations",
     example: "America/New_York",
     required: false,
-    serverTypes: ["time", "calendar", "scheduling"]
+    serverTypes: ["time", "calendar", "scheduling"],
   },
 
   // Language/locale parameters
@@ -167,28 +167,32 @@ export const COMMON_CONTEXT_PARAMS: ContextParamInfo[] = [
     description: "Language code for localization",
     example: "en-US",
     required: false,
-    serverTypes: ["translation", "i18n"]
+    serverTypes: ["translation", "i18n"],
   },
   {
     name: "locale",
     description: "Locale for formatting",
     example: "en_US.UTF-8",
     required: false,
-    serverTypes: ["translation", "i18n"]
-  }
+    serverTypes: ["translation", "i18n"],
+  },
 ];
 
 /**
  * Get suggested context parameters for a server based on its name/command
  */
-export function getSuggestedContextParams(serverName: string, command?: string): ContextParamInfo[] {
-  const searchText = `${serverName} ${command || ''}`.toLowerCase();
-  
-  return COMMON_CONTEXT_PARAMS.filter(param => {
+export function getSuggestedContextParams(
+  serverName: string,
+  command?: string
+): ContextParamInfo[] {
+  const searchText = `${serverName} ${command || ""}`.toLowerCase();
+
+  return COMMON_CONTEXT_PARAMS.filter((param) => {
     // Check if any of the server types match the search text
-    return param.serverTypes.some(type => 
-      searchText.includes(type) || 
-      searchText.includes(param.name.toLowerCase())
+    return param.serverTypes.some(
+      (type) =>
+        searchText.includes(type) ||
+        searchText.includes(param.name.toLowerCase())
     );
   });
 }
@@ -196,16 +200,21 @@ export function getSuggestedContextParams(serverName: string, command?: string):
 /**
  * Get context parameter by name
  */
-export function getContextParamInfo(paramName: string): ContextParamInfo | undefined {
-  return COMMON_CONTEXT_PARAMS.find(param => 
-    param.name.toLowerCase() === paramName.toLowerCase()
+export function getContextParamInfo(
+  paramName: string
+): ContextParamInfo | undefined {
+  return COMMON_CONTEXT_PARAMS.find(
+    (param) => param.name.toLowerCase() === paramName.toLowerCase()
   );
 }
 
 /**
  * Validate context parameter value
  */
-export function validateContextParam(paramName: string, value: string): string | null {
+export function validateContextParam(
+  paramName: string,
+  value: string
+): string | null {
   const param = getContextParamInfo(paramName);
   if (!param) return null;
 
@@ -214,15 +223,15 @@ export function validateContextParam(paramName: string, value: string): string |
     return `${param.name} is required`;
   }
 
-  if (paramName.includes('url') && value && !isValidUrl(value)) {
+  if (paramName.includes("url") && value && !isValidUrl(value)) {
     return `${param.name} must be a valid URL`;
   }
 
-  if (paramName.includes('path') && value && !isValidPath(value)) {
+  if (paramName.includes("path") && value && !isValidPath(value)) {
     return `${param.name} must be a valid file path`;
   }
 
-  if (paramName.includes('port') && value && !isValidPort(value)) {
+  if (paramName.includes("port") && value && !isValidPort(value)) {
     return `${param.name} must be a valid port number (1-65535)`;
   }
 
@@ -240,11 +249,12 @@ function isValidUrl(url: string): boolean {
 
 function isValidPath(path: string): boolean {
   // Basic path validation - check if it looks like a valid path
-  return path.length > 0 && (
-    path.startsWith('/') || // Unix absolute path
-    /^[A-Za-z]:/.test(path) || // Windows drive path
-    path.startsWith('./') || // Relative path
-    path.startsWith('../') // Parent relative path
+  return (
+    path.length > 0 &&
+    (path.startsWith("/") || // Unix absolute path
+      /^[A-Za-z]:/.test(path) || // Windows drive path
+      path.startsWith("./") || // Relative path
+      path.startsWith("../")) // Parent relative path
   );
 }
 

@@ -29,7 +29,7 @@ export class MCPManager extends EventEmitter {
   }
 
   private loadServers() {
-    const savedServers: ServerConfig[] = this.store.get('servers', []);
+    const savedServers: ServerConfig[] = this.store.get("servers", []);
     savedServers.forEach((config: ServerConfig) => {
       this.servers.set(config.id!, {
         id: config.id!,
@@ -84,44 +84,48 @@ export class MCPManager extends EventEmitter {
       if (config.type === "stdio") {
         // Ensure we have the proper PATH environment for command execution
         const processEnv = Object.fromEntries(
-          Object.entries(process.env).filter(([_, value]) => value !== undefined)
+          Object.entries(process.env).filter(
+            ([_, value]) => value !== undefined
+          )
         ) as Record<string, string>;
-        
+
         // On macOS, GUI apps don't inherit shell PATH, so add common locations
-        const currentPath = processEnv.PATH || '';
+        const currentPath = processEnv.PATH || "";
         const commonPaths = [
-          '/usr/local/bin',
-          '/opt/homebrew/bin',
-          '/Users/' + require('os').userInfo().username + '/.local/bin',
-          '/Library/Frameworks/Python.framework/Versions/3.10/bin',
-          '/Library/Frameworks/Python.framework/Versions/3.11/bin',
-          '/Library/Frameworks/Python.framework/Versions/3.12/bin',
-          '/usr/bin',
-          '/bin'
+          "/usr/local/bin",
+          "/opt/homebrew/bin",
+          "/Users/" + require("os").userInfo().username + "/.local/bin",
+          "/Library/Frameworks/Python.framework/Versions/3.10/bin",
+          "/Library/Frameworks/Python.framework/Versions/3.11/bin",
+          "/Library/Frameworks/Python.framework/Versions/3.12/bin",
+          "/usr/bin",
+          "/bin",
         ];
-        
-        const enhancedPath = [currentPath, ...commonPaths].filter(Boolean).join(':');
-        
+
+        const enhancedPath = [currentPath, ...commonPaths]
+          .filter(Boolean)
+          .join(":");
+
         const env = {
           ...processEnv,
           PATH: enhancedPath,
-          ...config.env      // Override with any custom environment variables
+          ...config.env, // Override with any custom environment variables
         };
 
         // Clean up arguments to remove any extra quotes that might have been added during serialization
-        const cleanArgs = (config.args || []).map(arg => {
-          if (typeof arg === 'string') {
+        const cleanArgs = (config.args || []).map((arg) => {
+          if (typeof arg === "string") {
             // Remove surrounding quotes if they exist
-            return arg.replace(/^["']|["']$/g, '');
+            return arg.replace(/^["']|["']$/g, "");
           }
           return arg;
         });
-        
-        console.log('MCPManager: Starting server with:');
-        console.log('  Command:', config.command);
-        console.log('  Original args:', config.args);
-        console.log('  Cleaned args:', cleanArgs);
-        
+
+        console.log("MCPManager: Starting server with:");
+        console.log("  Command:", config.command);
+        console.log("  Original args:", config.args);
+        console.log("  Cleaned args:", cleanArgs);
+
         transport = new StdioClientTransport({
           command: config.command!,
           args: cleanArgs,
@@ -142,21 +146,28 @@ export class MCPManager extends EventEmitter {
             sampling: {},
           },
         }
-      );      await client.connect(transport);
+      );
+      await client.connect(transport);
       this.clients.set(id, client);
-      
+
       const status = this.servers.get(id)!;
       status.connected = true;
       this.servers.set(id, status);
 
       console.log(`MCPManager: Server ${id} connected successfully`);
-      
+
       // Try to list tools immediately after connection and populate the status
       try {
         const toolsResponse = await client.listTools();
-        console.log(`MCPManager: Server ${id} tools:`, toolsResponse.tools?.length || 0);
+        console.log(
+          `MCPManager: Server ${id} tools:`,
+          toolsResponse.tools?.length || 0
+        );
         if (toolsResponse.tools && toolsResponse.tools.length > 0) {
-          console.log('Available tools:', toolsResponse.tools.map(t => t.name));
+          console.log(
+            "Available tools:",
+            toolsResponse.tools.map((t) => t.name)
+          );
           status.tools = toolsResponse.tools;
         } else {
           status.tools = [];
@@ -165,27 +176,36 @@ export class MCPManager extends EventEmitter {
         console.log(`MCPManager: Error listing tools for ${id}:`, toolError);
         status.tools = [];
       }
-      
+
       // Try to list resources
       try {
         const resourcesResponse = await client.listResources();
         status.resources = resourcesResponse.resources || [];
-        console.log(`MCPManager: Server ${id} resources:`, status.resources.length);
+        console.log(
+          `MCPManager: Server ${id} resources:`,
+          status.resources.length
+        );
       } catch (resourceError) {
-        console.log(`MCPManager: Error listing resources for ${id}:`, resourceError);
+        console.log(
+          `MCPManager: Error listing resources for ${id}:`,
+          resourceError
+        );
         status.resources = [];
       }
-      
+
       // Try to list prompts
       try {
         const promptsResponse = await client.listPrompts();
         status.prompts = promptsResponse.prompts || [];
         console.log(`MCPManager: Server ${id} prompts:`, status.prompts.length);
       } catch (promptError) {
-        console.log(`MCPManager: Error listing prompts for ${id}:`, promptError);
+        console.log(
+          `MCPManager: Error listing prompts for ${id}:`,
+          promptError
+        );
         status.prompts = [];
       }
-      
+
       // Update the server status with the populated data
       this.servers.set(id, status);
 
@@ -193,16 +213,22 @@ export class MCPManager extends EventEmitter {
     } catch (error) {
       const status = this.servers.get(id)!;
       status.connected = false;
-      
+
       if (error instanceof Error) {
-        if (error.message.includes('ENOENT') || error.message.includes('spawn')) {
+        if (
+          error.message.includes("ENOENT") ||
+          error.message.includes("spawn")
+        ) {
           const servers: ServerConfig[] = this.store.get("servers", []);
-          const config = servers.find(s => s.id === id);
-          const command = config?.command || 'command';
+          const config = servers.find((s) => s.id === id);
+          const command = config?.command || "command";
           status.error = `Command not found: '${command}'. Make sure it's installed and in your PATH.`;
-        } else if (error.message.includes('ZoneInfoNotFoundError') || error.message.includes('No time zone found')) {
+        } else if (
+          error.message.includes("ZoneInfoNotFoundError") ||
+          error.message.includes("No time zone found")
+        ) {
           status.error = `Invalid timezone. Try using 'America/New_York' or remove the timezone argument entirely.`;
-        } else if (error.message.includes('Connection closed')) {
+        } else if (error.message.includes("Connection closed")) {
           status.error = `Server failed to start. Check your command and arguments.`;
         } else {
           status.error = error.message;
@@ -210,7 +236,7 @@ export class MCPManager extends EventEmitter {
       } else {
         status.error = "Connection failed";
       }
-      
+
       this.servers.set(id, status);
       this.emit("serverError", status);
       throw error;
@@ -237,25 +263,32 @@ export class MCPManager extends EventEmitter {
   }
 
   async listTools(serverId?: string): Promise<Tool[]> {
-    console.log('MCPManager: listTools called with serverId:', serverId);
+    console.log("MCPManager: listTools called with serverId:", serverId);
     const tools: Tool[] = [];
 
     const clientsToQuery = serverId
       ? ([this.clients.get(serverId)].filter(Boolean) as Client[])
       : Array.from(this.clients.values());
 
-    console.log('MCPManager: Querying', clientsToQuery.length, 'clients for tools');
+    console.log(
+      "MCPManager: Querying",
+      clientsToQuery.length,
+      "clients for tools"
+    );
 
     for (const client of clientsToQuery) {
       try {
         // Find the serverId for this client
-        const currentServerId = serverId || Array.from(this.clients.entries())
-          .find(([id, c]) => c === client)?.[0];
+        const currentServerId =
+          serverId ||
+          Array.from(this.clients.entries()).find(
+            ([id, c]) => c === client
+          )?.[0];
 
         const response = await client.listTools();
-        console.log('MCPManager: Got tools response:', response);
+        console.log("MCPManager: Got tools response:", response);
         if (response.tools) {
-          console.log('MCPManager: Found', response.tools.length, 'tools');
+          console.log("MCPManager: Found", response.tools.length, "tools");
           tools.push(
             ...response.tools.map((tool) => ({
               name: tool.name,
@@ -265,14 +298,14 @@ export class MCPManager extends EventEmitter {
             }))
           );
         } else {
-          console.log('MCPManager: No tools in response');
+          console.log("MCPManager: No tools in response");
         }
       } catch (error) {
         console.error("MCPManager: Error listing tools:", error);
       }
     }
 
-    console.log('MCPManager: Returning', tools.length, 'total tools');
+    console.log("MCPManager: Returning", tools.length, "total tools");
     return tools;
   }
 
@@ -338,22 +371,28 @@ export class MCPManager extends EventEmitter {
       if (!client) {
         throw new Error(`Server ${serverId} not connected`);
       }
-      
+
       // Auto-inject context parameters for this server
       const enhancedArgs = this.enhanceArgsWithContext(serverId, args);
-      console.log(`MCPManager: Calling tool ${name} on server ${serverId} with enhanced args:`, enhancedArgs);
-      
+      console.log(
+        `MCPManager: Calling tool ${name} on server ${serverId} with enhanced args:`,
+        enhancedArgs
+      );
+
       // Debug: Let's also log the tool schema to understand what it expects
       try {
         const toolsResponse = await client.listTools();
-        const tool = toolsResponse.tools.find(t => t.name === name);
+        const tool = toolsResponse.tools.find((t) => t.name === name);
         if (tool) {
-          console.log(`MCPManager: Tool ${name} schema:`, JSON.stringify(tool.inputSchema, null, 2));
+          console.log(
+            `MCPManager: Tool ${name} schema:`,
+            JSON.stringify(tool.inputSchema, null, 2)
+          );
         }
       } catch (e) {
         console.log(`MCPManager: Could not get tool schema for ${name}`);
       }
-      
+
       const response = await client.callTool({ name, arguments: enhancedArgs });
       console.log(`MCPManager: Raw response from tool ${name}:`, response);
       return response.content;
@@ -364,7 +403,10 @@ export class MCPManager extends EventEmitter {
     for (const [id, client] of this.clients.entries()) {
       try {
         const enhancedArgs = this.enhanceArgsWithContext(id, args);
-        const response = await client.callTool({ name, arguments: enhancedArgs });
+        const response = await client.callTool({
+          name,
+          arguments: enhancedArgs,
+        });
         return response.content;
       } catch (error) {
         errors.push(
@@ -379,16 +421,19 @@ export class MCPManager extends EventEmitter {
   private enhanceArgsWithContext(serverId: string, args: any): any {
     // Get the server config to find context parameters
     const servers: ServerConfig[] = this.store.get("servers", []);
-    const serverConfig = servers.find(s => s.id === serverId);
-    
+    const serverConfig = servers.find((s) => s.id === serverId);
+
     if (!serverConfig || !serverConfig.contextParams) {
       return args;
     }
 
     // Merge context parameters with provided args (context params take precedence)
     const enhancedArgs = { ...args, ...serverConfig.contextParams };
-    
-    console.log(`MCPManager: Enhanced args for server ${serverId}:`, enhancedArgs);
+
+    console.log(
+      `MCPManager: Enhanced args for server ${serverId}:`,
+      enhancedArgs
+    );
     return enhancedArgs;
   }
 
@@ -462,7 +507,7 @@ export class MCPManager extends EventEmitter {
     // Update the configuration in storage
     const servers: ServerConfig[] = this.store.get("servers", []);
     const serverIndex = servers.findIndex((s: ServerConfig) => s.id === id);
-    
+
     if (serverIndex === -1) {
       throw new Error(`Server ${id} not found`);
     }
@@ -479,17 +524,21 @@ export class MCPManager extends EventEmitter {
       this.servers.set(id, status);
     }
 
-    return status || {
-      id,
-      name: config.name,
-      connected: false,
-    };
+    return (
+      status || {
+        id,
+        name: config.name,
+        connected: false,
+      }
+    );
   }
 
   /**
    * Auto-discover context parameters by analyzing tool schemas
    */
-  async discoverContextParameters(serverId: string): Promise<Record<string, string>> {
+  async discoverContextParameters(
+    serverId: string
+  ): Promise<Record<string, string>> {
     const client = this.clients.get(serverId);
     if (!client) {
       return {};
@@ -503,17 +552,25 @@ export class MCPManager extends EventEmitter {
       // Analyze all tool schemas to find common parameters
       for (const tool of toolsResponse.tools) {
         if (tool.inputSchema?.properties) {
-          for (const [paramName, paramSchema] of Object.entries(tool.inputSchema.properties)) {
+          for (const [paramName, paramSchema] of Object.entries(
+            tool.inputSchema.properties
+          )) {
             const schema = paramSchema as any;
-            
+
             // Look for parameters that are commonly context parameters
-            const isContextParam = this.isLikelyContextParameter(paramName, schema);
+            const isContextParam = this.isLikelyContextParameter(
+              paramName,
+              schema
+            );
             if (isContextParam) {
               paramCounts[paramName] = (paramCounts[paramName] || 0) + 1;
-              
+
               // Suggest default values based on parameter name patterns
               if (!suggestedParams[paramName]) {
-                suggestedParams[paramName] = this.suggestDefaultValue(paramName, schema);
+                suggestedParams[paramName] = this.suggestDefaultValue(
+                  paramName,
+                  schema
+                );
               }
             }
           }
@@ -528,10 +585,13 @@ export class MCPManager extends EventEmitter {
         }
       }
 
-      console.log(`MCPManager: Discovered context parameters for ${serverId}:`, contextParams);
+      console.log(
+        `MCPManager: Discovered context parameters for ${serverId}:`,
+        contextParams
+      );
       return contextParams;
     } catch (error) {
-      console.error('Error discovering context parameters:', error);
+      console.error("Error discovering context parameters:", error);
       return {};
     }
   }
@@ -550,49 +610,63 @@ export class MCPManager extends EventEmitter {
       /^(db_url|database_url|connection_string|db_host|db_name)$/i,
     ];
 
-    const nameMatches = contextParamPatterns.some(pattern => pattern.test(paramName));
-    
+    const nameMatches = contextParamPatterns.some((pattern) =>
+      pattern.test(paramName)
+    );
+
     // Also check if the description suggests it's a context parameter
-    const description = schema.description || '';
-    const descriptionSuggests = /\b(path|directory|workspace|project|repository|base|root|default)\b/i.test(description);
-    
+    const description = schema.description || "";
+    const descriptionSuggests =
+      /\b(path|directory|workspace|project|repository|base|root|default)\b/i.test(
+        description
+      );
+
     return nameMatches || descriptionSuggests;
   }
 
   private isCommonContextParam(paramName: string): boolean {
-    const commonParams = ['repo_path', 'repository_path', 'project_id', 'workspace_id', 'api_key', 'base_url'];
+    const commonParams = [
+      "repo_path",
+      "repository_path",
+      "project_id",
+      "workspace_id",
+      "api_key",
+      "base_url",
+    ];
     return commonParams.includes(paramName.toLowerCase());
   }
 
   private suggestDefaultValue(paramName: string, schema: any): string {
     // Suggest default values based on parameter name patterns
-    if (/^(repo_path|repository_path|repo-path|repository-path)$/i.test(paramName)) {
+    if (
+      /^(repo_path|repository_path|repo-path|repository-path)$/i.test(paramName)
+    ) {
       return process.cwd(); // Current working directory
     }
     if (/^(project_id|workspace_id)$/i.test(paramName)) {
-      return 'your-project-id';
+      return "your-project-id";
     }
     if (/^(api_key|token|auth_token)$/i.test(paramName)) {
-      return 'your-api-key';
+      return "your-api-key";
     }
     if (/^(base_url|endpoint|server_url)$/i.test(paramName)) {
-      return 'https://api.example.com';
+      return "https://api.example.com";
     }
     if (/^(db_url|database_url)$/i.test(paramName)) {
-      return 'postgresql://localhost:5432/dbname';
+      return "postgresql://localhost:5432/dbname";
     }
-    
+
     // Default based on schema type
-    if (schema.type === 'string') {
-      return schema.default || '';
+    if (schema.type === "string") {
+      return schema.default || "";
     }
-    if (schema.type === 'number') {
-      return schema.default || '0';
+    if (schema.type === "number") {
+      return schema.default || "0";
     }
-    if (schema.type === 'boolean') {
-      return schema.default ? 'true' : 'false';
+    if (schema.type === "boolean") {
+      return schema.default ? "true" : "false";
     }
-    
-    return '';
+
+    return "";
   }
 }

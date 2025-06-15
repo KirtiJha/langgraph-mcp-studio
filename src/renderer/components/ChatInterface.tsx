@@ -73,7 +73,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>({});
+  const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>(
+    {}
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -117,7 +119,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     });
   };
 
-  const renderToolExecutionMessage = (message: ToolExecutionMessage, index: number) => {
+  const renderToolExecutionMessage = (
+    message: ToolExecutionMessage,
+    index: number
+  ) => {
     return (
       <motion.div
         key={message.id}
@@ -157,23 +162,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                        tool.status === 'queued' ? 'bg-slate-400' :
-                        tool.status === 'executing' ? 'bg-yellow-400 animate-pulse' :
-                        tool.status === 'failed' ? 'bg-red-400' :
-                        'bg-emerald-400'
-                      }`}></div>
-                      <span className="font-medium text-white text-sm">{tool.name}</span>
+                      <div
+                        className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                          tool.status === "queued"
+                            ? "bg-slate-400"
+                            : tool.status === "executing"
+                            ? "bg-yellow-400 animate-pulse"
+                            : tool.status === "failed"
+                            ? "bg-red-400"
+                            : "bg-emerald-400"
+                        }`}
+                      ></div>
+                      <span className="font-medium text-white text-sm">
+                        {tool.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
-                      {tool.status === 'queued' && (
+                      {tool.status === "queued" && (
                         <span className="text-slate-400 flex items-center gap-1">
                           <ClockIcon className="w-3 h-3" />
                           Queued
                         </span>
                       )}
-                      {tool.status === 'executing' && (
-                        <motion.span 
+                      {tool.status === "executing" && (
+                        <motion.span
                           className="text-yellow-400 flex items-center gap-1"
                           animate={{ opacity: [0.5, 1, 0.5] }}
                           transition={{ duration: 1, repeat: Infinity }}
@@ -182,13 +194,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           Executing...
                         </motion.span>
                       )}
-                      {tool.status === 'completed' && (
+                      {tool.status === "completed" && (
                         <span className="text-emerald-400 flex items-center gap-1">
                           <CheckCircleIcon className="w-3 h-3" />
                           Completed {tool.duration && `(${tool.duration}ms)`}
                         </span>
                       )}
-                      {tool.status === 'failed' && (
+                      {tool.status === "failed" && (
                         <span className="text-red-400 flex items-center gap-1">
                           <ExclamationTriangleIcon className="w-3 h-3" />
                           Failed
@@ -196,27 +208,33 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Tool Arguments */}
                   {Object.keys(tool.args || {}).length > 0 && (
                     <div className="mb-2 p-2 bg-slate-900/50 rounded text-xs">
-                      <div className="text-slate-400 mb-1 font-medium">Arguments:</div>
+                      <div className="text-slate-400 mb-1 font-medium">
+                        Arguments:
+                      </div>
                       <div className="text-slate-300 font-mono text-xs max-h-20 overflow-y-auto">
                         {JSON.stringify(tool.args, null, 2)}
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Tool Result (only if completed) */}
-                  {tool.result && tool.status === 'completed' && (
-                    <motion.div 
+                  {tool.result && tool.status === "completed" && (
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
+                      animate={{ opacity: 1, height: "auto" }}
                       className="p-2 bg-emerald-900/20 border border-emerald-700/30 rounded text-xs"
                     >
-                      <div className="text-emerald-400 mb-1 font-medium">Result:</div>
+                      <div className="text-emerald-400 mb-1 font-medium">
+                        Result:
+                      </div>
                       <div className="text-slate-300 font-mono text-xs max-h-32 overflow-y-auto">
-                        {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2)}
+                        {typeof tool.result === "string"
+                          ? tool.result
+                          : JSON.stringify(tool.result, null, 2)}
                       </div>
                     </motion.div>
                   )}
@@ -325,16 +343,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     );
   };
 
-  const renderToolsUsedSection = (message: AssistantMessage, messageIndex: number) => {
+  const renderToolsUsedSection = (
+    message: AssistantMessage,
+    messageIndex: number
+  ) => {
     if (!message.toolCalls || message.toolCalls.length === 0) {
       return null;
     }
 
     const isExpanded = expandedTools[message.id] || false;
     const toggleExpanded = () => {
-      setExpandedTools(prev => ({
+      setExpandedTools((prev) => ({
         ...prev,
-        [message.id]: !prev[message.id]
+        [message.id]: !prev[message.id],
       }));
     };
 
@@ -371,7 +392,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </div>
                 <div className="flex gap-1">
                   {message.toolCalls.map((tool, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-md border border-blue-500/30">
+                    <span
+                      key={idx}
+                      className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-md border border-blue-500/30"
+                    >
                       {tool.name}
                     </span>
                   ))}
@@ -382,8 +406,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 transition={{ duration: 0.2 }}
                 className="text-slate-400"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </motion.div>
             </button>
@@ -561,22 +595,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div className="space-y-6">
               {messages.map((message, index) => {
                 if (message.role === "tool-execution") {
-                  return renderToolExecutionMessage(message as ToolExecutionMessage, index);
+                  return renderToolExecutionMessage(
+                    message as ToolExecutionMessage,
+                    index
+                  );
                 }
-                
+
                 // Render the main message
                 const mainMessage = renderMessage(message, index);
-                
+
                 // If it's an assistant message with tool calls, render the tools section separately
-                if (message.role === "assistant" && message.toolCalls && message.toolCalls.length > 0) {
+                if (
+                  message.role === "assistant" &&
+                  message.toolCalls &&
+                  message.toolCalls.length > 0
+                ) {
                   return (
                     <div key={message.id} className="space-y-3">
                       {mainMessage}
-                      {renderToolsUsedSection(message as AssistantMessage, index)}
+                      {renderToolsUsedSection(
+                        message as AssistantMessage,
+                        index
+                      )}
                     </div>
                   );
                 }
-                
+
                 return mainMessage;
               })}
 

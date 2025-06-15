@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -19,13 +19,13 @@ import {
   DialogActions,
   Alert,
   Chip,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Description as DescriptionIcon,
   Visibility as ViewIcon,
   Link as LinkIcon,
-} from '@mui/icons-material';
-import { ServerStatus, Resource } from '../../shared/types';
+} from "@mui/icons-material";
+import { ServerStatus, Resource } from "../../shared/types";
 
 interface ResourcesPanelProps {
   servers: ServerStatus[];
@@ -41,12 +41,14 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [selectedResource, setSelectedResource] = useState<Resource | null>(
+    null
+  );
   const [resourceContent, setResourceContent] = useState<any>(null);
   const [contentLoading, setContentLoading] = useState(false);
   const [contentError, setContentError] = useState<string | null>(null);
 
-  const connectedServers = servers.filter(s => s.connected);
+  const connectedServers = servers.filter((s) => s.connected);
 
   useEffect(() => {
     if (selectedServerId) {
@@ -62,7 +64,7 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       const serverResources = await window.electronAPI.listResources(serverId);
       setResources(serverResources);
     } catch (error) {
-      console.error('Failed to load resources:', error);
+      console.error("Failed to load resources:", error);
       setResources([]);
     } finally {
       setLoading(false);
@@ -85,7 +87,7 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       );
       setResourceContent(content);
     } catch (error: any) {
-      setContentError(error.message || 'Failed to read resource');
+      setContentError(error.message || "Failed to read resource");
     } finally {
       setContentLoading(false);
     }
@@ -101,7 +103,7 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
   const renderResourceContent = () => {
     if (contentLoading) {
       return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
         </Box>
       );
@@ -124,16 +126,16 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
               key={index}
               sx={{
                 p: 2,
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
               }}
             >
-              {content.type === 'text' ? (
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+              {content.type === "text" ? (
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                   {content.text}
                 </Typography>
               ) : (
-                <pre style={{ margin: 0, fontSize: '12px', overflow: 'auto' }}>
+                <pre style={{ margin: 0, fontSize: "12px", overflow: "auto" }}>
                   {JSON.stringify(content, null, 2)}
                 </pre>
               )}
@@ -147,11 +149,11 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       <Paper
         sx={{
           p: 2,
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          backgroundColor: "rgba(255, 255, 255, 0.05)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
       >
-        <pre style={{ margin: 0, fontSize: '12px', overflow: 'auto' }}>
+        <pre style={{ margin: 0, fontSize: "12px", overflow: "auto" }}>
           {JSON.stringify(resourceContent, null, 2)}
         </pre>
       </Paper>
@@ -159,17 +161,19 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
   };
 
   const getMimeTypeColor = (mimeType?: string) => {
-    if (!mimeType) return 'default';
-    if (mimeType.startsWith('text/')) return 'primary';
-    if (mimeType.startsWith('application/json')) return 'secondary';
-    if (mimeType.startsWith('image/')) return 'success';
-    return 'default';
+    if (!mimeType) return "default";
+    if (mimeType.startsWith("text/")) return "primary";
+    if (mimeType.startsWith("application/json")) return "secondary";
+    if (mimeType.startsWith("image/")) return "success";
+    return "default";
   };
 
   if (connectedServers.length === 0) {
     return (
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
-        <DescriptionIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+      <Paper sx={{ p: 4, textAlign: "center" }}>
+        <DescriptionIcon
+          sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+        />
         <Typography variant="h6" color="text.secondary" gutterBottom>
           No Connected Servers
         </Typography>
@@ -193,7 +197,7 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       <FormControl fullWidth sx={{ mb: 3 }}>
         <InputLabel>Select Server</InputLabel>
         <Select
-          value={selectedServerId || ''}
+          value={selectedServerId || ""}
           onChange={(e) => onSelectServer(e.target.value)}
           label="Select Server"
         >
@@ -206,11 +210,11 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       </FormControl>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
         </Box>
       ) : resources.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
+        <Paper sx={{ p: 4, textAlign: "center" }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No Resources Available
           </Typography>
@@ -223,10 +227,10 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
           {resources.map((resource, index) => (
             <Card key={`${resource.uri}-${index}`} variant="outlined">
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <DescriptionIcon sx={{ mr: 1, color: 'primary.main' }} />
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <DescriptionIcon sx={{ mr: 1, color: "primary.main" }} />
                   <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                    {resource.name || 'Unnamed Resource'}
+                    {resource.name || "Unnamed Resource"}
                   </Typography>
                   {resource.mimeType && (
                     <Chip
@@ -238,8 +242,12 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
                 </Box>
 
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
-                    <LinkIcon sx={{ mr: 1, fontSize: '16px' }} />
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ display: "flex", alignItems: "center" }}
+                  >
+                    <LinkIcon sx={{ mr: 1, fontSize: "16px" }} />
                     {resource.uri}
                   </Typography>
                 </Box>
@@ -272,7 +280,7 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
         maxWidth="lg"
         fullWidth
         PaperProps={{
-          sx: { minHeight: '60vh' }
+          sx: { minHeight: "60vh" },
         }}
       >
         <DialogTitle>
@@ -291,7 +299,11 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
                   </Typography>
                 )}
                 {selectedResource.description && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1 }}
+                  >
                     {selectedResource.description}
                   </Typography>
                 )}

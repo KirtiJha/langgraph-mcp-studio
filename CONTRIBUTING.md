@@ -72,6 +72,7 @@ We use GitHub issues to track public bugs. Report a bug by [opening a new issue]
 - Add more detail in the body if needed
 
 Example:
+
 ```
 Add tool execution visualization to chat interface
 
@@ -83,6 +84,7 @@ Add tool execution visualization to chat interface
 ## Feature Requests
 
 We welcome feature requests! Please open an issue with:
+
 - Clear description of the feature
 - Use cases and benefits
 - Any implementation ideas you might have

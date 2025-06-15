@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -23,14 +23,14 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-} from '@mui/material';
+} from "@mui/material";
 import {
   AutoAwesome as AutoAwesomeIcon,
   PlayArrow as PlayIcon,
   ExpandMore as ExpandMoreIcon,
   Code as CodeIcon,
-} from '@mui/icons-material';
-import { ServerStatus, Prompt } from '../../shared/types';
+} from "@mui/icons-material";
+import { ServerStatus, Prompt } from "../../shared/types";
 
 interface PromptsPanelProps {
   servers: ServerStatus[];
@@ -52,7 +52,7 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
   const [promptError, setPromptError] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
 
-  const connectedServers = servers.filter(s => s.connected);
+  const connectedServers = servers.filter((s) => s.connected);
 
   useEffect(() => {
     if (selectedServerId) {
@@ -68,7 +68,7 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
       const serverPrompts = await window.electronAPI.listPrompts(serverId);
       setPrompts(serverPrompts);
     } catch (error) {
-      console.error('Failed to load prompts:', error);
+      console.error("Failed to load prompts:", error);
       setPrompts([]);
     } finally {
       setLoading(false);
@@ -90,7 +90,7 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
       );
       setPromptResult(result);
     } catch (error: any) {
-      setPromptError(error.message || 'Failed to execute prompt');
+      setPromptError(error.message || "Failed to execute prompt");
     } finally {
       setExecuting(false);
     }
@@ -98,16 +98,16 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
 
   const openExecuteDialog = (prompt: Prompt) => {
     setSelectedPrompt(prompt);
-    
+
     // Initialize prompt args based on the prompt's arguments
     const initialArgs: Record<string, string> = {};
     if (prompt.arguments) {
-      prompt.arguments.forEach(arg => {
-        initialArgs[arg.name] = '';
+      prompt.arguments.forEach((arg) => {
+        initialArgs[arg.name] = "";
       });
     }
     setPromptArgs(initialArgs);
-    
+
     setPromptResult(null);
     setPromptError(null);
     setExecuteDialogOpen(true);
@@ -122,9 +122,9 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
   };
 
   const handleArgChange = (argName: string, value: string) => {
-    setPromptArgs(prev => ({
+    setPromptArgs((prev) => ({
       ...prev,
-      [argName]: value
+      [argName]: value,
     }));
   };
 
@@ -144,12 +144,15 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
         </Typography>
         <Stack spacing={1}>
           {prompt.arguments.map((arg) => (
-            <Box key={arg.name} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              key={arg.name}
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
               <Chip
                 label={arg.name}
                 size="small"
-                color={arg.required ? 'primary' : 'default'}
-                variant={arg.required ? 'filled' : 'outlined'}
+                color={arg.required ? "primary" : "default"}
+                variant={arg.required ? "filled" : "outlined"}
               />
               {arg.description && (
                 <Typography variant="caption" color="text.secondary">
@@ -171,7 +174,7 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
         <Typography variant="subtitle2" gutterBottom>
           Result:
         </Typography>
-        
+
         {promptResult.messages && Array.isArray(promptResult.messages) ? (
           <Stack spacing={2}>
             {promptResult.messages.map((message: any, index: number) => (
@@ -179,14 +182,14 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
                 key={index}
                 sx={{
                   p: 2,
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  border: "1px solid rgba(59, 130, 246, 0.3)",
                 }}
               >
                 <Typography variant="subtitle2" gutterBottom>
                   {message.role}:
                 </Typography>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                   {message.content}
                 </Typography>
               </Paper>
@@ -196,11 +199,11 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
           <Paper
             sx={{
               p: 2,
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.3)',
+              backgroundColor: "rgba(34, 197, 94, 0.1)",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
             }}
           >
-            <pre style={{ margin: 0, fontSize: '12px', overflow: 'auto' }}>
+            <pre style={{ margin: 0, fontSize: "12px", overflow: "auto" }}>
               {JSON.stringify(promptResult, null, 2)}
             </pre>
           </Paper>
@@ -211,8 +214,10 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
 
   if (connectedServers.length === 0) {
     return (
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
-        <AutoAwesomeIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+      <Paper sx={{ p: 4, textAlign: "center" }}>
+        <AutoAwesomeIcon
+          sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+        />
         <Typography variant="h6" color="text.secondary" gutterBottom>
           No Connected Servers
         </Typography>
@@ -236,7 +241,7 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
       <FormControl fullWidth sx={{ mb: 3 }}>
         <InputLabel>Select Server</InputLabel>
         <Select
-          value={selectedServerId || ''}
+          value={selectedServerId || ""}
           onChange={(e) => onSelectServer(e.target.value)}
           label="Select Server"
         >
@@ -249,11 +254,11 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
       </FormControl>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress />
         </Box>
       ) : prompts.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
+        <Paper sx={{ p: 4, textAlign: "center" }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             No Prompts Available
           </Typography>
@@ -266,11 +271,11 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
           {prompts.map((prompt, index) => (
             <Card key={`${prompt.name}-${index}`} variant="outlined">
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <AutoAwesomeIcon sx={{ mr: 1, color: 'primary.main' }} />
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <AutoAwesomeIcon sx={{ mr: 1, color: "primary.main" }} />
                   <Typography variant="h6">{prompt.name}</Typography>
                 </Box>
-                
+
                 {prompt.description && (
                   <Typography variant="body2" color="text.secondary" paragraph>
                     {prompt.description}
@@ -301,9 +306,7 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          Execute Prompt: {selectedPrompt?.name}
-        </DialogTitle>
+        <DialogTitle>Execute Prompt: {selectedPrompt?.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
             {selectedPrompt?.description && (
@@ -312,32 +315,31 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
               </Typography>
             )}
 
-            {selectedPrompt?.arguments && selectedPrompt.arguments.length > 0 && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Arguments:
-                </Typography>
-                <Stack spacing={2}>
-                  {selectedPrompt.arguments.map((arg) => (
-                    <TextField
-                      key={arg.name}
-                      label={arg.name}
-                      helperText={arg.description}
-                      required={arg.required}
-                      value={promptArgs[arg.name] || ''}
-                      onChange={(e) => handleArgChange(arg.name, e.target.value)}
-                      fullWidth
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            )}
+            {selectedPrompt?.arguments &&
+              selectedPrompt.arguments.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Arguments:
+                  </Typography>
+                  <Stack spacing={2}>
+                    {selectedPrompt.arguments.map((arg) => (
+                      <TextField
+                        key={arg.name}
+                        label={arg.name}
+                        helperText={arg.description}
+                        required={arg.required}
+                        value={promptArgs[arg.name] || ""}
+                        onChange={(e) =>
+                          handleArgChange(arg.name, e.target.value)
+                        }
+                        fullWidth
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              )}
 
-            {promptError && (
-              <Alert severity="error">
-                {promptError}
-              </Alert>
-            )}
+            {promptError && <Alert severity="error">{promptError}</Alert>}
 
             {renderPromptResult()}
           </Stack>
@@ -347,10 +349,12 @@ const PromptsPanel: React.FC<PromptsPanelProps> = ({
           <Button
             onClick={handleExecutePrompt}
             disabled={executing || !selectedPrompt}
-            startIcon={executing ? <CircularProgress size={16} /> : <PlayIcon />}
+            startIcon={
+              executing ? <CircularProgress size={16} /> : <PlayIcon />
+            }
             color="primary"
           >
-            {executing ? 'Executing...' : 'Execute'}
+            {executing ? "Executing..." : "Execute"}
           </Button>
         </DialogActions>
       </Dialog>

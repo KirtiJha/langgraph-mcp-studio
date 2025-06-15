@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Typography,
@@ -28,14 +28,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
-} from '@mui/material';
+} from "@mui/material";
 import {
   PlayArrow as PlayIcon,
   ExpandMore as ExpandMoreIcon,
   Code as CodeIcon,
   Build as BuildIcon,
-} from '@mui/icons-material';
-import { ServerStatus, Tool } from '../../shared/types';
+} from "@mui/icons-material";
+import { ServerStatus, Tool } from "../../shared/types";
 
 interface ToolsPanelProps {
   servers: ServerStatus[];
@@ -52,49 +52,63 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
-  const [toolArgs, setToolArgs] = useState<string>('{}');
+  const [toolArgs, setToolArgs] = useState<string>("{}");
   const [executionResult, setExecutionResult] = useState<any>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
 
-  const connectedServers = servers.filter(s => s.connected);
+  const connectedServers = servers.filter((s) => s.connected);
 
   useEffect(() => {
-    console.log('ToolsPanel: useEffect triggered with selectedServerId:', selectedServerId);
-    console.log('ToolsPanel: All servers:', servers);
-    
-    const connectedServers = servers.filter(s => s.connected);
-    console.log('ToolsPanel: Connected servers:', connectedServers.map(s => s.id));
-    
+    console.log(
+      "ToolsPanel: useEffect triggered with selectedServerId:",
+      selectedServerId
+    );
+    console.log("ToolsPanel: All servers:", servers);
+
+    const connectedServers = servers.filter((s) => s.connected);
+    console.log(
+      "ToolsPanel: Connected servers:",
+      connectedServers.map((s) => s.id)
+    );
+
     if (selectedServerId) {
-      const selectedServer = servers.find(s => s.id === selectedServerId);
-      console.log('ToolsPanel: Selected server:', selectedServer);
-      
+      const selectedServer = servers.find((s) => s.id === selectedServerId);
+      console.log("ToolsPanel: Selected server:", selectedServer);
+
       if (selectedServer && selectedServer.connected) {
-        console.log('ToolsPanel: Loading tools for connected selected server:', selectedServerId);
+        console.log(
+          "ToolsPanel: Loading tools for connected selected server:",
+          selectedServerId
+        );
         loadTools(selectedServerId);
       } else {
-        console.log('ToolsPanel: Selected server is not connected, clearing tools');
+        console.log(
+          "ToolsPanel: Selected server is not connected, clearing tools"
+        );
         setTools([]);
       }
     } else if (connectedServers.length > 0) {
-      console.log('ToolsPanel: Auto-selecting first connected server:', connectedServers[0].id);
+      console.log(
+        "ToolsPanel: Auto-selecting first connected server:",
+        connectedServers[0].id
+      );
       onSelectServer(connectedServers[0].id);
     } else {
-      console.log('ToolsPanel: No connected servers, clearing tools');
+      console.log("ToolsPanel: No connected servers, clearing tools");
       setTools([]);
     }
   }, [selectedServerId, servers]);
 
   const loadTools = async (serverId: string) => {
-    console.log('ToolsPanel: loadTools called with serverId:', serverId);
+    console.log("ToolsPanel: loadTools called with serverId:", serverId);
     setLoading(true);
     try {
       const serverTools = await window.electronAPI.listTools(serverId);
-      console.log('ToolsPanel: Received tools:', serverTools);
+      console.log("ToolsPanel: Received tools:", serverTools);
       setTools(serverTools);
     } catch (error) {
-      console.error('ToolsPanel: Failed to load tools:', error);
+      console.error("ToolsPanel: Failed to load tools:", error);
       setTools([]);
     } finally {
       setLoading(false);
@@ -117,7 +131,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
       );
       setExecutionResult(result);
     } catch (error: any) {
-      setExecutionError(error.message || 'Failed to execute tool');
+      setExecutionError(error.message || "Failed to execute tool");
     } finally {
       setExecuting(false);
     }
@@ -149,11 +163,11 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
         <Paper
           sx={{
             p: 2,
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backgroundColor: "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
           }}
         >
-          <pre style={{ margin: 0, fontSize: '12px', overflow: 'auto' }}>
+          <pre style={{ margin: 0, fontSize: "12px", overflow: "auto" }}>
             {JSON.stringify(tool.inputSchema, null, 2)}
           </pre>
         </Paper>
@@ -163,8 +177,8 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
 
   if (connectedServers.length === 0) {
     return (
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
-        <BuildIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+      <Paper sx={{ p: 4, textAlign: "center" }}>
+        <BuildIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
         <Typography variant="h6" color="text.secondary" gutterBottom>
           No Connected Servers
         </Typography>
@@ -176,7 +190,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Typography variant="h5" gutterBottom>
         Tools
       </Typography>
@@ -188,7 +202,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
       <FormControl fullWidth sx={{ mb: 3 }}>
         <InputLabel>Select Server</InputLabel>
         <Select
-          value={selectedServerId || ''}
+          value={selectedServerId || ""}
           onChange={(e) => onSelectServer(e.target.value)}
           label="Select Server"
         >
@@ -201,13 +215,13 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
       </FormControl>
 
       {/* Scrollable Tools Content */}
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <Box sx={{ flexGrow: 1, overflow: "auto" }}>
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
             <CircularProgress />
           </Box>
         ) : tools.length === 0 ? (
-          <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <Paper sx={{ p: 4, textAlign: "center" }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               No Tools Available
             </Typography>
@@ -220,13 +234,17 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
             {tools.map((tool, index) => (
               <Card key={`${tool.name}-${index}`} variant="outlined">
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <CodeIcon sx={{ mr: 1, color: 'primary.main' }} />
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                    <CodeIcon sx={{ mr: 1, color: "primary.main" }} />
                     <Typography variant="h6">{tool.name}</Typography>
                   </Box>
-                  
+
                   {tool.description && (
-                    <Typography variant="body2" color="text.secondary" paragraph>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      paragraph
+                    >
                       {tool.description}
                     </Typography>
                   )}
@@ -256,9 +274,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          Execute Tool: {selectedTool?.name}
-        </DialogTitle>
+        <DialogTitle>Execute Tool: {selectedTool?.name}</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
             {selectedTool?.description && (
@@ -275,18 +291,14 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
               onChange={(e) => setToolArgs(e.target.value)}
               fullWidth
               sx={{
-                '& .MuiInputBase-input': {
-                  fontFamily: 'monospace',
-                  fontSize: '14px',
+                "& .MuiInputBase-input": {
+                  fontFamily: "monospace",
+                  fontSize: "14px",
                 },
               }}
             />
 
-            {executionError && (
-              <Alert severity="error">
-                {executionError}
-              </Alert>
-            )}
+            {executionError && <Alert severity="error">{executionError}</Alert>}
 
             {executionResult && (
               <Box>
@@ -296,11 +308,13 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                 <Paper
                   sx={{
                     p: 2,
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    backgroundColor: "rgba(34, 197, 94, 0.1)",
+                    border: "1px solid rgba(34, 197, 94, 0.3)",
                   }}
                 >
-                  <pre style={{ margin: 0, fontSize: '12px', overflow: 'auto' }}>
+                  <pre
+                    style={{ margin: 0, fontSize: "12px", overflow: "auto" }}
+                  >
                     {JSON.stringify(executionResult, null, 2)}
                   </pre>
                 </Paper>
@@ -313,10 +327,12 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
           <Button
             onClick={handleExecuteTool}
             disabled={executing || !selectedTool}
-            startIcon={executing ? <CircularProgress size={16} /> : <PlayIcon />}
+            startIcon={
+              executing ? <CircularProgress size={16} /> : <PlayIcon />
+            }
             color="primary"
           >
-            {executing ? 'Executing...' : 'Execute'}
+            {executing ? "Executing..." : "Execute"}
           </Button>
         </DialogActions>
       </Dialog>

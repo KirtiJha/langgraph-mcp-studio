@@ -12,7 +12,11 @@ declare global {
 
       // Tool operations
       listTools: (serverId?: string) => Promise<any[]>;
-      executeTool: (serverId: string, toolName: string, args: any) => Promise<any>;
+      executeTool: (
+        serverId: string,
+        toolName: string,
+        args: any
+      ) => Promise<any>;
 
       // Agent operations
       sendMessage: (message: string) => Promise<any>;
@@ -26,7 +30,9 @@ declare global {
       getPrompt: (serverId: string, name: string, args: any) => Promise<any>;
 
       // Context parameter discovery
-      discoverContextParams: (serverId: string) => Promise<Record<string, string>>;
+      discoverContextParams: (
+        serverId: string
+      ) => Promise<Record<string, string>>;
 
       // Event listeners
       on: (channel: string, callback: Function) => () => void;

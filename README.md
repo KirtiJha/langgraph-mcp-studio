@@ -7,35 +7,69 @@ A modern, professional desktop application for managing and interacting with Mod
 ## Features
 
 ### 🚀 Modern UI/UX
-- **Dark Theme**: Professional dark interface with gradient accents and modern styling
-- **Real-time Tool Execution**: Visual indicators showing which tools are being executed
+
+- **Compact Modern Design**: Professional SaaS-style interface with reduced font sizes and compact spacing
+- **Dark Theme**: Beautiful dark interface with gradient accents and modern styling
+- **Server Configuration Modal**: Rich tabbed interface for viewing and editing server configurations
+- **Real-time Tool Execution**: Enhanced visual indicators showing which tools are being executed
 - **Interactive Chat**: Rich chat interface with the AI assistant
 - **Responsive Design**: Optimized for desktop use across Mac and Windows
 
 ### 🔧 MCP Server Management
+
 - **Easy Server Setup**: Add MCP servers with a simple, intuitive form
+- **Advanced Configuration**: Tabbed modal interface for server settings (Basic, Command, Environment, Context, JSON)
 - **Connection Status**: Real-time server connection monitoring and status indicators
 - **Server Configuration**: Support for environment variables, custom arguments, and working directories
 - **Protocol Support**: Supports both stdio and SSE (Server-Sent Events) transports
+- **Tool Count Display**: Live tool count display for each connected server
 
 ### 🤖 AI Assistant Integration
+
 - **LangGraph Integration**: Powered by LangGraph React agents with IBM WatsonX AI
-- **Tool Execution Visualization**: See exactly which tools the AI is using in real-time
+- **Enhanced Tool Execution**: Detailed tool configuration with argument validation and JSON preview
+- **Tool Schema Validation**: Comprehensive tool argument display with type information and validation
 - **Collapsible Tool Results**: Clean separation between AI responses and detailed tool execution data
 - **Real-time Updates**: Live status indicators during processing and tool execution
+
 ### 🛠️ Developer Tools
-- **Logs Console**: Built-in logging for debugging and monitoring
-- **Tool Testing**: Execute tools manually for testing and validation
+
+- **Real-time Logs Console**: Built-in logging system capturing system events, errors, and debug information
+- **Live Log Streaming**: Real-time log updates with filtering and auto-scroll functionality
+- **Enhanced Tool Testing**: Execute tools manually with proper argument configuration and validation
 - **Server Stats**: Monitor server performance and connection status
 - **Keyboard Shortcuts**: Efficient navigation with hotkeys
+- **Scrollable Interfaces**: Improved scrolling in all panels for better content navigation
+
+## Recent Updates
+
+### Version 1.1.0 - UI/UX Redesign & Enhanced Logging
+
+#### Major Improvements
+- **Compact Modern Design**: Redesigned the entire interface with a more compact, SaaS-like appearance
+- **Server Configuration Modal**: New tabbed modal interface for comprehensive server management
+- **Real-time Logging System**: Built-in logging console with live updates and filtering
+- **Enhanced Tool Execution**: Improved tool configuration with detailed argument validation
+- **Better Scrolling**: Fixed scrolling issues across all components
+- **Tool Count Fix**: Resolved issue where server cards showed "0 Tools" incorrectly
+
+#### Technical Enhancements
+- Added comprehensive logging service with IPC communication
+- Implemented React context for log state management
+- Enhanced tool execution with proper schema validation
+- Improved server configuration with JSON export/import
+- Better error handling and user feedback
+
+---
 
 ## Screenshots
 
-*Coming soon - Screenshots will be added after initial release*
+_Coming soon - Screenshots will be added after initial release_
 
 ## Installation
 
 ### Prerequisites
+
 - Node.js (v18 or higher)
 - npm or yarn
 - IBM WatsonX AI API key for AI assistant functionality
@@ -43,18 +77,21 @@ A modern, professional desktop application for managing and interacting with Mod
 ### Development Setup
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/KirtiJha/langgraph-mcp-studio.git
    cd langgraph-mcp-studio
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
    Create a `.env` file in the root directory:
+
    ```env
    WATSONX_API_KEY=your_watsonx_api_key_here
    WATSONX_PROJECT_ID=your_watsonx_project_id_here
@@ -68,6 +105,7 @@ A modern, professional desktop application for managing and interacting with Mod
 ### Building for Production
 
 1. **Build the application**
+
    ```bash
    npm run build
    ```
@@ -76,12 +114,14 @@ A modern, professional desktop application for managing and interacting with Mod
    ```bash
    npm run dist
    ```
+
 ## Usage
 
 ### Adding an MCP Server
 
 1. Click the "Add Server" button in the header
 2. Fill in the server details:
+
    - **Name**: A friendly name for your server
    - **Command**: The executable command (e.g., `python`, `node`)
    - **Arguments**: Command line arguments
@@ -123,16 +163,22 @@ NODE_ENV=development
 Here are some example MCP server configurations:
 
 #### File System Server
+
 ```json
 {
   "name": "File System",
   "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"],
+  "args": [
+    "-y",
+    "@modelcontextprotocol/server-filesystem",
+    "/path/to/directory"
+  ],
   "env": {}
 }
 ```
 
 #### Web Search Server
+
 ```json
 {
   "name": "Web Search",
@@ -143,6 +189,7 @@ Here are some example MCP server configurations:
   }
 }
 ```
+
 ## Architecture
 
 MCP Studio is built with:
@@ -191,6 +238,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Use Tailwind CSS for styling
 - Add proper error handling
 - Write descriptive commit messages
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

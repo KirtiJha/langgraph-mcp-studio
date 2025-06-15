@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Paper,
   Typography,
@@ -16,7 +16,7 @@ import {
   Tooltip,
   Stack,
   Divider,
-} from '@mui/material';
+} from "@mui/material";
 import {
   PlayArrow as PlayIcon,
   Stop as StopIcon,
@@ -28,8 +28,8 @@ import {
   Build as BuildIcon,
   Description as DescriptionIcon,
   AutoAwesome as AutoAwesomeIcon,
-} from '@mui/icons-material';
-import { ServerStatus, ServerConfig } from '../../shared/types';
+} from "@mui/icons-material";
+import { ServerStatus, ServerConfig } from "../../shared/types";
 
 interface ServerListProps {
   servers: ServerStatus[];
@@ -62,9 +62,17 @@ const ServerList: React.FC<ServerListProps> = ({
 
   const renderServerStats = (server: ServerStatus) => {
     const stats = [
-      { label: 'Tools', count: server.tools?.length || 0, icon: <BuildIcon /> },
-      { label: 'Resources', count: server.resources?.length || 0, icon: <DescriptionIcon /> },
-      { label: 'Prompts', count: server.prompts?.length || 0, icon: <AutoAwesomeIcon /> },
+      { label: "Tools", count: server.tools?.length || 0, icon: <BuildIcon /> },
+      {
+        label: "Resources",
+        count: server.resources?.length || 0,
+        icon: <DescriptionIcon />,
+      },
+      {
+        label: "Prompts",
+        count: server.prompts?.length || 0,
+        icon: <AutoAwesomeIcon />,
+      },
     ];
 
     return (
@@ -76,7 +84,7 @@ const ServerList: React.FC<ServerListProps> = ({
             label={`${stat.count} ${stat.label}`}
             size="small"
             variant="outlined"
-            color={stat.count > 0 ? 'primary' : 'default'}
+            color={stat.count > 0 ? "primary" : "default"}
           />
         ))}
       </Stack>
@@ -85,7 +93,7 @@ const ServerList: React.FC<ServerListProps> = ({
 
   if (servers.length === 0) {
     return (
-      <Paper sx={{ p: 4, textAlign: 'center' }}>
+      <Paper sx={{ p: 4, textAlign: "center" }}>
         <Typography variant="h6" color="text.secondary" gutterBottom>
           No MCP Servers
         </Typography>
@@ -111,26 +119,27 @@ const ServerList: React.FC<ServerListProps> = ({
             key={server.id}
             variant="outlined"
             sx={{
-              cursor: 'pointer',
-              transition: 'all 0.2s ease-in-out',
+              cursor: "pointer",
+              transition: "all 0.2s ease-in-out",
               border: selectedServerId === server.id ? 2 : 1,
-              borderColor: selectedServerId === server.id ? 'primary.main' : 'divider',
-              '&:hover': {
-                borderColor: 'primary.main',
+              borderColor:
+                selectedServerId === server.id ? "primary.main" : "divider",
+              "&:hover": {
+                borderColor: "primary.main",
                 boxShadow: 2,
               },
             }}
             onClick={() => onSelect(server.id)}
           >
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                 {renderStatusIcon(server)}
                 <Typography variant="h6" sx={{ ml: 1, flexGrow: 1 }}>
                   {server.name}
                 </Typography>
                 <Chip
-                  label={server.connected ? 'Connected' : 'Disconnected'}
-                  color={server.connected ? 'success' : 'default'}
+                  label={server.connected ? "Connected" : "Disconnected"}
+                  color={server.connected ? "success" : "default"}
                   size="small"
                 />
               </Box>
@@ -175,7 +184,7 @@ const ServerList: React.FC<ServerListProps> = ({
                     </Button>
                   </Tooltip>
                 )}
-                
+
                 <Tooltip title="Edit Configuration">
                   <IconButton
                     color="primary"
@@ -187,7 +196,7 @@ const ServerList: React.FC<ServerListProps> = ({
                     <EditIcon />
                   </IconButton>
                 </Tooltip>
-                
+
                 <Tooltip title="Remove Server">
                   <IconButton
                     color="error"

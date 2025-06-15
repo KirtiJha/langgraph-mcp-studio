@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 
 /* Custom CSS Variables for MCP Studio */
 :root {
@@ -15,7 +15,8 @@
 /* Base layer customizations */
 @layer base {
   html {
-    font-family: 'Inter', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    font-family: "Inter", "SF Pro Display", "Segoe UI", "Roboto",
+      "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -116,7 +117,7 @@
   }
 
   .label-required::after {
-    content: '*';
+    content: "*";
     @apply text-red-400 ml-1;
   }
 

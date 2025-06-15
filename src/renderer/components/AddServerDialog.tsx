@@ -7,19 +7,12 @@ import {
   FolderIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import { ServerConfig } from "../../shared/types";
 
 interface AddServerDialogProps {
   open: boolean;
   onClose: () => void;
   onAdd: (serverConfig: ServerConfig) => void;
-}
-
-interface ServerConfig {
-  name: string;
-  command: string;
-  args: string[];
-  cwd?: string;
-  env?: Record<string, string>;
 }
 
 const AddServerDialog: React.FC<AddServerDialogProps> = ({
@@ -48,9 +41,9 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
     // Validate environment variables format
     if (env.trim()) {
       try {
-        const envLines = env.split('\n').filter(line => line.trim());
+        const envLines = env.split("\n").filter((line) => line.trim());
         for (const line of envLines) {
-          if (!line.includes('=')) {
+          if (!line.includes("=")) {
             newErrors.env = "Environment variables must be in KEY=value format";
             break;
           }
@@ -66,33 +59,33 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     // Parse arguments
-    const parsedArgs = args.trim() 
-      ? args.split(' ').filter(arg => arg.trim())
+    const parsedArgs = args.trim()
+      ? args.split(" ").filter((arg) => arg.trim())
       : [];
 
     // Parse environment variables
     const parsedEnv: Record<string, string> = {};
     if (env.trim()) {
-      const envLines = env.split('\n').filter(line => line.trim());
+      const envLines = env.split("\n").filter((line) => line.trim());
       for (const line of envLines) {
-        const [key, ...valueParts] = line.split('=');
+        const [key, ...valueParts] = line.split("=");
         if (key && valueParts.length > 0) {
-          parsedEnv[key.trim()] = valueParts.join('=').trim();
+          parsedEnv[key.trim()] = valueParts.join("=").trim();
         }
       }
     }
 
     const serverConfig: ServerConfig = {
       name: name.trim(),
+      type: "stdio", // Default to stdio type
       command: command.trim(),
       args: parsedArgs,
-      ...(cwd.trim() && { cwd: cwd.trim() }),
       ...(Object.keys(parsedEnv).length > 0 && { env: parsedEnv }),
     };
 
@@ -164,7 +157,10 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
               </div>
 
               {/* Content */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <form
+                onSubmit={handleSubmit}
+                className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-140px)]"
+              >
                 {/* Server Name */}
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -201,7 +197,9 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
                       placeholder="e.g., python, node, /path/to/executable"
-                      className={`pl-12 ${errors.command ? errorInputClasses : inputClasses}`}
+                      className={`pl-12 ${
+                        errors.command ? errorInputClasses : inputClasses
+                      }`}
                     />
                   </div>
                   {errors.command && (
@@ -263,7 +261,9 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                     onChange={(e) => setEnv(e.target.value)}
                     placeholder="API_KEY=your_key_here&#10;DEBUG=true&#10;PORT=3000"
                     rows={4}
-                    className={`resize-none ${errors.env ? errorInputClasses : inputClasses}`}
+                    className={`resize-none ${
+                      errors.env ? errorInputClasses : inputClasses
+                    }`}
                   />
                   {errors.env && (
                     <motion.div

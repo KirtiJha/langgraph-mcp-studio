@@ -1,55 +1,72 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer } from "electron";
 
 // Define IpcChannels locally to avoid import issues in preload context
 const IpcChannels = {
-  ADD_SERVER: 'add-server',
-  REMOVE_SERVER: 'remove-server',
-  LIST_SERVERS: 'list-servers',
-  GET_SERVER_CONFIG: 'get-server-config',
-  UPDATE_SERVER: 'update-server',
-  CONNECT_SERVER: 'connect-server',
-  DISCONNECT_SERVER: 'disconnect-server',
-  LIST_TOOLS: 'list-tools',
-  EXECUTE_TOOL: 'execute-tool',
-  SEND_MESSAGE: 'send-message',
-  LIST_RESOURCES: 'list-resources',
-  READ_RESOURCE: 'read-resource',
-  LIST_PROMPTS: 'list-prompts',
-  GET_PROMPT: 'get-prompt',
-  DISCOVER_CONTEXT_PARAMS: 'discover-context-params'
+  ADD_SERVER: "add-server",
+  REMOVE_SERVER: "remove-server",
+  LIST_SERVERS: "list-servers",
+  GET_SERVER_CONFIG: "get-server-config",
+  UPDATE_SERVER: "update-server",
+  CONNECT_SERVER: "connect-server",
+  DISCONNECT_SERVER: "disconnect-server",
+  LIST_TOOLS: "list-tools",
+  EXECUTE_TOOL: "execute-tool",
+  SEND_MESSAGE: "send-message",
+  LIST_RESOURCES: "list-resources",
+  READ_RESOURCE: "read-resource",
+  LIST_PROMPTS: "list-prompts",
+  GET_PROMPT: "get-prompt",
+  DISCOVER_CONTEXT_PARAMS: "discover-context-params",
+  GET_LOGS: "get-logs",
+  CLEAR_LOGS: "clear-logs",
+  LOG_EVENT: "log-event",
 } as const;
 
 const api = {
   // Server management
-  addServer: (config: any) => ipcRenderer.invoke(IpcChannels.ADD_SERVER, config),
-  removeServer: (id: string) => ipcRenderer.invoke(IpcChannels.REMOVE_SERVER, id),
+  addServer: (config: any) =>
+    ipcRenderer.invoke(IpcChannels.ADD_SERVER, config),
+  removeServer: (id: string) =>
+    ipcRenderer.invoke(IpcChannels.REMOVE_SERVER, id),
   listServers: () => ipcRenderer.invoke(IpcChannels.LIST_SERVERS),
-  getServerConfig: (id: string) => ipcRenderer.invoke(IpcChannels.GET_SERVER_CONFIG, id),
-  updateServer: (id: string, config: any) => ipcRenderer.invoke(IpcChannels.UPDATE_SERVER, id, config),
-  connectServer: (id: string) => ipcRenderer.invoke(IpcChannels.CONNECT_SERVER, id),
-  disconnectServer: (id: string) => ipcRenderer.invoke(IpcChannels.DISCONNECT_SERVER, id),
+  getServerConfig: (id: string) =>
+    ipcRenderer.invoke(IpcChannels.GET_SERVER_CONFIG, id),
+  updateServer: (id: string, config: any) =>
+    ipcRenderer.invoke(IpcChannels.UPDATE_SERVER, id, config),
+  connectServer: (id: string) =>
+    ipcRenderer.invoke(IpcChannels.CONNECT_SERVER, id),
+  disconnectServer: (id: string) =>
+    ipcRenderer.invoke(IpcChannels.DISCONNECT_SERVER, id),
 
   // Tool operations
-  listTools: (serverId?: string) => ipcRenderer.invoke(IpcChannels.LIST_TOOLS, serverId),
-  executeTool: (serverId: string, toolName: string, args: any) => 
+  listTools: (serverId?: string) =>
+    ipcRenderer.invoke(IpcChannels.LIST_TOOLS, serverId),
+  executeTool: (serverId: string, toolName: string, args: any) =>
     ipcRenderer.invoke(IpcChannels.EXECUTE_TOOL, { serverId, toolName, args }),
 
   // Agent operations
-  sendMessage: (message: string) => ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, message),
+  sendMessage: (message: string) =>
+    ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, message),
 
   // Resource operations
-  listResources: (serverId: string) => ipcRenderer.invoke(IpcChannels.LIST_RESOURCES, serverId),
-  readResource: (serverId: string, uri: string) => 
+  listResources: (serverId: string) =>
+    ipcRenderer.invoke(IpcChannels.LIST_RESOURCES, serverId),
+  readResource: (serverId: string, uri: string) =>
     ipcRenderer.invoke(IpcChannels.READ_RESOURCE, { serverId, uri }),
 
   // Prompt operations
-  listPrompts: (serverId: string) => ipcRenderer.invoke(IpcChannels.LIST_PROMPTS, serverId),
-  getPrompt: (serverId: string, name: string, args: any) => 
+  listPrompts: (serverId: string) =>
+    ipcRenderer.invoke(IpcChannels.LIST_PROMPTS, serverId),
+  getPrompt: (serverId: string, name: string, args: any) =>
     ipcRenderer.invoke(IpcChannels.GET_PROMPT, { serverId, name, args }),
 
   // Context parameter discovery
-  discoverContextParams: (serverId: string) => 
+  discoverContextParams: (serverId: string) =>
     ipcRenderer.invoke(IpcChannels.DISCOVER_CONTEXT_PARAMS, serverId),
+
+  // Logging operations
+  getLogs: () => ipcRenderer.invoke(IpcChannels.GET_LOGS),
+  clearLogs: () => ipcRenderer.invoke(IpcChannels.CLEAR_LOGS),
 
   // Event listeners
   on: (channel: string, callback: Function) => {
@@ -62,10 +79,10 @@ const api = {
 
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
-  }
+  },
 };
 
-contextBridge.exposeInMainWorld('electronAPI', api);
+contextBridge.exposeInMainWorld("electronAPI", api);
 
 // Global type declaration for the window object
 declare global {
