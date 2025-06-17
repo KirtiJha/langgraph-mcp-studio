@@ -9,6 +9,7 @@ import {
   ClockIcon,
   EyeIcon,
   PencilIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 
 interface ServerCardProps {
@@ -21,20 +22,24 @@ interface ServerCardProps {
     lastActivity?: Date;
   };
   toolCount?: number;
+  contextParamsCount?: number;
   onConnect: (id: string) => void;
   onDisconnect: (id: string) => void;
   onView?: (id: string) => void;
   onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
   isLoading?: boolean;
 }
 
 const ServerCard: React.FC<ServerCardProps> = ({
   server,
   toolCount = 0,
+  contextParamsCount = 0,
   onConnect,
   onDisconnect,
   onView,
   onEdit,
+  onDelete,
   isLoading = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -119,6 +124,16 @@ const ServerCard: React.FC<ServerCardProps> = ({
               </button>
             )}
 
+            {onDelete && (
+              <button
+                onClick={() => onDelete(server.id)}
+                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-200"
+                title="Delete server"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
+
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-md transition-all duration-200"
@@ -195,6 +210,12 @@ const ServerCard: React.FC<ServerCardProps> = ({
                 <div className="flex justify-between">
                   <span className="text-slate-400">Available Tools:</span>
                   <span className="text-indigo-300">{toolCount || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Context Parameters:</span>
+                  <span className="text-emerald-300">
+                    {contextParamsCount || 0}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Last Activity:</span>

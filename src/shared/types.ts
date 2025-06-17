@@ -40,8 +40,11 @@ export interface ServerConfig {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+  cwd?: string; // Working directory for the server process
   // Store additional context parameters to auto-inject into tool calls
   contextParams?: Record<string, any>;
+  // Store tool-specific parameter configurations
+  toolConfigs?: Record<string, Record<string, any>>;
 }
 
 export interface Tool {
@@ -93,6 +96,7 @@ export interface ServerStatus {
   tools?: Tool[];
   resources?: Resource[];
   prompts?: Prompt[];
+  toolConfigs?: Record<string, Record<string, any>>; // Pre-configured tool parameters
 }
 
 export interface ChatMessage {

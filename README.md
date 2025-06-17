@@ -43,9 +43,30 @@ A modern, professional desktop application for managing and interacting with Mod
 
 ## Recent Updates
 
+### Version 1.2.0 - Enhanced Add Server Flow
+
+#### 🎯 Major New Features
+
+- **Tabbed Server Configuration**: New tabbed interface with Manual Setup, Import JSON, and Tool Configuration tabs
+- **JSON Import Support**: Import standard MCP server configuration JSON (e.g., `mcpServers` format) with automatic field population
+- **Auto-Tool Discovery**: Automatically discover available tools and their parameters when adding a server
+- **Pre-configured Tool Parameters**: Configure default parameter values for tools during server setup
+- **Enhanced Tool Execution**: Tool parameters are pre-filled from server configurations with visual indicators
+- **Rich Error Handling**: Comprehensive error messages and user feedback throughout the flow
+- **Modern UI Components**: Beautiful, responsive interface with improved accessibility
+
+#### 🔧 Technical Enhancements
+
+- **Type Safety**: Enhanced TypeScript interfaces for better type checking and IntelliSense
+- **Component Architecture**: Completely refactored AddServerDialog and ToolExecution components
+- **Parameter Pre-filling**: Server tool configurations automatically populate tool execution forms
+- **Visual Indicators**: Clear indication of which parameters are pre-configured from server settings
+- **Robust Validation**: JSON parsing validation and comprehensive error handling
+
 ### Version 1.1.0 - UI/UX Redesign & Enhanced Logging
 
 #### Major Improvements
+
 - **Compact Modern Design**: Redesigned the entire interface with a more compact, SaaS-like appearance
 - **Server Configuration Modal**: New tabbed modal interface for comprehensive server management
 - **Real-time Logging System**: Built-in logging console with live updates and filtering
@@ -54,6 +75,7 @@ A modern, professional desktop application for managing and interacting with Mod
 - **Tool Count Fix**: Resolved issue where server cards showed "0 Tools" incorrectly
 
 #### Technical Enhancements
+
 - Added comprehensive logging service with IPC communication
 - Implemented React context for log state management
 - Enhanced tool execution with proper schema validation

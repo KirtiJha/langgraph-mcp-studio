@@ -156,7 +156,6 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
     }
 
     setIsDiscovering(true);
-    let tempServerId: string | null = null;
 
     try {
       // Create a temporary server config for discovery
@@ -173,42 +172,19 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
         }),
       };
 
-      // Add temporary server and get the actual server ID
-      const tempServer = await (window as any).electronAPI.addServer(
-        tempConfig
-      );
-      tempServerId = tempServer.id;
+      const tempServerId = tempConfig.name;
 
-      console.log("Tool discovery: Added temp server with ID:", tempServerId);
+      // Add temporary server
+      await (window as any).electronAPI.addServer(tempConfig);
 
-      // Connect and discover tools with timeout
-      const connectPromise = (window as any).electronAPI.connectServer(
-        tempServerId
-      );
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("Connection timeout after 10 seconds")),
-          10000
-        )
-      );
+      // Connect and discover tools
+      await (window as any).electronAPI.connectServer(tempServerId);
 
-      await Promise.race([connectPromise, timeoutPromise]);
-
-      console.log("Tool discovery: Connected to temp server");
-
-      // Wait for connection to establish and tools to be available
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Wait a bit for connection to establish
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Get tools for this server
       const tools = await (window as any).electronAPI.listTools(tempServerId);
-
-      console.log("Tool discovery: Found tools:", tools.length);
-
-      if (tools.length === 0) {
-        throw new Error(
-          "No tools found. The server may not be properly configured or may not expose any tools."
-        );
-      }
 
       setDiscoveredTools(tools);
 
@@ -240,55 +216,11 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
 
       setToolConfigs(configs);
 
-      console.log(
-        "Tool discovery: Configured",
-        Object.keys(configs).length,
-        "tools"
-      );
+      // Remove temporary server
+      await (window as any).electronAPI.removeServer(tempServerId);
     } catch (error) {
       console.error("Failed to discover tool parameters:", error);
-
-      let errorMessage = "Failed to discover tools";
-      if (error instanceof Error) {
-        if (
-          error.message.includes("ZoneInfoNotFoundError") ||
-          error.message.includes("No time zone found")
-        ) {
-          errorMessage =
-            "Server failed due to timezone error. If using mcp-server-time, try adding '--local-timezone America/New_York' to the arguments or remove timezone arguments entirely.";
-        } else if (
-          error.message.includes("Connection closed") ||
-          error.message.includes("MCP error -32000")
-        ) {
-          errorMessage =
-            "Server connection failed. Please check that the command and arguments are correct and the server starts properly.";
-        } else if (
-          error.message.includes("ENOENT") ||
-          error.message.includes("spawn")
-        ) {
-          errorMessage =
-            "Command not found. Make sure the server command is installed and available in your PATH.";
-        } else if (error.message.includes("Connection timeout")) {
-          errorMessage =
-            "Server took too long to start. Please check the server configuration.";
-        } else if (error.message.includes("No tools found")) {
-          errorMessage = error.message;
-        } else {
-          errorMessage = `Server error: ${error.message}`;
-        }
-      }
-
-      alert(errorMessage);
     } finally {
-      // Always clean up temporary server if it was created
-      if (tempServerId) {
-        try {
-          console.log("Tool discovery: Cleaning up temp server", tempServerId);
-          await (window as any).electronAPI.removeServer(tempServerId);
-        } catch (cleanupError) {
-          console.error("Failed to cleanup temporary server:", cleanupError);
-        }
-      }
       setIsDiscovering(false);
     }
   };
@@ -357,7 +289,7 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
       args: parsedArgs,
       ...(cwd.trim() && { cwd: cwd.trim() }),
       ...(Object.keys(parsedEnv).length > 0 && { env: parsedEnv }),
-      // Include tool-specific context parameters if any were set up
+      // Include tool configurations if any were set up
       ...(Object.keys(toolConfigs).length > 0 && {
         toolConfigs: Object.fromEntries(
           Object.entries(toolConfigs).map(([toolName, config]) => [
@@ -481,7 +413,7 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                     }`}
                   >
                     <WrenchScrewdriverIcon className="w-4 h-4 inline mr-2" />
-                    Context Parameters ({Object.keys(toolConfigs).length})
+                    Tool Configuration ({Object.keys(toolConfigs).length})
                   </button>
                 </div>
 
@@ -651,18 +583,18 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                     </div>
                   )}
 
-                  {/* Context Parameters Tab */}
+                  {/* Tool Configuration Tab */}
                   {activeTab === "tools" && (
                     <div className="space-y-6">
                       {!discoveredTools.length ? (
                         <div className="text-center py-8">
                           <WrenchScrewdriverIcon className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
                           <h3 className="text-lg font-medium text-zinc-300 mb-2">
-                            No Context Parameters Set
+                            No Tools Discovered
                           </h3>
                           <p className="text-zinc-400 mb-4">
                             Configure your server in the Manual Setup tab first,
-                            then discover tools to set up context parameters.
+                            then discover tools.
                           </p>
                           <button
                             type="button"
@@ -674,48 +606,13 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                               ? "Discovering..."
                               : "Discover Tools"}
                           </button>
-
-                          {/* Helpful tips */}
-                          <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                            <h4 className="text-blue-300 font-medium mb-2 flex items-center">
-                              <InformationCircleIcon className="w-4 h-4 mr-2" />
-                              Common Issues & Tips
-                            </h4>
-                            <ul className="text-sm text-blue-200 space-y-1">
-                              <li>
-                                • For{" "}
-                                <code className="bg-blue-500/20 px-1 rounded">
-                                  mcp-server-time
-                                </code>
-                                : Add{" "}
-                                <code className="bg-blue-500/20 px-1 rounded">
-                                  --local-timezone America/New_York
-                                </code>{" "}
-                                to avoid timezone errors
-                              </li>
-                              <li>
-                                • Make sure the server command is installed and
-                                available in your PATH
-                              </li>
-                              <li>
-                                • The server will be temporarily started to
-                                discover tools, then automatically removed
-                              </li>
-                            </ul>
-                          </div>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="text-lg font-medium text-zinc-300">
-                                Configure Context Parameters by Tool
-                              </h3>
-                              <p className="text-sm text-zinc-400 mt-1">
-                                Set default values for tool parameters. These
-                                will be pre-filled when executing tools.
-                              </p>
-                            </div>
+                            <h3 className="text-lg font-medium text-zinc-300">
+                              Configure Tool Parameters
+                            </h3>
                             <button
                               type="button"
                               onClick={discoverToolParameters}

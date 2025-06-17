@@ -83,7 +83,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || connectedServers === 0) return;
+    if (!input.trim() || isLoading) return;
 
     onSendMessage(input.trim());
     setInput("");
@@ -549,8 +549,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               {isLoading
                 ? "Processing..."
                 : connectedServers > 0
-                ? "Ready"
-                : "Waiting for servers"}
+                ? "Ready with MCP tools"
+                : "Ready (no MCP tools)"}
             </span>
           </motion.div>
         </div>
@@ -575,8 +575,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 Welcome to MCP Studio
               </h3>
               <p className="text-slate-400 max-w-md mb-6 text-lg">
-                Start a conversation with the AI assistant. It can help you
-                manage servers, execute tools, and work with your MCP resources.
+                Ask me anything! I can respond with my knowledge or use MCP
+                tools if servers are connected.
               </p>
               {connectedServers === 0 && (
                 <motion.div
@@ -704,9 +704,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               placeholder={
                 connectedServers > 0
                   ? "Ask me anything about your MCP servers..."
-                  : "Connect some servers first to get started..."
+                  : "Ask me anything... (no MCP tools available)"
               }
-              disabled={isLoading || connectedServers === 0}
+              disabled={isLoading}
               className="w-full bg-slate-800/90 backdrop-blur-sm border border-slate-700/50 rounded-xl px-5 py-4 pr-20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 resize-none min-h-[60px] max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg group-hover:shadow-emerald-500/10 focus:shadow-emerald-500/20"
               rows={1}
             />

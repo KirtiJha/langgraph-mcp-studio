@@ -28,8 +28,9 @@ import {
   Cancel as CancelIcon,
   Upload as UploadIcon,
   Code as CodeIcon,
+  Build as BuildIcon,
 } from "@mui/icons-material";
-import { ServerConfig } from "../../shared/types";
+import { ServerConfig, Tool } from "../../shared/types";
 
 interface EditServerDialogProps {
   open: boolean;
@@ -60,6 +61,10 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
   const [contextParams, setContextParams] = useState<
     Array<{ key: string; value: string }>
   >([]);
+  const [toolConfigs, setToolConfigs] = useState<
+    Record<string, Record<string, any>>
+  >({});
+  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
   const [argsText, setArgsText] = useState("");
   const [tabValue, setTabValue] = useState(0);
   const [jsonConfig, setJsonConfig] = useState("");
@@ -87,6 +92,14 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
       );
       setContextParams(contextArray);
 
+      // Handle tool-specific configurations
+      setToolConfigs(serverConfig.toolConfigs || {});
+
+      // If we have a connected server, try to get its tools
+      if (serverConfig.id) {
+        loadAvailableTools(serverConfig.id);
+      }
+
       // Convert args array to text for editing
       setArgsText((serverConfig.args || []).join(" "));
 
@@ -98,6 +111,7 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
             args: serverConfig.args || [],
             env: serverConfig.env || {},
             contextParams: serverConfig.contextParams || {},
+            toolConfigs: serverConfig.toolConfigs || {},
             ...(serverConfig.url && { url: serverConfig.url }),
           },
         },
@@ -108,6 +122,16 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
       resetForm();
     }
   }, [serverConfig, open]);
+
+  const loadAvailableTools = async (serverId: string) => {
+    try {
+      const tools = await (window as any).electronAPI.listTools(serverId);
+      setAvailableTools(tools || []);
+    } catch (error) {
+      console.error("Failed to load available tools:", error);
+      setAvailableTools([]);
+    }
+  };
 
   const resetForm = () => {
     setConfig({
@@ -121,6 +145,8 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
     });
     setEnvVars([]);
     setContextParams([]);
+    setToolConfigs({});
+    setAvailableTools([]);
     setArgsText("");
     setJsonConfig("");
     setJsonError(null);
@@ -153,6 +179,7 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
       ...config,
       env: envObj,
       contextParams: contextObj,
+      toolConfigs: toolConfigs,
       args: argsArray,
     };
 
@@ -324,6 +351,7 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
             aria-label="Configuration input method"
           >
             <Tab label="Form Input" icon={<CodeIcon />} />
+            <Tab label="Context Parameters" icon={<BuildIcon />} />
             <Tab label="JSON Configuration" icon={<UploadIcon />} />
           </Tabs>
         </Box>
@@ -608,6 +636,66 @@ const EditServerDialog: React.FC<EditServerDialogProps> = ({
         )}
 
         {tabValue === 1 && (
+          /* Context Parameters Tab */
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Tool-Specific Context Parameters
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Configure default parameter values for each tool. These will be
+                pre-filled when executing tools.
+              </Typography>
+            </Box>
+
+            {Object.keys(toolConfigs).length === 0 ? (
+              <Paper
+                sx={{
+                  p: 3,
+                  textAlign: "center",
+                  bgcolor: "background.default",
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  No tool configurations found. Connect to the server to load
+                  available tools.
+                </Typography>
+              </Paper>
+            ) : (
+              <Stack spacing={3}>
+                {Object.entries(toolConfigs).map(([toolName, parameters]) => (
+                  <Paper key={toolName} sx={{ p: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      {toolName}
+                    </Typography>
+                    <Stack spacing={2}>
+                      {Object.entries(parameters).map(([paramName, value]) => (
+                        <TextField
+                          key={paramName}
+                          label={paramName}
+                          value={value || ""}
+                          onChange={(e) => {
+                            const newToolConfigs = { ...toolConfigs };
+                            newToolConfigs[toolName] = {
+                              ...newToolConfigs[toolName],
+                              [paramName]: e.target.value,
+                            };
+                            setToolConfigs(newToolConfigs);
+                          }}
+                          fullWidth
+                          variant="outlined"
+                          size="small"
+                        />
+                      ))}
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        )}
+
+        {tabValue === 2 && (
           /* JSON Configuration Tab */
           <Stack spacing={3}>
             <Box>

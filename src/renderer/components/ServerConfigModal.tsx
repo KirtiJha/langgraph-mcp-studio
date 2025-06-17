@@ -48,6 +48,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [contextParams, setContextParams] = useState<
     Array<{ key: string; value: string }>
   >([]);
+  const [toolConfigs, setToolConfigs] = useState<
+    Record<string, Record<string, any>>
+  >({});
   const [argsText, setArgsText] = useState("");
   const [isValid, setIsValid] = useState(false);
   const [showJsonView, setShowJsonView] = useState(false);
@@ -82,6 +85,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       );
       setContextParams(contextArray);
 
+      // Handle tool-specific configurations
+      setToolConfigs(serverConfig.toolConfigs || {});
+
       // Convert args array to text
       setArgsText((serverConfig.args || []).join(" "));
     } else if (isCreating && isOpen) {
@@ -110,6 +116,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     });
     setEnvVars([]);
     setContextParams([]);
+    setToolConfigs({});
     setArgsText("");
     setActiveTab("basic");
     setShowJsonView(false);
@@ -141,6 +148,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       ...config,
       env: envObj,
       contextParams: contextObj,
+      toolConfigs: toolConfigs,
       args: argsArray,
     };
 
@@ -221,6 +229,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           ...(Object.keys(contextObj).length > 0 && {
             contextParams: contextObj,
           }),
+          ...(Object.keys(toolConfigs).length > 0 && {
+            toolConfigs: toolConfigs,
+          }),
         },
       },
     };
@@ -234,7 +245,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     { id: "basic", label: "Basic", icon: ServerIcon },
     { id: "command", label: "Command", icon: CommandLineIcon },
     { id: "environment", label: "Environment", icon: CogIcon },
-    { id: "context", label: "Context", icon: DocumentTextIcon },
+    { id: "context", label: "Context Parameters", icon: DocumentTextIcon },
     { id: "json", label: "JSON Config", icon: ClipboardDocumentIcon },
   ];
 
@@ -518,63 +529,139 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-medium text-slate-300">
-                      Context Parameters
+                      Tool-Specific Context Parameters
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
-                      Parameters automatically injected into tool calls
+                      Default parameter values for each tool. These will be
+                      pre-filled when executing tools.
                     </p>
                   </div>
-                  {!isReadOnly && (
-                    <button
-                      onClick={addContextParam}
-                      className="flex items-center space-x-1 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-md transition-colors text-sm"
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                      <span>Add Parameter</span>
-                    </button>
-                  )}
                 </div>
 
-                <div className="space-y-3">
-                  {contextParams.map((param, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center space-x-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700"
-                    >
-                      <input
-                        type="text"
-                        value={param.key}
-                        onChange={(e) =>
-                          updateContextParam(index, "key", e.target.value)
-                        }
-                        disabled={isReadOnly}
-                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 text-sm"
-                        placeholder="parameter_name"
-                      />
-                      <input
-                        type="text"
-                        value={param.value}
-                        onChange={(e) =>
-                          updateContextParam(index, "value", e.target.value)
-                        }
-                        disabled={isReadOnly}
-                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 text-sm"
-                        placeholder="value"
-                      />
-                      {!isReadOnly && (
-                        <button
-                          onClick={() => removeContextParam(index)}
-                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      )}
+                <div className="space-y-4">
+                  {Object.keys(toolConfigs).length === 0 ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <DocumentTextIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <h4 className="text-lg font-medium text-slate-300 mb-2">
+                        No Context Parameters Configured
+                      </h4>
+                      <p className="text-sm">
+                        Context parameters are set during server addition
+                        through tool discovery.
+                        {isEditing &&
+                          " Connect to the server to discover tools and configure parameters."}
+                      </p>
                     </div>
-                  ))}
-                  {contextParams.length === 0 && (
-                    <div className="text-center py-8 text-slate-400">
-                      <DocumentTextIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p>No context parameters configured</p>
+                  ) : (
+                    Object.entries(toolConfigs).map(
+                      ([toolName, parameters]) => (
+                        <div
+                          key={toolName}
+                          className="bg-slate-800/50 rounded-lg border border-slate-700 p-4"
+                        >
+                          <h4 className="font-medium text-slate-300 mb-3 flex items-center">
+                            <CogIcon className="w-4 h-4 mr-2 text-indigo-400" />
+                            {toolName}
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {Object.entries(parameters).map(
+                              ([paramName, value]) => (
+                                <div key={paramName} className="space-y-1">
+                                  <label className="block text-xs font-medium text-slate-400">
+                                    {paramName}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={String(value || "")}
+                                    onChange={(e) => {
+                                      if (!isReadOnly) {
+                                        const newToolConfigs = {
+                                          ...toolConfigs,
+                                        };
+                                        newToolConfigs[toolName] = {
+                                          ...newToolConfigs[toolName],
+                                          [paramName]: e.target.value,
+                                        };
+                                        setToolConfigs(newToolConfigs);
+                                      }
+                                    }}
+                                    disabled={isReadOnly}
+                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 text-sm"
+                                    placeholder="Enter value..."
+                                  />
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )
+                  )}
+
+                  {/* Legacy context parameters - keep for backward compatibility */}
+                  {contextParams.length > 0 && (
+                    <div className="border-t border-slate-700 pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-300">
+                            Legacy Context Parameters
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Generic parameters from older configuration
+                          </p>
+                        </div>
+                        {!isReadOnly && (
+                          <button
+                            onClick={addContextParam}
+                            className="flex items-center space-x-1 px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 rounded-md transition-colors text-sm"
+                          >
+                            <PlusIcon className="w-4 h-4" />
+                            <span>Add Parameter</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        {contextParams.map((param, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center space-x-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700"
+                          >
+                            <input
+                              type="text"
+                              value={param.key}
+                              onChange={(e) =>
+                                updateContextParam(index, "key", e.target.value)
+                              }
+                              disabled={isReadOnly}
+                              className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 text-sm"
+                              placeholder="parameter_name"
+                            />
+                            <input
+                              type="text"
+                              value={param.value}
+                              onChange={(e) =>
+                                updateContextParam(
+                                  index,
+                                  "value",
+                                  e.target.value
+                                )
+                              }
+                              disabled={isReadOnly}
+                              className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 text-sm"
+                              placeholder="value"
+                            />
+                            {!isReadOnly && (
+                              <button
+                                onClick={() => removeContextParam(index)}
+                                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -42,14 +42,15 @@ export class LangGraphAgent {
       projectId: projectId,
       watsonxAIAuthType: "iam",
       watsonxAIApikey: apiKey,
-      maxTokens: 500, // Increased for better responses
-      temperature: 0.7, // Slightly higher for more creative responses
+      maxTokens: 8000, // Increased for better responses
+      temperature: 0.1, // Lower temperature for more consistent tool calling
+      topP: 0.9, // Add top_p for better control
+      repetitionPenalty: 1.1, // Reduce repetition
     };
 
     // Initialize IBM Watsonx model
     this.model = new ChatWatsonx({
-      model:
-        process.env.WATSONX_MODEL_ID || "meta-llama/llama-3-3-70b-instruct",
+      model: process.env.WATSONX_MODEL_ID || "ibm/granite-3-3-8b-instruct",
       streaming: false,
       ...props,
     });
@@ -69,31 +70,53 @@ export class LangGraphAgent {
   }
 
   private async setupAgent() {
-    console.log("LangGraphAgent: Setting up React agent with LangGraph...");
+    console.log("LangGraphAgent: Setting up agent with LangGraph...");
 
     // Get available tools as LangChain tools
     this.tools = await this.getAvailableTools();
 
-    // Create the React agent using LangGraph prebuilt
-    this.agent = createReactAgent({
-      llm: this.model,
-      tools: this.tools,
-      checkpointer: this.checkpointer, // Enable memory for conversations
-      prompt: `You are a helpful AI assistant with access to various MCP (Model Context Protocol) tools.
+    // Handle the case when no tools are available
+    if (this.tools.length === 0) {
+      console.log(
+        "LangGraphAgent: No tools available, creating LLM-only agent"
+      );
 
-Use the available tools to help users accomplish their tasks. When you need to use a tool:
-1. Think about which tool would be most appropriate
-2. Call the tool with the correct parameters
-3. Use the results to provide a helpful response
+      // Don't create a React agent when no tools are available
+      // Instead, we'll handle this case in processMessage with direct LLM calls
+      this.agent = null;
+    } else {
+      // Create the React agent with tools when tools are available
+      this.agent = createReactAgent({
+        llm: this.model,
+        tools: this.tools,
+        checkpointer: this.checkpointer, // Enable memory for conversations
+        prompt: `Knowledge Cutoff Date: April 2024.
+Today's Date: ${new Date().toLocaleDateString()}.
+You are Granite, developed by IBM. You are a helpful assistant with access to the following tools. When a tool is required to answer the user's query, respond with <|tool_call|> followed by a JSON list of tools used.
 
-Available tools: ${this.tools.map((t) => t.name).join(", ")}
+CRITICAL INSTRUCTIONS FOR TOOL CALLING:
+1. When users ask about current time/date -> IMMEDIATELY use time tools
+2. When users ask about git/commits/repository -> IMMEDIATELY use git tools  
+3. When users ask about files/directories -> IMMEDIATELY use filesystem tools
+4. NEVER ask for clarification when you have tools available
+5. NEVER provide hypothetical responses
 
-Always be helpful and provide clear, informative responses.`,
-    });
+TOOL CALLING FORMAT:
+Start response with: <|tool_call|>[{"name": "tool_name", "arguments": {"param": "value"}}]
 
-    console.log(
-      `LangGraphAgent: React agent set up with ${this.tools.length} tools`
-    );
+Available tools:
+${this.tools.map((t) => `- ${t.name}: ${t.description}`).join("\n")}
+
+EXAMPLES:
+- User: "what is current date?" -> Call time tool immediately
+- User: "what commits were made yesterday?" -> Call git_log tool immediately  
+- User: "list files in directory" -> Call filesystem tool immediately
+
+Remember: ACTION FIRST, explanation after. Use tools proactively.`,
+      });
+    }
+
+    console.log(`LangGraphAgent: Agent set up with ${this.tools.length} tools`);
   }
 
   private async getAvailableTools(): Promise<any[]> {
@@ -120,7 +143,11 @@ Always be helpful and provide clear, informative responses.`,
 
       // Debug: Show server mapping for each tool
       mcpTools.forEach((tool) => {
-        console.log(`Tool '${tool.name}' belongs to server '${tool.serverId}'`);
+        console.log(
+          `Tool '${tool.name}' belongs to server '${
+            tool.serverId
+          }' (type: ${typeof tool.serverId})`
+        );
       });
 
       for (const mcpTool of mcpTools) {
@@ -145,11 +172,21 @@ Always be helpful and provide clear, informative responses.`,
                 console.log(`Executing tool ${mcpTool.name} with args:`, args);
                 console.log(`Tool ${mcpTool.name} serverId:`, mcpTool.serverId);
 
-                // Call the MCP tool with the correct serverId
+                // Ensure serverId is a string
+                const serverId =
+                  typeof mcpTool.serverId === "string"
+                    ? mcpTool.serverId
+                    : String(mcpTool.serverId || "");
+
+                if (!serverId) {
+                  throw new Error(`No serverId found for tool ${mcpTool.name}`);
+                }
+
+                // Call the MCP tool with the correct parameter order: (name, args, serverId)
                 const result = await this.mcpManager.callTool(
-                  mcpTool.name,
-                  args,
-                  mcpTool.serverId // Pass the serverId to ensure correct routing
+                  mcpTool.name, // tool name first
+                  args, // args second
+                  serverId // serverId third (optional)
                 );
 
                 console.log(`Tool ${mcpTool.name} result:`, result);
@@ -197,27 +234,69 @@ Always be helpful and provide clear, informative responses.`,
   async processMessage(message: string): Promise<ChatMessage> {
     try {
       // Ensure agent is initialized
-      if (!this.isInitialized || !this.agent) {
+      if (!this.isInitialized) {
         await this.initializeAgent();
-
-        if (!this.agent) {
-          throw new Error("Failed to initialize agent");
-        }
       }
 
       // Refresh tools in case new servers were connected
       await this.setupAgent();
 
+      console.log(
+        "Available tools for agent:",
+        this.tools.map((t) => ({
+          name: t.name,
+          description: t.description?.substring(0, 100) + "...",
+        }))
+      );
+
+      console.log("Processing message:", message);
+
+      // Handle case when no tools are available (agent is null)
+      if (!this.agent || this.tools.length === 0) {
+        console.log(
+          "LangGraphAgent: No tools available, using direct LLM response"
+        );
+
+        // Create a simple system prompt for knowledge-only responses
+        const systemPrompt = `Knowledge Cutoff Date: April 2024.
+Today's Date: ${new Date().toLocaleDateString()}.
+You are Granite, developed by IBM. You are a helpful AI assistant.
+
+Since no MCP tools are currently available, respond using your built-in knowledge. If users ask about specific operations that would require tools (like checking current time, listing files, or git operations), politely explain that those tools are not currently connected and offer to help with other questions.
+
+Be conversational and helpful. You can discuss general knowledge, programming concepts, and provide guidance on various topics.`;
+
+        // Use the LLM directly without tools
+        const response = await this.model.invoke([
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ]);
+
+        return {
+          id: uuidv4(),
+          role: "assistant",
+          content: response.content.toString(),
+          timestamp: new Date(),
+          toolCalls: [],
+        };
+      }
+
+      // Use React agent when tools are available
       console.log("Processing message with LangGraph React agent:", message);
 
       // Create a unique thread ID for this conversation
       const threadId = uuidv4();
       const config = { configurable: { thread_id: threadId } };
 
-      // Invoke the LangGraph agent
+      // Create a more directive system message for IBM Granite
+      const enhancedMessage = this.enhanceMessageForToolCalling(message);
+
+      console.log("Enhanced message:", enhancedMessage);
+
+      // Invoke the LangGraph agent with a more directive approach
       const result = await this.agent.invoke(
         {
-          messages: [{ role: "user", content: message }],
+          messages: [{ role: "user", content: enhancedMessage }],
         },
         config
       );
@@ -233,7 +312,7 @@ Always be helpful and provide clear, informative responses.`,
         const lastMessage = result.messages[result.messages.length - 1];
         content = lastMessage.content || "No response generated";
 
-        // Extract tool calls from the conversation
+        // Extract tool calls from the conversation (standard way)
         for (const msg of result.messages) {
           if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
             for (const toolCall of msg.tool_calls) {
@@ -244,6 +323,53 @@ Always be helpful and provide clear, informative responses.`,
                 serverId: "unknown",
               });
             }
+          }
+        }
+
+        // If no standard tool calls found, try to parse from content (for IBM Granite)
+        if (toolCalls.length === 0 && content) {
+          const parsedToolCalls = this.parseToolCallsFromContent(content);
+          console.log("Parsed tool calls from content:", parsedToolCalls);
+
+          for (const toolCall of parsedToolCalls) {
+            try {
+              const toolName = toolCall.function.name;
+              const toolArgs = JSON.parse(toolCall.function.arguments);
+
+              console.log(`Executing tool: ${toolName} with args:`, toolArgs);
+
+              // Execute the tool call using MCPManager
+              const toolResult = await this.mcpManager.callTool(
+                toolName,
+                toolArgs
+              );
+              console.log(`Tool ${toolName} result:`, toolResult);
+
+              toolCalls.push({
+                id: toolCall.id,
+                name: toolName,
+                args: toolArgs,
+                serverId: "",
+                result: toolResult,
+              });
+            } catch (error: any) {
+              console.error(
+                `Error executing tool ${toolCall.function.name}:`,
+                error
+              );
+              toolCalls.push({
+                id: toolCall.id,
+                name: toolCall.function.name,
+                args: JSON.parse(toolCall.function.arguments),
+                serverId: "",
+                result: { error: error?.message || "Unknown error" },
+              });
+            }
+          }
+
+          // If we executed tools, generate a summary response
+          if (toolCalls.length > 0) {
+            content = this.generateToolExecutionSummary(toolCalls);
           }
         }
       }
@@ -271,6 +397,71 @@ Always be helpful and provide clear, informative responses.`,
     console.log("LangGraphAgent: Refreshing agent with updated tools...");
     await this.setupAgent();
     console.log("LangGraphAgent: Agent refreshed successfully");
+  }
+
+  // Enhance message to encourage tool calling for IBM Granite
+  private enhanceMessageForToolCalling(message: string): string {
+    return `${message}
+
+IMPORTANT: Use available time/date tools to get current information. Do not guess or provide hypothetical times.
+
+IMPORTANT: Use git tools to get actual repository information. Check git_log, git_status, or other git tools.`;
+  }
+
+  private parseToolCallsFromContent(content: string): any[] {
+    const toolCalls: any[] = [];
+
+    try {
+      // First try to parse Granite 3.3 format: <|tool_call|>[{...}]
+      const graniteToolCallMatch = content.match(
+        /<\|tool_call\|>\s*(\[.*?\])/s
+      );
+      if (graniteToolCallMatch) {
+        const toolCallsArray = JSON.parse(graniteToolCallMatch[1]);
+        for (const call of toolCallsArray) {
+          toolCalls.push({
+            id: `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: "function",
+            function: {
+              name: call.name,
+              arguments: JSON.stringify(call.arguments),
+            },
+          });
+        }
+        return toolCalls;
+      }
+
+      // Fallback: Look for JSON objects in the content that match tool call pattern
+      const jsonPattern =
+        /\{\s*"action":\s*"([^"]+)",\s*"params":\s*\{[^}]*\}(?:,\s*"label":[^}]*)?\s*\}/g;
+      let match;
+
+      while ((match = jsonPattern.exec(content)) !== null) {
+        try {
+          const jsonStr = match[0];
+          const toolCall = JSON.parse(jsonStr);
+
+          if (toolCall.action && toolCall.params) {
+            toolCalls.push({
+              id: `call_${Date.now()}_${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
+              type: "function",
+              function: {
+                name: toolCall.action,
+                arguments: JSON.stringify(toolCall.params),
+              },
+            });
+          }
+        } catch (parseError) {
+          console.warn("Failed to parse tool call JSON:", parseError);
+        }
+      }
+    } catch (error) {
+      console.warn("Error parsing tool calls from content:", error);
+    }
+
+    return toolCalls;
   }
 
   // Convert JSON Schema to Zod schema for better type safety
@@ -343,21 +534,55 @@ Always be helpful and provide clear, informative responses.`,
   }
 
   private enhanceToolDescription(tool: Tool): string {
-    let description = tool.description || "No description available";
+    const name = tool.name || "Unknown Tool";
+    const description = tool.description || "No description available";
+    const schema = tool.inputSchema || {};
 
-    // For git tools, add context about automatic repo_path injection
-    if (tool.name.startsWith("git_")) {
-      description +=
-        "\n\nNote: The repository path is automatically configured and doesn't need to be specified. You can call this tool without providing repo_path parameter.";
+    let enhanced = `${name}: ${description}`;
 
-      // Remove repo_path from required parameters in the description if present
-      if (description.includes("repo_path")) {
-        description = description.replace(/repo_path[^,.\n]*/g, "");
-        description = description.replace(/,\s*,/g, ","); // Clean up double commas
-        description = description.replace(/^,\s*/gm, ""); // Clean up leading commas
+    if (schema.properties) {
+      const params = Object.keys(schema.properties);
+      if (params.length > 0) {
+        enhanced += `\nParameters: ${params.join(", ")}`;
       }
     }
 
-    return description;
+    return enhanced;
+  }
+
+  private generateToolExecutionSummary(toolCalls: any[]): string {
+    if (toolCalls.length === 0) {
+      return "No tools were executed.";
+    }
+
+    let summary = "I've executed the following tools:\n\n";
+
+    for (const toolCall of toolCalls) {
+      summary += `**${toolCall.name}**:\n`;
+
+      if (toolCall.result) {
+        if (toolCall.result.error) {
+          summary += `❌ Error: ${toolCall.result.error}\n`;
+        } else if (toolCall.result.content) {
+          // Extract key information from tool results
+          if (Array.isArray(toolCall.result.content)) {
+            for (const content of toolCall.result.content) {
+              if (content.type === "text" && content.text) {
+                summary += `✅ ${content.text}\n`;
+              }
+            }
+          } else if (typeof toolCall.result.content === "string") {
+            summary += `✅ ${toolCall.result.content}\n`;
+          } else {
+            summary += `✅ Tool executed successfully\n`;
+          }
+        } else {
+          summary += `✅ Tool executed successfully\n`;
+        }
+      }
+      summary += "\n";
+    }
+
+    return summary;
   }
 }

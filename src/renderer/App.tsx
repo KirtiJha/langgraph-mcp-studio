@@ -25,6 +25,7 @@ import ChatInterface from "./components/ChatInterface";
 import AddServerDialog from "./components/AddServerDialog";
 import ServerConfigModal from "./components/ServerConfigModal";
 import ServerCard from "./components/ServerCard";
+import ConfirmDialog from "./components/ConfirmDialog";
 import { LogsProvider } from "./stores/logsStore";
 
 // Types
@@ -85,6 +86,7 @@ type ChatMessage = UserMessage | AssistantMessage | ToolExecutionMessage;
 function App() {
   const [servers, setServers] = useState<ServerStatus[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
+  const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [selectedTab, setSelectedTab] = useState("servers");
   const [isLoading, setIsLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -100,6 +102,11 @@ function App() {
     "view" | "edit" | "create"
   >("view");
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [serverToDelete, setServerToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -114,6 +121,25 @@ function App() {
       ]);
       setServers(serverList);
       setTools(toolList);
+
+      // Load configurations for all servers
+      const configs = await Promise.all(
+        serverList.map(async (server: ServerStatus) => {
+          try {
+            return await window.electronAPI.getServerConfig(server.id);
+          } catch (error) {
+            console.error(
+              `Failed to load config for server ${server.id}:`,
+              error
+            );
+            return null;
+          }
+        })
+      );
+
+      setServerConfigs(
+        configs.filter((config): config is ServerConfig => config !== null)
+      );
       setLastUpdate(new Date());
     } catch (error) {
       console.error("Error loading data:", error);
@@ -190,6 +216,33 @@ function App() {
     }
   };
 
+  const handleDeleteServer = async (serverId: string) => {
+    const server = servers.find((s) => s.id === serverId);
+    const serverName = server?.name || serverId;
+
+    setServerToDelete({ id: serverId, name: serverName });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteServer = async () => {
+    if (!serverToDelete) return;
+
+    try {
+      await window.electronAPI.removeServer(serverToDelete.id);
+      await loadData();
+      setIsDeleteDialogOpen(false);
+      setServerToDelete(null);
+    } catch (error) {
+      console.error("Error deleting server:", error);
+      alert("Failed to delete server. Please try again.");
+    }
+  };
+
+  const cancelDeleteServer = () => {
+    setIsDeleteDialogOpen(false);
+    setServerToDelete(null);
+  };
+
   const handleCloseServerConfig = () => {
     setIsServerConfigOpen(false);
     setSelectedServerConfig(null);
@@ -199,6 +252,21 @@ function App() {
   // Calculate tool count for each server
   const getToolCountForServer = (serverId: string) => {
     return tools.filter((tool) => tool.serverId === serverId).length;
+  };
+
+  const getContextParamsCountForServer = (serverId: string) => {
+    const serverConfig = serverConfigs.find(
+      (config: ServerConfig) => config.id === serverId
+    );
+    if (!serverConfig?.toolConfigs) return 0;
+
+    // Count total parameters across all tools
+    return Object.values(serverConfig.toolConfigs).reduce(
+      (total: number, toolParams: any) => {
+        return total + Object.keys(toolParams || {}).length;
+      },
+      0
+    );
   };
 
   const sendMessage = async (message: string) => {
@@ -294,14 +362,20 @@ function App() {
     }
   };
 
-  const handleExecuteTool = async (toolName: string, args: any) => {
+  const handleExecuteTool = async (
+    toolName: string,
+    args: any,
+    serverId?: string
+  ) => {
     // Mock implementation - replace with actual API call
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         if (Math.random() > 0.3) {
           resolve({
             success: true,
-            result: `Tool ${toolName} executed successfully`,
+            result: `Tool ${toolName} executed successfully${
+              serverId ? ` on server ${serverId}` : ""
+            }`,
             data: args,
           });
         } else {
@@ -339,6 +413,18 @@ function App() {
           }}
           serverConfig={selectedServerConfig}
           mode={serverConfigMode}
+        />
+
+        {/* Delete Server Confirmation Dialog */}
+        <ConfirmDialog
+          open={isDeleteDialogOpen}
+          title="Delete Server"
+          message={`Are you sure you want to delete the server "${serverToDelete?.name}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDeleteServer}
+          onCancel={cancelDeleteServer}
+          destructive={true}
         />
         {/* Modern Header with Glass Effect */}
         <motion.header
@@ -585,10 +671,14 @@ function App() {
                         key={server.id}
                         server={server}
                         toolCount={getToolCountForServer(server.id)}
+                        contextParamsCount={getContextParamsCountForServer(
+                          server.id
+                        )}
                         onConnect={handleConnect}
                         onDisconnect={handleDisconnect}
                         onView={handleViewServerConfig}
                         onEdit={handleEditServerConfig}
+                        onDelete={handleDeleteServer}
                         isLoading={isLoading}
                       />
                     ))}

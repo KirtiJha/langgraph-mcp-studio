@@ -15,7 +15,11 @@ import {
 interface ToolExecutionProps {
   tools: Tool[];
   servers: ServerStatus[];
-  onExecuteTool?: (toolName: string, args: any) => Promise<any>;
+  onExecuteTool?: (
+    toolName: string,
+    args: any,
+    serverId: string
+  ) => Promise<any>;
 }
 
 interface Tool {
@@ -33,6 +37,7 @@ interface ServerStatus {
   id: string;
   name: string;
   connected: boolean;
+  toolConfigs?: Record<string, Record<string, any>>; // Pre-configured tool parameters
 }
 
 interface ToolExecution {
@@ -63,17 +68,35 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
   const selectTool = (tool: Tool) => {
     setSelectedTool(tool);
 
-    // Set default values for arguments
+    // Set default values for arguments - first from tool schema defaults, then from server tool configs
     const defaultArgs: Record<string, any> = {};
+
+    // Get server configuration for this tool
+    const server = servers.find((s) => s.id === tool.serverId);
+    const serverToolConfig = server?.toolConfigs?.[tool.name];
+
     if (tool.inputSchema?.properties) {
       Object.entries(tool.inputSchema.properties).forEach(
         ([argName, argSchema]) => {
-          if ((argSchema as any).default !== undefined) {
+          // Prioritize server-configured values over schema defaults
+          if (serverToolConfig && serverToolConfig[argName] !== undefined) {
+            defaultArgs[argName] = serverToolConfig[argName];
+          } else if ((argSchema as any).default !== undefined) {
             defaultArgs[argName] = (argSchema as any).default;
           }
         }
       );
     }
+
+    // Also include any additional server-configured parameters not in schema
+    if (serverToolConfig) {
+      Object.entries(serverToolConfig).forEach(([paramName, value]) => {
+        if (defaultArgs[paramName] === undefined) {
+          defaultArgs[paramName] = value;
+        }
+      });
+    }
+
     setToolArgs(defaultArgs);
   };
 
@@ -120,7 +143,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
     setIsExecuting(true);
 
     try {
-      const result = await onExecuteTool(tool.name, toolArgs);
+      const result = await onExecuteTool(tool.name, toolArgs, tool.serverId);
       setExecutions((prev) =>
         prev.map((ex) =>
           ex.id === executionId
@@ -154,109 +177,165 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
   const renderArgInput = (argName: string, argSchema: any) => {
     const value = toolArgs[argName] || "";
 
+    // Check if this parameter is pre-configured from server settings
+    const server = servers.find((s) => s.id === selectedTool?.serverId);
+    const isPreConfigured =
+      selectedTool &&
+      server?.toolConfigs?.[selectedTool.name]?.[argName] !== undefined;
+
     // Handle enum types with select dropdown
     if (argSchema.enum) {
       return (
-        <select
-          value={value}
-          onChange={(e) =>
-            setToolArgs({ ...toolArgs, [argName]: e.target.value })
-          }
-          className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Select {argName}...</option>
-          {argSchema.enum.map((option: any, idx: number) => (
-            <option key={idx} value={option}>
-              {String(option)}
-            </option>
-          ))}
-        </select>
+        <div className="space-y-2">
+          <select
+            value={value}
+            onChange={(e) =>
+              setToolArgs({ ...toolArgs, [argName]: e.target.value })
+            }
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Select {argName}...</option>
+            {argSchema.enum.map((option: any, idx: number) => (
+              <option key={idx} value={option}>
+                {String(option)}
+              </option>
+            ))}
+          </select>
+          {isPreConfigured && (
+            <p className="text-xs text-blue-400 flex items-center space-x-1">
+              <span>🔧</span>
+              <span>Pre-configured from server settings</span>
+            </p>
+          )}
+        </div>
       );
     }
 
     switch (argSchema.type) {
       case "string":
         return (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) =>
-              setToolArgs({ ...toolArgs, [argName]: e.target.value })
-            }
-            placeholder={argSchema.description || `Enter ${argName}`}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={value}
+              onChange={(e) =>
+                setToolArgs({ ...toolArgs, [argName]: e.target.value })
+              }
+              placeholder={argSchema.description || `Enter ${argName}`}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {isPreConfigured && (
+              <p className="text-xs text-blue-400 flex items-center space-x-1">
+                <span>🔧</span>
+                <span>Pre-configured from server settings</span>
+              </p>
+            )}
+          </div>
         );
 
       case "number":
       case "integer":
         return (
-          <input
-            type="number"
-            value={value}
-            onChange={(e) =>
-              setToolArgs({
-                ...toolArgs,
-                [argName]:
-                  argSchema.type === "integer"
-                    ? parseInt(e.target.value) || 0
-                    : parseFloat(e.target.value) || 0,
-              })
-            }
-            placeholder={argSchema.description || `Enter ${argName}`}
-            step={argSchema.type === "integer" ? "1" : "any"}
-            min={argSchema.minimum}
-            max={argSchema.maximum}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <div className="space-y-2">
+            <input
+              type="number"
+              value={value}
+              onChange={(e) =>
+                setToolArgs({
+                  ...toolArgs,
+                  [argName]:
+                    argSchema.type === "integer"
+                      ? parseInt(e.target.value) || 0
+                      : parseFloat(e.target.value) || 0,
+                })
+              }
+              placeholder={argSchema.description || `Enter ${argName}`}
+              step={argSchema.type === "integer" ? "1" : "any"}
+              min={argSchema.minimum}
+              max={argSchema.maximum}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {isPreConfigured && (
+              <p className="text-xs text-blue-400 flex items-center space-x-1">
+                <span>🔧</span>
+                <span>Pre-configured from server settings</span>
+              </p>
+            )}
+          </div>
         );
 
       case "boolean":
         return (
-          <label className="relative inline-flex cursor-pointer">
-            <input
-              type="checkbox"
-              checked={value}
-              onChange={(e) =>
-                setToolArgs({ ...toolArgs, [argName]: e.target.checked })
-              }
-              className="sr-only peer"
-            />
-            <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-          </label>
+          <div className="space-y-2">
+            <label className="relative inline-flex cursor-pointer">
+              <input
+                type="checkbox"
+                checked={value}
+                onChange={(e) =>
+                  setToolArgs({ ...toolArgs, [argName]: e.target.checked })
+                }
+                className="sr-only peer"
+              />
+              <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+            {isPreConfigured && (
+              <p className="text-xs text-blue-400 flex items-center space-x-1">
+                <span>🔧</span>
+                <span>Pre-configured from server settings</span>
+              </p>
+            )}
+          </div>
         );
 
       case "object":
         return (
-          <textarea
-            value={
-              typeof value === "string" ? value : JSON.stringify(value, null, 2)
-            }
-            onChange={(e) => {
-              try {
-                const parsed = JSON.parse(e.target.value);
-                setToolArgs({ ...toolArgs, [argName]: parsed });
-              } catch {
-                setToolArgs({ ...toolArgs, [argName]: e.target.value });
+          <div className="space-y-2">
+            <textarea
+              value={
+                typeof value === "string"
+                  ? value
+                  : JSON.stringify(value, null, 2)
               }
-            }}
-            placeholder={`Enter JSON for ${argName}`}
-            rows={4}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
-          />
+              onChange={(e) => {
+                try {
+                  const parsed = JSON.parse(e.target.value);
+                  setToolArgs({ ...toolArgs, [argName]: parsed });
+                } catch {
+                  setToolArgs({ ...toolArgs, [argName]: e.target.value });
+                }
+              }}
+              placeholder={`Enter JSON for ${argName}`}
+              rows={4}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+            />
+            {isPreConfigured && (
+              <p className="text-xs text-blue-400 flex items-center space-x-1">
+                <span>🔧</span>
+                <span>Pre-configured from server settings</span>
+              </p>
+            )}
+          </div>
         );
 
       default:
         return (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) =>
-              setToolArgs({ ...toolArgs, [argName]: e.target.value })
-            }
-            placeholder={argSchema.description || `Enter ${argName}`}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={value}
+              onChange={(e) =>
+                setToolArgs({ ...toolArgs, [argName]: e.target.value })
+              }
+              placeholder={argSchema.description || `Enter ${argName}`}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {isPreConfigured && (
+              <p className="text-xs text-blue-400 flex items-center space-x-1">
+                <span>🔧</span>
+                <span>Pre-configured from server settings</span>
+              </p>
+            )}
+          </div>
         );
     }
   };
