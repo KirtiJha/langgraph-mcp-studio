@@ -76,6 +76,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>(
     {}
   );
+  const [expandedToolExecution, setExpandedToolExecution] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -123,6 +126,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     message: ToolExecutionMessage,
     index: number
   ) => {
+    const isExpanded = expandedToolExecution[message.id] ?? true; // Default to expanded
+    const toggleExpanded = () => {
+      setExpandedToolExecution((prev) => ({
+        ...prev,
+        [message.id]: !prev[message.id],
+      }));
+    };
+
     return (
       <motion.div
         key={message.id}
@@ -143,110 +154,173 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {/* Tool Execution Content */}
         <div className="flex-1 max-w-3xl">
-          <div className="inline-block max-w-full p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30 shadow-lg">
-            <div className="flex items-center gap-2 mb-3">
-              <WrenchScrewdriverIcon className="w-4 h-4 text-amber-400" />
-              <span className="text-sm font-semibold text-amber-300">
-                AI is executing tools ({message.tools.length})
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {message.tools.map((tool, toolIndex) => (
-                <motion.div
-                  key={toolIndex}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: toolIndex * 0.2 }}
-                  className="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50"
+          <motion.div
+            className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl shadow-lg overflow-hidden"
+            whileHover={{ borderColor: "rgb(251 191 36 / 0.5)" }}
+          >
+            {/* Collapsible Header */}
+            <button
+              onClick={toggleExpanded}
+              className="w-full p-4 flex items-center justify-between hover:bg-amber-500/10 transition-colors duration-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                  >
+                    <WrenchScrewdriverIcon className="w-4 h-4 text-amber-400" />
+                  </motion.div>
+                  <span className="text-sm font-semibold text-amber-300">
+                    AI is executing tools ({message.tools.length})
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  {message.tools.map((tool, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-md border border-amber-500/30"
+                    >
+                      {tool.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <motion.div
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-amber-400"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                          tool.status === "queued"
-                            ? "bg-slate-400"
-                            : tool.status === "executing"
-                            ? "bg-yellow-400 animate-pulse"
-                            : tool.status === "failed"
-                            ? "bg-red-400"
-                            : "bg-emerald-400"
-                        }`}
-                      ></div>
-                      <span className="font-medium text-white text-sm">
-                        {tool.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      {tool.status === "queued" && (
-                        <span className="text-slate-400 flex items-center gap-1">
-                          <ClockIcon className="w-3 h-3" />
-                          Queued
-                        </span>
-                      )}
-                      {tool.status === "executing" && (
-                        <motion.span
-                          className="text-yellow-400 flex items-center gap-1"
-                          animate={{ opacity: [0.5, 1, 0.5] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                        >
-                          <PlayIcon className="w-3 h-3" />
-                          Executing...
-                        </motion.span>
-                      )}
-                      {tool.status === "completed" && (
-                        <span className="text-emerald-400 flex items-center gap-1">
-                          <CheckCircleIcon className="w-3 h-3" />
-                          Completed {tool.duration && `(${tool.duration}ms)`}
-                        </span>
-                      )}
-                      {tool.status === "failed" && (
-                        <span className="text-red-400 flex items-center gap-1">
-                          <ExclamationTriangleIcon className="w-3 h-3" />
-                          Failed
-                        </span>
-                      )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </motion.div>
+            </button>
+
+            {/* Expandable Content */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="border-t border-amber-500/30"
+                >
+                  <div className="p-4 space-y-3">
+                    {message.tools.map((tool, toolIndex) => (
+                      <motion.div
+                        key={toolIndex}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: toolIndex * 0.1 }}
+                        className="bg-slate-800/60 rounded-lg p-3 border border-slate-700/50"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                                tool.status === "queued"
+                                  ? "bg-slate-400"
+                                  : tool.status === "executing"
+                                  ? "bg-yellow-400 animate-pulse"
+                                  : tool.status === "failed"
+                                  ? "bg-red-400"
+                                  : "bg-emerald-400"
+                              }`}
+                            ></div>
+                            <span className="font-medium text-white text-sm">
+                              {tool.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            {tool.status === "queued" && (
+                              <span className="text-slate-400 flex items-center gap-1">
+                                <ClockIcon className="w-3 h-3" />
+                                Queued
+                              </span>
+                            )}
+                            {tool.status === "executing" && (
+                              <motion.span
+                                className="text-yellow-400 flex items-center gap-1"
+                                animate={{ opacity: [0.5, 1, 0.5] }}
+                                transition={{ duration: 1, repeat: Infinity }}
+                              >
+                                <PlayIcon className="w-3 h-3" />
+                                Executing...
+                              </motion.span>
+                            )}
+                            {tool.status === "completed" && (
+                              <span className="text-emerald-400 flex items-center gap-1">
+                                <CheckCircleIcon className="w-3 h-3" />
+                                Completed{" "}
+                                {tool.duration && `(${tool.duration}ms)`}
+                              </span>
+                            )}
+                            {tool.status === "failed" && (
+                              <span className="text-red-400 flex items-center gap-1">
+                                <ExclamationTriangleIcon className="w-3 h-3" />
+                                Failed
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Tool Arguments */}
+                        {Object.keys(tool.args || {}).length > 0 && (
+                          <div className="mb-2 p-2 bg-slate-900/50 rounded text-xs">
+                            <div className="text-slate-400 mb-1 font-medium">
+                              Arguments:
+                            </div>
+                            <div className="text-slate-300 font-mono text-xs max-h-20 overflow-y-auto">
+                              {JSON.stringify(tool.args, null, 2)}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tool Result (only if completed) */}
+                        {tool.result && tool.status === "completed" && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="p-2 bg-emerald-900/20 border border-emerald-700/30 rounded text-xs"
+                          >
+                            <div className="text-emerald-400 mb-1 font-medium">
+                              Result:
+                            </div>
+                            <div className="text-slate-300 font-mono text-xs max-h-32 overflow-y-auto">
+                              {typeof tool.result === "string"
+                                ? tool.result
+                                : JSON.stringify(tool.result, null, 2)}
+                            </div>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    ))}
+
+                    {/* Timestamp */}
+                    <div className="mt-3 text-xs text-amber-400/60">
+                      {formatTime(message.timestamp)}
                     </div>
                   </div>
-
-                  {/* Tool Arguments */}
-                  {Object.keys(tool.args || {}).length > 0 && (
-                    <div className="mb-2 p-2 bg-slate-900/50 rounded text-xs">
-                      <div className="text-slate-400 mb-1 font-medium">
-                        Arguments:
-                      </div>
-                      <div className="text-slate-300 font-mono text-xs max-h-20 overflow-y-auto">
-                        {JSON.stringify(tool.args, null, 2)}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tool Result (only if completed) */}
-                  {tool.result && tool.status === "completed" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="p-2 bg-emerald-900/20 border border-emerald-700/30 rounded text-xs"
-                    >
-                      <div className="text-emerald-400 mb-1 font-medium">
-                        Result:
-                      </div>
-                      <div className="text-slate-300 font-mono text-xs max-h-32 overflow-y-auto">
-                        {typeof tool.result === "string"
-                          ? tool.result
-                          : JSON.stringify(tool.result, null, 2)}
-                      </div>
-                    </motion.div>
-                  )}
                 </motion.div>
-              ))}
-            </div>
-
-            {/* Timestamp */}
-            <div className="mt-3 text-xs text-amber-400/60">
-              {formatTime(message.timestamp)}
-            </div>
-          </div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </motion.div>
     );

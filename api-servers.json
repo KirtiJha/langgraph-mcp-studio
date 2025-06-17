@@ -1,0 +1,133 @@
+[
+  {
+    "id": "api-server-1750175636532",
+    "name": "Test Task Management API",
+    "description": "A simple API for managing users and tasks - perfect for testing MCP integration",
+    "baseUrl": "http://localhost:3001",
+    "endpoints": [
+      {
+        "id": "endpoint-1750175676754-a70pc9me6",
+        "path": "/health",
+        "method": "GET",
+        "toolName": "get__health",
+        "description": "Health check",
+        "parameters": [],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-hfu8ol833",
+        "path": "/api/users",
+        "method": "GET",
+        "toolName": "get__api_users",
+        "description": "Get all users",
+        "parameters": [
+          {
+            "name": "role",
+            "type": "string",
+            "required": false,
+            "description": "Filter users by role"
+          },
+          {
+            "name": "limit",
+            "type": "integer",
+            "required": false,
+            "description": "Limit the number of results"
+          }
+        ],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-ipl2qjy4z",
+        "path": "/api/users",
+        "method": "POST",
+        "toolName": "post__api_users",
+        "description": "Create a new user",
+        "parameters": [],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-6xm811t42",
+        "path": "/api/users/{id}",
+        "method": "GET",
+        "toolName": "get__api_users__id_",
+        "description": "Get user by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "integer",
+            "required": true,
+            "description": "User ID"
+          }
+        ],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-32ip9xcwz",
+        "path": "/api/tasks",
+        "method": "GET",
+        "toolName": "get__api_tasks",
+        "description": "Get all tasks",
+        "parameters": [
+          {
+            "name": "status",
+            "type": "string",
+            "required": false,
+            "description": "Filter tasks by status"
+          },
+          {
+            "name": "assignedTo",
+            "type": "integer",
+            "required": false,
+            "description": "Filter tasks by assigned user ID"
+          }
+        ],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-vl7xgkqnx",
+        "path": "/api/tasks",
+        "method": "POST",
+        "toolName": "post__api_tasks",
+        "description": "Create a new task",
+        "parameters": [],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-vq4mhxd1v",
+        "path": "/api/tasks/{id}",
+        "method": "PUT",
+        "toolName": "put__api_tasks__id_",
+        "description": "Update a task",
+        "parameters": [
+          {
+            "name": "id",
+            "type": "integer",
+            "required": true,
+            "description": "Task ID"
+          }
+        ],
+        "enabled": true
+      },
+      {
+        "id": "endpoint-1750175676755-8havx0plm",
+        "path": "/api/analytics/summary",
+        "method": "GET",
+        "toolName": "get__api_analytics_summary",
+        "description": "Get analytics summary",
+        "parameters": [],
+        "enabled": true
+      }
+    ],
+    "authentication": {
+      "type": "apikey",
+      "credentials": {
+        "apikey": "test-api-key-123"
+      }
+    },
+    "globalHeaders": {},
+    "timeout": 30000,
+    "retries": 3,
+    "created": "2025-06-17T15:53:56.532Z",
+    "updated": "2025-06-17T15:54:57.486Z"
+  }
+]

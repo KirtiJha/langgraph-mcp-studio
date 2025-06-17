@@ -68,6 +68,36 @@ const api = {
   getLogs: () => ipcRenderer.invoke(IpcChannels.GET_LOGS),
   clearLogs: () => ipcRenderer.invoke(IpcChannels.CLEAR_LOGS),
 
+  // API Server operations
+  "api-server:get-all": () => ipcRenderer.invoke("api-server:get-all"),
+  "api-server:save": (config: any) =>
+    ipcRenderer.invoke("api-server:save", config),
+  "api-server:delete": (serverId: string) =>
+    ipcRenderer.invoke("api-server:delete", serverId),
+  "api-server:start": (serverId: string) =>
+    ipcRenderer.invoke("api-server:start", serverId),
+  "api-server:stop": (serverId: string) =>
+    ipcRenderer.invoke("api-server:stop", serverId),
+  "api-server:get-status": (serverId: string) =>
+    ipcRenderer.invoke("api-server:get-status", serverId),
+  "api-server:test-endpoint": (
+    serverId: string,
+    endpointId: string,
+    params?: any
+  ) =>
+    ipcRenderer.invoke(
+      "api-server:test-endpoint",
+      serverId,
+      endpointId,
+      params
+    ),
+  "api-server:generate-docs": (serverId: string) =>
+    ipcRenderer.invoke("api-server:generate-docs", serverId),
+
+  // Generic invoke method for API servers
+  invoke: (channel: string, ...args: any[]) =>
+    ipcRenderer.invoke(channel, ...args),
+
   // Event listeners
   on: (channel: string, callback: Function) => {
     const subscription = (_: any, ...args: any[]) => callback(...args);

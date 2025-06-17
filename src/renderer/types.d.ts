@@ -1,4 +1,12 @@
 declare global {
+  // Environment variables
+  const __DEV__: boolean;
+  namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV: 'development' | 'production' | 'test';
+    }
+  }
+
   interface Window {
     electronAPI: {
       // Server management
@@ -33,6 +41,22 @@ declare global {
       discoverContextParams: (
         serverId: string
       ) => Promise<Record<string, string>>;
+
+      // API Server operations
+      "api-server:get-all": () => Promise<any[]>;
+      "api-server:save": (config: any) => Promise<any>;
+      "api-server:delete": (serverId: string) => Promise<boolean>;
+      "api-server:start": (serverId: string) => Promise<any>;
+      "api-server:stop": (serverId: string) => Promise<boolean>;
+      "api-server:get-status": (serverId: string) => Promise<any>;
+      "api-server:test-endpoint": (
+        serverId: string,
+        endpointId: string,
+        params?: any
+      ) => Promise<any>;
+
+      // Generic invoke method
+      invoke: (channel: string, ...args: any[]) => Promise<any>;
 
       // Event listeners
       on: (channel: string, callback: Function) => () => void;

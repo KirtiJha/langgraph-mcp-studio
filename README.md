@@ -14,6 +14,7 @@ A modern, professional desktop application for managing and interacting with Mod
 - **Real-time Tool Execution**: Enhanced visual indicators showing which tools are being executed
 - **Interactive Chat**: Rich chat interface with the AI assistant
 - **Responsive Design**: Optimized for desktop use across Mac and Windows
+- **Development Mode Indicators**: Visual indicators when running in development mode
 
 ### 🔧 MCP Server Management
 
@@ -40,6 +41,8 @@ A modern, professional desktop application for managing and interacting with Mod
 - **Server Stats**: Monitor server performance and connection status
 - **Keyboard Shortcuts**: Efficient navigation with hotkeys
 - **Scrollable Interfaces**: Improved scrolling in all panels for better content navigation
+- **API to MCP Conversion**: Convert REST APIs into MCP servers with automatic tool generation
+- **Code Generation**: Generate TypeScript MCP server boilerplate from API specifications
 
 ## Recent Updates
 
@@ -101,8 +104,8 @@ _Coming soon - Screenshots will be added after initial release_
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/KirtiJha/langgraph-mcp-studio.git
-   cd langgraph-mcp-studio
+   git clone https://github.com/KirtiJha/langgraph-mcp-client.git
+   cd langgraph-mcp-client
    ```
 
 2. **Install dependencies**
@@ -121,7 +124,12 @@ _Coming soon - Screenshots will be added after initial release_
 
 4. **Start the development server**
    ```bash
+   # Start the full development environment
    npm run dev
+   
+   # Or start individual processes
+   npm run dev:main      # Start main process only
+   npm run dev:renderer  # Start renderer process only
    ```
 
 ### Building for Production
@@ -159,6 +167,17 @@ _Coming soon - Screenshots will be added after initial release_
 3. Type your question or request
 4. Watch as the AI executes tools and provides responses
 5. Expand the "Tools Used" section to see detailed execution information
+
+### Converting APIs to MCP Servers
+
+1. Navigate to the "API to MCP" tab
+2. Click "Build New API to MCP Server"
+3. Fill in the API details:
+   - **API Name**: A friendly name for your API
+   - **Base URL**: The base URL of the REST API
+   - **Endpoints**: Define the API endpoints and their parameters
+4. Generate the MCP server code
+5. The generated server will be saved and can be started directly from the interface
 
 ## Configuration
 
@@ -228,12 +247,18 @@ MCP Studio is built with:
 ```
 ├── src/
 │   ├── main/           # Electron main process
+│   │   ├── agent/      # LangGraph agent integration
+│   │   ├── mcp/        # MCP server management
+│   │   └── services/   # Core services (API server, logging)
 │   ├── renderer/       # React frontend
 │   │   ├── components/ # UI components
-│   │   ├── styles/     # Tailwind CSS
+│   │   ├── providers/  # React context providers
+│   │   ├── services/   # Frontend services
+│   │   ├── stores/     # State management
 │   │   └── types/      # TypeScript definitions
 │   └── shared/         # Shared types and utilities
-├── assets/             # Static assets
+├── generated-servers/  # Generated API to MCP server code
+├── assets/            # Static assets
 ├── dist/              # Built application
 └── build/             # Packaged distributables
 ```
@@ -275,13 +300,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- 🐛 Issues: [GitHub Issues](https://github.com/KirtiJha/langgraph-mcp-studio/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/KirtiJha/langgraph-mcp-studio/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/KirtiJha/langgraph-mcp-client/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/KirtiJha/langgraph-mcp-client/discussions)
 - 📧 Contact: Feel free to reach out for questions or collaboration
 
 ## Roadmap
 
-- [ ] Plugin system for custom MCP servers
+- [x] Plugin system for custom MCP servers
+- [x] API to MCP server conversion tool
+- [x] Code generation for TypeScript MCP servers
 - [ ] Multi-language support
 - [ ] Advanced server management features
 - [ ] Cloud synchronization
@@ -289,6 +316,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Performance monitoring and analytics
 - [ ] Docker container support
 - [ ] CLI tool for server management
+- [ ] Support for additional programming languages in code generation
 
 ---
 

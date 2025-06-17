@@ -2,6 +2,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+// Debug environment variables
+console.log("🔍 Main Process Environment:", {
+  NODE_ENV: process.env.NODE_ENV,
+  VITE_DEV_SERVER_URL: process.env.VITE_DEV_SERVER_URL,
+  isDevelopment: process.env.NODE_ENV === "development"
+});
+
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
 import { MCPManager } from "./mcp/MCPManager";
@@ -9,10 +16,12 @@ import { LangGraphAgent } from "./agent/LangGraphAgent";
 import Store from "electron-store";
 import { IpcChannels } from "../shared/types";
 import { loggingService } from "./services/LoggingService";
+import APIServerService from "./services/APIServerService";
 
 let mainWindow: BrowserWindow | null = null;
 let mcpManager: MCPManager;
 let agent: LangGraphAgent;
+let apiServerService: APIServerService;
 const store = new Store();
 
 function createWindow() {
@@ -41,9 +50,13 @@ function createWindow() {
     process.env.NODE_ENV === "development" &&
     process.env.VITE_DEV_SERVER_URL
   ) {
+    // In development, load from Vite dev server
+    console.log("🔧 Loading from Vite dev server:", process.env.VITE_DEV_SERVER_URL);
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
+    // In production, load from built files
+    console.log("📦 Loading from built files");
     mainWindow.loadFile(path.join(__dirname, "../../renderer/index.html"));
   }
 
@@ -68,6 +81,12 @@ app.whenReady().then(async () => {
   mcpManager = new MCPManager(store);
   loggingService.log("MCP Manager initialized", { timestamp: new Date() });
 
+  // Initialize API Server Service with MCP Manager
+  apiServerService = new APIServerService(mcpManager);
+  loggingService.log("API Server Service initialized", {
+    timestamp: new Date(),
+  });
+
   // Initialize Agent with error handling
   try {
     agent = new LangGraphAgent(mcpManager);
@@ -84,7 +103,12 @@ app.whenReady().then(async () => {
   setupIpcHandlers();
 });
 
-app.on("window-all-closed", () => {
+app.on("window-all-closed", async () => {
+  // Cleanup API servers before quitting
+  if (apiServerService) {
+    await apiServerService.cleanup();
+  }
+
   if (process.platform !== "darwin") {
     app.quit();
   }
