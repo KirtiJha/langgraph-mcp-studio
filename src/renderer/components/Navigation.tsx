@@ -6,6 +6,7 @@ import {
   ChatBubbleLeftRightIcon,
   CubeIcon,
   CommandLineIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 
 interface NavigationProps {
@@ -21,6 +22,14 @@ const Navigation: React.FC<NavigationProps> = ({
   connectedServers,
   totalTools,
 }) => {
+  // Debug logging
+  console.log("🧭 Navigation rendered with:", {
+    selectedTab,
+    connectedServers,
+    totalTools,
+    navigationItemCount: 8,
+  });
+
   const navItems = [
     {
       id: "servers",
@@ -35,6 +44,13 @@ const Navigation: React.FC<NavigationProps> = ({
       icon: WrenchScrewdriverIcon,
       badge: totalTools > 0 ? totalTools.toString() : undefined,
       description: "Available tools",
+    },
+    {
+      id: "public-apis",
+      label: "Public APIs",
+      icon: GlobeAltIcon,
+      description: "Discover and test public APIs",
+      debug: "DEBUG: Public APIs tab should be visible", // Debug marker
     },
     {
       id: "resources",
@@ -62,8 +78,27 @@ const Navigation: React.FC<NavigationProps> = ({
     },
   ];
 
+  // Debug logging for navItems
+  console.log(
+    "🧭 Navigation items created:",
+    navItems.map((item) => ({ id: item.id, label: item.label }))
+  );
+  console.log(
+    "🧭 Looking for public-apis:",
+    navItems.find((item) => item.id === "public-apis")
+  );
+
   return (
     <nav className="space-y-2 p-4">
+      {/* DEBUG: Visual confirmation of navItems */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="bg-red-500 text-white p-2 text-xs mb-2 rounded">
+          DEBUG: {navItems.length} nav items | Public APIs:{" "}
+          {navItems.find((item) => item.id === "public-apis")
+            ? "✅ FOUND"
+            : "❌ MISSING"}
+        </div>
+      )}
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = selectedTab === item.id;
@@ -102,6 +137,13 @@ const Navigation: React.FC<NavigationProps> = ({
                 }`}
               >
                 {item.label}
+                {/* DEBUG: Mark Public APIs tab visually */}
+                {item.id === "public-apis" &&
+                  process.env.NODE_ENV === "development" && (
+                    <span className="ml-2 bg-green-500 text-white px-1 rounded text-xs">
+                      DEBUG
+                    </span>
+                  )}
               </div>
               <div
                 className={`text-xs ${

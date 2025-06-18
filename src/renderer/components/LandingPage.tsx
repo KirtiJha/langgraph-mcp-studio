@@ -19,32 +19,28 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+  console.log("🏠 LandingPage: Component rendering...");
+
   const [currentFeature, setCurrentFeature] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if we're in development mode with multiple fallbacks
+  // Development mode detection - consistent with DevModeIndicator
   const isDevelopment = (() => {
     try {
-      // Manual override for testing (remove this in production)
-      const forceDevMode = localStorage.getItem('FORCE_DEV_MODE') === 'true';
-      if (forceDevMode) return true;
-      
-      // Check NODE_ENV from process.env
-      if (typeof process !== 'undefined' && process.env?.NODE_ENV === "development") {
-        return true;
-      }
-      // Check __DEV__ global
-      if (typeof __DEV__ !== 'undefined' && __DEV__) {
-        return true;
-      }
-      // Fallback: check if running on localhost
-      if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-        return true;
-      }
-      return false;
+      // Check multiple ways to determine dev mode
+      return (
+        process.env.NODE_ENV === "development" ||
+        (typeof __DEV__ !== "undefined" && __DEV__) ||
+        window.location.hostname === "localhost" ||
+        window.location.protocol === "http:"
+      );
     } catch (error) {
-      // Final fallback
-      return typeof window !== 'undefined' && window.location.hostname === 'localhost';
+      console.error("Error detecting development mode:", error);
+      // Fallback for any errors - assume dev if on localhost
+      return (
+        window.location.hostname === "localhost" ||
+        window.location.protocol === "http:"
+      );
     }
   })();
 
@@ -58,22 +54,29 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     },
     {
       icon: GlobeAltIcon,
+      title: "Public API Explorer",
+      description:
+        "Discover, test, and convert thousands of public APIs into MCP servers instantly",
+      color: "from-indigo-500 to-purple-500",
+    },
+    {
+      icon: CpuChipIcon,
       title: "API to MCP Conversion",
       description:
-        "Convert any REST API into MCP servers with advanced configuration options",
+        "Transform any REST API into intelligent MCP servers with advanced configuration",
       color: "from-purple-500 to-pink-500",
     },
     {
       icon: WrenchScrewdriverIcon,
       title: "Tool Execution",
       description:
-        "Execute tools and functions with intelligent parameter handling",
+        "Execute tools and functions with intelligent parameter handling and validation",
       color: "from-green-500 to-emerald-500",
     },
     {
       icon: ChatBubbleLeftRightIcon,
       title: "AI Chat Interface",
-      description: "Interact with AI agents through a modern chat interface",
+      description: "Interact with AI agents through a modern, responsive chat interface",
       color: "from-orange-500 to-red-500",
     },
   ];
@@ -131,11 +134,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-xl lg:text-2xl text-slate-300 mb-8 leading-relaxed"
             >
-              Connect, manage, and build intelligent AI systems with{" "}
+              Discover, test, and convert{" "}
+              <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent font-semibold">
+                thousands of public APIs
+              </span>{" "}
+              into intelligent AI systems with{" "}
               <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
                 Model Context Protocol
               </span>{" "}
-              integration and API-to-MCP conversion
+              integration
             </motion.p>
 
             {/* Feature showcase */}
@@ -181,16 +188,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               className="grid grid-cols-3 gap-6 mb-10"
             >
               <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">50+</div>
-                <div className="text-sm text-slate-400">MCP Tools</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">24/7</div>
-                <div className="text-sm text-slate-400">Uptime</div>
+                <div className="text-2xl font-bold text-white mb-1">3000+</div>
+                <div className="text-sm text-slate-400">Public APIs</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-1">∞</div>
-                <div className="text-sm text-slate-400">Possibilities</div>
+                <div className="text-sm text-slate-400">MCP Tools</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-white mb-1">1-Click</div>
+                <div className="text-sm text-slate-400">Conversion</div>
               </div>
             </motion.div>
           </motion.div>
@@ -298,7 +305,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-6"
+          className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6"
         >
           {features.map((feature, index) => (
             <motion.div

@@ -90,6 +90,12 @@ const shortcuts: KeyboardShortcut[] = [
     action: "confirm",
     category: "General",
   },
+  {
+    key: "Cmd+Shift+R",
+    description: "Reset Authentication (Dev)",
+    action: "reset-auth",
+    category: "Debug",
+  },
 ];
 
 export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
@@ -131,8 +137,13 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({
             onAction?.("add-server");
             break;
           case "r":
-            event.preventDefault();
-            onAction?.("refresh");
+            if (event.shiftKey) {
+              event.preventDefault();
+              onAction?.("reset-auth");
+            } else {
+              event.preventDefault();
+              onAction?.("refresh");
+            }
             break;
           case ",":
             event.preventDefault();

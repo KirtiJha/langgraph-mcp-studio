@@ -16,20 +16,28 @@ const DevModeIndicator: React.FC<DevModeIndicatorProps> = ({
   // Check if we're in development mode - use multiple fallbacks
   let isDev = false;
   try {
-    // Manual override for testing (remove this in production)
-    const forceDevMode = localStorage.getItem('FORCE_DEV_MODE') === 'true';
-    if (forceDevMode) {
-      isDev = true;
-    } else {
-      isDev = process.env.NODE_ENV === "development" || 
-             (typeof __DEV__ !== 'undefined' && __DEV__) ||
-             window.location.hostname === 'localhost';
-    }
+    // Check multiple ways to determine dev mode
+    isDev =
+      process.env.NODE_ENV === "development" ||
+      (typeof __DEV__ !== "undefined" && __DEV__) ||
+      window.location.hostname === "localhost" ||
+      window.location.protocol === "http:";
+
+    console.log("🔍 DevModeIndicator check:", {
+      NODE_ENV: process.env.NODE_ENV,
+      __DEV__: typeof __DEV__ !== "undefined" ? __DEV__ : "undefined",
+      hostname: window.location.hostname,
+      protocol: window.location.protocol,
+      isDev,
+    });
   } catch (error) {
-    // Fallback for any errors
-    isDev = window.location.hostname === 'localhost';
+    console.error("DevModeIndicator error:", error);
+    // Fallback for any errors - assume dev if on localhost
+    isDev =
+      window.location.hostname === "localhost" ||
+      window.location.protocol === "http:";
   }
-  
+
   if (!isDev) return null;
 
   const positionClasses = {
@@ -40,7 +48,10 @@ const DevModeIndicator: React.FC<DevModeIndicatorProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: position === "top" ? -20 : position === "bottom" ? 20 : 0 }}
+      initial={{
+        opacity: 0,
+        y: position === "top" ? -20 : position === "bottom" ? 20 : 0,
+      }}
       animate={{ opacity: 1, y: 0 }}
       className={`
         flex items-center gap-2 px-3 py-2 

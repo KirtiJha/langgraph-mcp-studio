@@ -2,12 +2,14 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-// Debug environment variables
-console.log("🔍 Main Process Environment:", {
-  NODE_ENV: process.env.NODE_ENV,
-  VITE_DEV_SERVER_URL: process.env.VITE_DEV_SERVER_URL,
-  isDevelopment: process.env.NODE_ENV === "development"
-});
+// Debug environment variables (only in development)
+if (process.env.NODE_ENV === "development") {
+  console.log("🔍 Main Process Environment:", {
+    NODE_ENV: process.env.NODE_ENV,
+    VITE_DEV_SERVER_URL: process.env.VITE_DEV_SERVER_URL,
+    isDevelopment: process.env.NODE_ENV === "development",
+  });
+}
 
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "path";
@@ -25,6 +27,17 @@ let apiServerService: APIServerService;
 const store = new Store();
 
 function createWindow() {
+  // Debug paths
+  const preloadPath = path.join(__dirname, "preload.js");
+  const htmlPath = path.join(__dirname, "../../renderer/index.html");
+  console.log("🔍 Paths:", {
+    __dirname,
+    preloadPath,
+    htmlPath,
+    preloadExists: require("fs").existsSync(preloadPath),
+    htmlExists: require("fs").existsSync(htmlPath),
+  });
+
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 1000,
@@ -51,22 +64,69 @@ function createWindow() {
     process.env.VITE_DEV_SERVER_URL
   ) {
     // In development, load from Vite dev server
-    console.log("🔧 Loading from Vite dev server:", process.env.VITE_DEV_SERVER_URL);
+    console.log(
+      "🔧 Loading from Vite dev server:",
+      process.env.VITE_DEV_SERVER_URL
+    );
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
     // In production, load from built files
     console.log("📦 Loading from built files");
     mainWindow.loadFile(path.join(__dirname, "../../renderer/index.html"));
+    // Open DevTools in production to debug issues
+    if (process.env.DEBUG_PROD === "true") {
+      mainWindow.webContents.openDevTools();
+    }
   }
 
+  // Add error handling for renderer process
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (event, errorCode, errorDescription) => {
+      console.error("❌ Failed to load renderer:", errorCode, errorDescription);
+    }
+  );
+
+  mainWindow.webContents.on("render-process-gone", (event, details) => {
+    console.error("❌ Renderer process gone:", details);
+  });
+
+  // Log when the page starts loading
+  mainWindow.webContents.on("did-start-loading", () => {
+    console.log("🔄 Started loading renderer...");
+  });
+
+  // Log when the page finishes loading
+  mainWindow.webContents.on("did-finish-load", () => {
+    console.log("✅ Renderer finished loading");
+  });
+
   mainWindow.once("ready-to-show", () => {
+    console.log("🖥️ Window ready to show, making visible...");
     mainWindow?.show();
     // Set the main window for logging service
     if (mainWindow) {
       loggingService.setMainWindow(mainWindow);
       loggingService.success("MCP Studio started successfully");
     }
+  });
+
+  // Add error handling for renderer process
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (event, errorCode, errorDescription) => {
+      console.error("❌ Renderer failed to load:", errorCode, errorDescription);
+    }
+  );
+
+  mainWindow.on("unresponsive", () => {
+    console.error("❌ Renderer process became unresponsive");
+  });
+
+  // Log when page finishes loading
+  mainWindow.webContents.on("did-finish-load", () => {
+    console.log("✅ Renderer finished loading");
   });
 
   mainWindow.on("closed", () => {
@@ -120,7 +180,18 @@ app.on("activate", () => {
   }
 });
 
+// Flag to prevent double registration of IPC handlers
+let ipcHandlersSetup = false;
+
 function setupIpcHandlers() {
+  if (ipcHandlersSetup) {
+    console.log("⚠️ IPC handlers already set up, skipping...");
+    return;
+  }
+
+  ipcHandlersSetup = true;
+  console.log("🔧 Setting up IPC handlers...");
+
   // Server management
   ipcMain.handle(IpcChannels.ADD_SERVER, async (_, config) => {
     return await mcpManager.addServer(config);
@@ -227,23 +298,167 @@ function setupIpcHandlers() {
     return loggingService.clearLogs();
   });
 
+  // Public API testing
+  ipcMain.handle(
+    IpcChannels.TEST_PUBLIC_API,
+    async (_, { url, method = "GET", headers = {}, body = null }) => {
+      try {
+        const response = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            ...headers,
+          },
+          body: body ? JSON.stringify(body) : null,
+        });
+
+        const responseData = await response.text();
+
+        return {
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          data: responseData,
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          status: 0,
+          statusText: "Network Error",
+          headers: {},
+          data: null,
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    }
+  );
+
   // Server events
-  mcpManager.on("server-connected", (serverId) => {
-    loggingService.success(`Server "${serverId}" connected successfully`);
-    mainWindow?.webContents.send("server-connected", serverId);
+  mcpManager.on("serverConnected", (status) => {
+    loggingService.success(`Server "${status.name}" connected successfully`);
+    mainWindow?.webContents.send("server-connected", status.id);
   });
 
-  mcpManager.on("server-disconnected", (serverId) => {
-    loggingService.warn(`Server "${serverId}" disconnected`);
-    mainWindow?.webContents.send("server-disconnected", serverId);
+  mcpManager.on("serverDisconnected", (status) => {
+    loggingService.warn(`Server "${status.name}" disconnected`);
+    mainWindow?.webContents.send("server-disconnected", status.id);
   });
 
-  mcpManager.on("server-error", (serverId, error) => {
-    loggingService.error(`Server "${serverId}" error: ${error}`);
-    mainWindow?.webContents.send("server-error", { serverId, error });
+  mcpManager.on("serverError", (status) => {
+    loggingService.error(`Server "${status.name}" error: ${status.error}`);
+    mainWindow?.webContents.send("server-error", {
+      serverId: status.id,
+      error: status.error,
+    });
   });
 
   mcpManager.on("tool-executed", (result) => {
     mainWindow?.webContents.send("tool-executed", result);
   });
 }
+
+// Graceful shutdown handlers
+let cleanupInProgress = false;
+const cleanup = async () => {
+  if (cleanupInProgress) {
+    console.log("⚠️ Cleanup already in progress, skipping...");
+    return;
+  }
+
+  cleanupInProgress = true;
+  console.log("🛑 Shutting down MCP Studio...");
+
+  try {
+    // Disconnect all MCP servers
+    if (mcpManager) {
+      const servers = mcpManager.listServers();
+      for (const server of servers) {
+        if (server.connected) {
+          await mcpManager.disconnectServer(server.id);
+        }
+      }
+      console.log("✅ MCP servers disconnected");
+    }
+
+    // Close API server service
+    if (apiServerService) {
+      await apiServerService.cleanup();
+      console.log("✅ API servers shut down");
+    }
+
+    // Close main window
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+      mainWindow = null;
+      console.log("✅ Main window closed");
+    }
+
+    console.log("✅ Cleanup completed successfully");
+  } catch (error: any) {
+    // Use simple console.log to avoid potential recursion
+    console.log("❌ Error during cleanup:", error?.message || "Unknown error");
+  }
+
+  // Force exit after a short delay
+  setTimeout(() => {
+    process.exit(0);
+  }, 100);
+};
+
+// Handle various termination signals
+process.on("SIGINT", () => {
+  console.log("\n🔸 Received SIGINT (Ctrl+C), initiating graceful shutdown...");
+  cleanup();
+});
+
+process.on("SIGTERM", () => {
+  console.log("🔸 Received SIGTERM, initiating graceful shutdown...");
+  cleanup();
+});
+
+process.on("SIGHUP", () => {
+  console.log("🔸 Received SIGHUP, initiating graceful shutdown...");
+  cleanup();
+});
+
+// Handle uncaught errors (avoid infinite recursion)
+process.on("uncaughtException", (error) => {
+  console.log("❌ Uncaught Exception:", error.message || error);
+  if (!cleanupInProgress) {
+    cleanup();
+  } else {
+    // If cleanup is already in progress, just exit
+    setTimeout(() => process.exit(1), 100);
+  }
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.log("❌ Unhandled Rejection at:", promise, "reason:", reason);
+  if (!cleanupInProgress) {
+    cleanup();
+  } else {
+    // If cleanup is already in progress, just exit
+    setTimeout(() => process.exit(1), 100);
+  }
+});
+
+// Handle app quit events
+app.on("before-quit", (event) => {
+  console.log("🔸 App before-quit event triggered");
+  event.preventDefault();
+  cleanup();
+});
+
+app.on("window-all-closed", () => {
+  console.log("🔸 All windows closed");
+  if (process.platform !== "darwin") {
+    cleanup();
+  }
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});

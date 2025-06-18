@@ -30,6 +30,9 @@ export enum IpcChannels {
   GET_LOGS = "get-logs",
   CLEAR_LOGS = "clear-logs",
   LOG_EVENT = "log-event",
+
+  // Public API testing
+  TEST_PUBLIC_API = "test-public-api",
 }
 
 export interface ServerConfig {

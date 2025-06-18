@@ -27,6 +27,51 @@ import { APIServerConfig, APIServerStatus } from "../../shared/apiServerTypes";
 import APIServerBuilder from "./APIServerBuilder";
 import APIServerService from "../services/APIServerService";
 
+// Modern animated spinner component
+const ModernSpinner: React.FC<{ className?: string; size?: number }> = ({
+  className = "",
+  size = 16,
+}) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <motion.div
+      className="rounded-full border-2 border-transparent"
+      style={{
+        width: size,
+        height: size,
+        borderTopColor: "currentColor",
+        borderRightColor: "currentColor",
+      }}
+      animate={{ rotate: 360 }}
+      transition={{
+        duration: 1,
+        repeat: Infinity,
+        ease: "linear",
+      }}
+    />
+  </div>
+);
+
+// Pulsing dots spinner for a more modern look
+const DotsSpinner: React.FC<{ className?: string }> = ({ className = "" }) => (
+  <div className={`inline-flex items-center space-x-1 ${className}`}>
+    {[0, 1, 2].map((index) => (
+      <motion.div
+        key={index}
+        className="w-1 h-1 bg-current rounded-full"
+        animate={{
+          scale: [1, 1.2, 1],
+          opacity: [0.7, 1, 0.7],
+        }}
+        transition={{
+          duration: 0.6,
+          repeat: Infinity,
+          delay: index * 0.1,
+        }}
+      />
+    ))}
+  </div>
+);
+
 interface APIServerManagerProps {
   onServerStatusChange?: () => Promise<void>;
 }
@@ -38,6 +83,7 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
   const [serverStatuses, setServerStatuses] = useState<
     Record<string, APIServerStatus>
   >({});
+  const [loadingServers, setLoadingServers] = useState<Set<string>>(new Set());
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingServer, setEditingServer] = useState<APIServerConfig | null>(
     null
@@ -51,7 +97,56 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
   useEffect(() => {
     loadServers();
 
-    // Set up polling for server status
+    // Set up real-time event listeners for MCP server status updates
+    const unsubscribeConnected = window.electronAPI.on(
+      "server-connected",
+      async (serverId: string) => {
+        console.log("📡 API Server Manager: Server connected event:", serverId);
+        // Update status for this specific server
+        const status = await APIServerService.getServerStatus(serverId);
+        if (status) {
+          setServerStatuses((prev) => ({
+            ...prev,
+            [serverId]: status,
+          }));
+        }
+      }
+    );
+
+    const unsubscribeDisconnected = window.electronAPI.on(
+      "server-disconnected",
+      async (serverId: string) => {
+        console.log(
+          "📡 API Server Manager: Server disconnected event:",
+          serverId
+        );
+        // Update status for this specific server
+        const status = await APIServerService.getServerStatus(serverId);
+        if (status) {
+          setServerStatuses((prev) => ({
+            ...prev,
+            [serverId]: status,
+          }));
+        }
+      }
+    );
+
+    const unsubscribeError = window.electronAPI.on(
+      "server-error",
+      async ({ serverId }: { serverId: string }) => {
+        console.log("📡 API Server Manager: Server error event:", serverId);
+        // Update status for this specific server
+        const status = await APIServerService.getServerStatus(serverId);
+        if (status) {
+          setServerStatuses((prev) => ({
+            ...prev,
+            [serverId]: status,
+          }));
+        }
+      }
+    );
+
+    // Set up polling for server status as fallback
     const interval = setInterval(async () => {
       if (servers.length > 0) {
         const statuses: Record<string, APIServerStatus> = {};
@@ -70,9 +165,14 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
         }
         setServerStatuses(statuses);
       }
-    }, 5000); // Poll every 5 seconds
+    }, 10000); // Poll every 10 seconds as fallback
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      unsubscribeConnected();
+      unsubscribeDisconnected();
+      unsubscribeError();
+    };
   }, [servers.length]);
 
   const loadServers = async () => {
@@ -156,6 +256,7 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
 
   const handleStartServer = async (id: string) => {
     try {
+      setLoadingServers((prev) => new Set(prev).add(id));
       await APIServerService.startServer(id);
       await loadServers();
       // Trigger main app refresh to update server list and tools
@@ -164,11 +265,18 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
       }
     } catch (error) {
       console.error("Failed to start server:", error);
+    } finally {
+      setLoadingServers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
   const handleStopServer = async (id: string) => {
     try {
+      setLoadingServers((prev) => new Set(prev).add(id));
       await APIServerService.stopServer(id);
       await loadServers();
       // Trigger main app refresh to update server list and tools
@@ -177,6 +285,12 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
       }
     } catch (error) {
       console.error("Failed to stop server:", error);
+    } finally {
+      setLoadingServers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
@@ -243,13 +357,19 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
             {/* Left side - Icon, Name, Status */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div
-                className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isConnected
+                className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                  loadingServers.has(server.id)
+                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25"
+                    : isConnected
                     ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25"
                     : "bg-gradient-to-br from-slate-600 to-slate-700"
                 }`}
               >
-                <GlobeAltIconSolid className="w-5 h-5 text-white" />
+                {loadingServers.has(server.id) ? (
+                  <ModernSpinner className="text-white" size={20} />
+                ) : (
+                  <GlobeAltIconSolid className="w-5 h-5 text-white" />
+                )}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -258,20 +378,31 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
                     {server.name}
                   </h3>
                   <div
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                      isConnected
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-all duration-300 ${
+                      loadingServers.has(server.id)
+                        ? "bg-indigo-500/20 text-indigo-400"
+                        : isConnected
                         ? "bg-green-500/20 text-green-400"
                         : "bg-slate-700/50 text-slate-400"
                     }`}
                   >
-                    <div
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        isConnected
-                          ? "bg-green-400 animate-pulse"
-                          : "bg-slate-500"
-                      }`}
-                    />
-                    {isConnected ? "Running" : "Stopped"}
+                    {loadingServers.has(server.id) ? (
+                      <>
+                        <DotsSpinner />
+                        {isConnected ? "Stopping..." : "Starting..."}
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isConnected
+                              ? "bg-green-400 animate-pulse"
+                              : "bg-slate-500"
+                          }`}
+                        />
+                        {isConnected ? "Running" : "Stopped"}
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -292,20 +423,55 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
                     ? handleStopServer(server.id)
                     : handleStartServer(server.id)
                 }
-                className={`p-2 rounded-md transition-colors duration-200 ${
-                  isConnected
+                disabled={loadingServers.has(server.id)}
+                className={`p-2 rounded-md transition-all duration-200 relative ${
+                  loadingServers.has(server.id)
+                    ? "text-indigo-400 bg-indigo-500/10 cursor-not-allowed"
+                    : isConnected
                     ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
                     : "text-green-400 hover:text-green-300 hover:bg-green-500/10"
                 }`}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title={isConnected ? "Stop Server" : "Start Server"}
+                whileHover={
+                  loadingServers.has(server.id) ? {} : { scale: 1.05 }
+                }
+                whileTap={loadingServers.has(server.id) ? {} : { scale: 0.95 }}
+                title={
+                  loadingServers.has(server.id)
+                    ? isConnected
+                      ? "Stopping Server..."
+                      : "Starting Server..."
+                    : isConnected
+                    ? "Stop Server"
+                    : "Start Server"
+                }
               >
-                {isConnected ? (
-                  <StopIconSolid className="w-4 h-4" />
-                ) : (
-                  <PlayIconSolid className="w-4 h-4" />
-                )}
+                <AnimatePresence mode="wait">
+                  {loadingServers.has(server.id) ? (
+                    <motion.div
+                      key="spinner"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ModernSpinner size={16} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="icon"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {isConnected ? (
+                        <StopIconSolid className="w-4 h-4" />
+                      ) : (
+                        <PlayIconSolid className="w-4 h-4" />
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.button>
 
               <motion.button

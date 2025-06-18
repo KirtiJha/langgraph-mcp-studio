@@ -111,11 +111,13 @@ export interface APIServerConfig {
   monitoring?: {
     enabled: boolean;
     healthCheck?: {
+      enabled?: boolean;
       endpoint?: string;
       interval?: number;
     };
     metrics?: {
       enabled: boolean;
+      endpoint?: string;
       retention?: number;
     };
   };
@@ -130,6 +132,35 @@ export interface APIServerConfig {
     responses: boolean;
     errors: boolean;
   };
+  cors?: {
+    enabled: boolean;
+    origins: string[];
+    methods: string[];
+    headers: string[];
+  };
+  security?: {
+    rateLimit: boolean;
+    cors: boolean;
+    validation: boolean;
+  };
+  apiVersion?: string;
+  openApiSpec?: string;
+  tags?: string[];
+  category?: string;
+  provider?: string;
+  documentation?: string;
+  license?: {
+    name?: string;
+    url?: string;
+  };
+  contact?: {
+    name?: string;
+    email?: string;
+    url?: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  status?: string;
   created: Date;
   updated: Date;
 }

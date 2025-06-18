@@ -20,6 +20,7 @@ const IpcChannels = {
   GET_LOGS: "get-logs",
   CLEAR_LOGS: "clear-logs",
   LOG_EVENT: "log-event",
+  TEST_PUBLIC_API: "test-public-api",
 } as const;
 
 const api = {
@@ -67,6 +68,14 @@ const api = {
   // Logging operations
   getLogs: () => ipcRenderer.invoke(IpcChannels.GET_LOGS),
   clearLogs: () => ipcRenderer.invoke(IpcChannels.CLEAR_LOGS),
+
+  // Public API testing
+  testPublicApi: (options: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: any;
+  }) => ipcRenderer.invoke(IpcChannels.TEST_PUBLIC_API, options),
 
   // API Server operations
   "api-server:get-all": () => ipcRenderer.invoke("api-server:get-all"),

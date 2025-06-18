@@ -1,70 +1,202 @@
 # MCP Studio
 
-A modern, professional desktop application for managing and interacting with Model Context Protocol (MCP) servers. Built with Electron, React, TypeScript, and enhanced with beautiful Tailwind CSS styling.
+A modern, professional desktop application for managing and interacting with Model Context Protocol (MCP) servers. Built ### � MCP Server & Tool Management
+
+- **Easy Server Setup**: Add MCP servers with intuitive tabbed configuration interface
+- **Advanced Configuration**: Support for environment variables, custom arguments, and working directories
+- **Real-time Status**: Live server connection monitoring with beautiful loading states and error handling
+- **Protocol Support**: Supports both stdio and SSE (Server-Sent Events) transports
+- **Tool Integration**: All server tools appear in unified Tools tab with schema validation
+- **Generated Tools**: Converted APIs automatically become available as tools with proper typingctron, React, TypeScript, and enhanced with beautiful Tailwind CSS styling.
+
+**🌟 Key Feature: Public API Discovery & Conversion** - Discover thousands of public APIs, test them interactively, and convert them into MCP servers with one click for seamless AI integration.
 
 ![MCP Studio](https://via.placeholder.com/800x400/1e293b/f1f5f9?text=MCP+Studio)
 
-## Features
+## 🚀 Quick Start
 
-### 🚀 Modern UI/UX
+### Prerequisites
 
-- **Compact Modern Design**: Professional SaaS-style interface with reduced font sizes and compact spacing
-- **Dark Theme**: Beautiful dark interface with gradient accents and modern styling
-- **Server Configuration Modal**: Rich tabbed interface for viewing and editing server configurations
-- **Real-time Tool Execution**: Enhanced visual indicators showing which tools are being executed
-- **Interactive Chat**: Rich chat interface with the AI assistant
-- **Responsive Design**: Optimized for desktop use across Mac and Windows
-- **Development Mode Indicators**: Visual indicators when running in development mode
+- Node.js (v16 or higher)
+- npm or yarn
 
-### 🔧 MCP Server Management
+### Installation
+
+```bash
+git clone <repository-url>
+cd langgraph-mcp-client
+npm install
+```
+
+### Development Mode 🔧
+
+For active development with hot reload:
+
+```bash
+npm run dev
+```
+
+**Features:**
+
+- ✅ Hot reload for UI changes
+- ✅ DevTools open by default
+- ✅ Debug logging enabled
+- ✅ Fast development workflow
+- ✅ Source maps for debugging
+
+### Production Mode 🚀
+
+For testing the production build:
+
+```bash
+# Build the application first
+npm run build
+
+# Then start in production mode
+npm start
+```
+
+**Features:**
+
+- ✅ Optimized bundle size
+- ✅ Better performance
+- ✅ Production-ready
+- ✅ Suitable for distribution
+
+### Additional Commands
+
+```bash
+# Build commands
+npm run build           # Build both main and renderer
+npm run build:main      # Build only main process
+npm run build:renderer  # Build only renderer
+
+# Distribution commands
+npm run dist           # Build and create distributable for current platform
+npm run dist:mac       # Build and create macOS app
+npm run dist:win       # Build and create Windows installer
+```
+
+## 📱 How to Access the Application
+
+### Important: Login Required
+
+After starting the application with `npm run dev` or `npm start`, you'll see a **Landing Page** first.
+
+**To access all features including the Public APIs tab:**
+
+1. **Start the app**: Run `npm run dev` or `npm start`
+2. **Landing Page**: You'll see the MCP Studio welcome screen
+3. **Click "Sign in with IBM SSO"**: This button simulates login (no real credentials needed)
+4. **Main Interface**: After clicking login, you'll access the full MCP Studio with all tabs
+
+**Available Tabs After Login:**
+
+- 🖥️ **Servers**: Manage your MCP servers
+- 🔧 **Tools**: View available tools from connected servers
+- 🌐 **Public APIs**: **⭐ NEW!** Discover, test, and convert public APIs to MCP servers
+- 📦 **Resources**: Server resources and data
+- 📄 **Prompts**: Manage prompt templates
+- 💬 **Chat**: Interact with your AI agent using all available tools
+- 🔘 **API Servers**: Build custom API servers
+- 📊 **Logs**: View system logs and debugging info
+
+## 🌟 Key Features
+
+### 🚀 Public API Discovery & Conversion (NEW!)
+
+**The flagship feature that sets MCP Studio apart** - Transform any public API into a powerful MCP server tool for your AI assistant.
+
+**🔍 Discover APIs**
+- Browse **1000+ public APIs** from multiple sources (APIs.guru, PublicAPIs.org)
+- **Smart search & filtering** by category, authentication, pricing model
+- **Real-time caching** for fast browsing experience
+- **Detailed API information** with endpoints, documentation, and examples
+
+**🧪 Test APIs Interactively**
+- **Live API testing** directly within the application
+- **Parameter validation** with type-specific input controls
+- **Authentication support** for API keys, OAuth, and other methods
+- **Response visualization** with syntax highlighting and error handling
+- **CORS bypass** for seamless testing in desktop environment
+
+**⚡ One-Click Conversion to MCP**
+- **Automatic MCP server generation** from OpenAPI specifications
+- **Tool creation** for each API endpoint with proper schemas
+- **Type-safe code generation** in TypeScript
+- **Instant integration** - converted APIs appear immediately in Tools tab
+- **Production-ready servers** that can be started, stopped, and managed
+
+**🤖 AI Integration**
+- **Seamless tool usage** in Chat interface with AI assistant
+- **Parameter auto-completion** based on API specifications
+- **Real-time status updates** showing server connection status
+- **Error handling** with user-friendly messages
+
+**Workflow Example:**
+1. **Discover** → Browse APIs like "Weather API" or "Language Translation"  
+2. **Test** → Try endpoints with live data to ensure they work
+3. **Convert** → One-click conversion to MCP server with automatic tools
+4. **Use** → Ask your AI "What's the weather in Paris?" and it uses the API automatically
+
+- **API Explorer**: Browse and search thousands of public APIs from popular directories
+### �️ Advanced MCP Server Management
 
 - **Easy Server Setup**: Add MCP servers with a simple, intuitive form
 - **Advanced Configuration**: Tabbed modal interface for server settings (Basic, Command, Environment, Context, JSON)
-- **Connection Status**: Real-time server connection monitoring and status indicators
+- **Real-time Status**: Live server connection monitoring with beautiful loading states
 - **Server Configuration**: Support for environment variables, custom arguments, and working directories
 - **Protocol Support**: Supports both stdio and SSE (Server-Sent Events) transports
-- **Tool Count Display**: Live tool count display for each connected server
+- **Tool Integration**: Converted APIs appear as tools with full schema validation
 
 ### 🤖 AI Assistant Integration
 
 - **LangGraph Integration**: Powered by LangGraph React agents with IBM WatsonX AI
-- **Enhanced Tool Execution**: Detailed tool configuration with argument validation and JSON preview
-- **Tool Schema Validation**: Comprehensive tool argument display with type information and validation
-- **Collapsible Tool Results**: Clean separation between AI responses and detailed tool execution data
-- **Real-time Updates**: Live status indicators during processing and tool execution
+- **Dynamic Tool Usage**: AI automatically uses converted API tools to answer questions
+- **Enhanced Tool Execution**: Real-time status indicators during tool execution with detailed results
+- **Tool Schema Validation**: Comprehensive argument validation with type information
+- **Multi-Tool Orchestration**: AI can combine multiple API tools to complete complex tasks
+- **Natural Language**: Ask questions like "What's the weather?" and AI uses appropriate weather API
 
-### 🛠️ Developer Tools
+### 🛠️ Developer Tools & Debugging
 
-- **Real-time Logs Console**: Built-in logging system capturing system events, errors, and debug information
-- **Live Log Streaming**: Real-time log updates with filtering and auto-scroll functionality
-- **Enhanced Tool Testing**: Execute tools manually with proper argument configuration and validation
-- **Server Stats**: Monitor server performance and connection status
-- **Keyboard Shortcuts**: Efficient navigation with hotkeys
-- **Scrollable Interfaces**: Improved scrolling in all panels for better content navigation
-- **API to MCP Conversion**: Convert REST APIs into MCP servers with automatic tool generation
-- **Code Generation**: Generate TypeScript MCP server boilerplate from API specifications
+- **Real-time Logs Console**: Built-in logging system capturing all system events and API calls
+- **Live Log Streaming**: Real-time updates with filtering and auto-scroll functionality
+- **API Testing Sandbox**: Test any endpoint with parameter validation and response visualization
+- **Code Generation**: Generate production-ready TypeScript MCP servers from API specs
+- **Error Diagnostics**: Detailed error messages with suggestions for CORS, network, and authentication issues
+- **Development Mode**: Visual indicators and enhanced debugging when running in dev mode
 
 ## Recent Updates
 
-### Version 1.2.0 - Enhanced Add Server Flow
+### Version 1.3.0 - Public API Discovery & Conversion (MAJOR RELEASE)
 
-#### 🎯 Major New Features
+#### � Revolutionary New Feature: Public API Integration
 
-- **Tabbed Server Configuration**: New tabbed interface with Manual Setup, Import JSON, and Tool Configuration tabs
-- **JSON Import Support**: Import standard MCP server configuration JSON (e.g., `mcpServers` format) with automatic field population
-- **Auto-Tool Discovery**: Automatically discover available tools and their parameters when adding a server
-- **Pre-configured Tool Parameters**: Configure default parameter values for tools during server setup
-- **Enhanced Tool Execution**: Tool parameters are pre-filled from server configurations with visual indicators
-- **Rich Error Handling**: Comprehensive error messages and user feedback throughout the flow
-- **Modern UI Components**: Beautiful, responsive interface with improved accessibility
+- **🔍 API Discovery Engine**: Browse and search 1000+ public APIs from multiple curated sources
+- **🧪 Interactive API Testing**: Test any API endpoint directly within the application with live validation
+- **⚡ One-Click MCP Conversion**: Transform any public API into a fully functional MCP server with automatic tool generation
+- **🚀 AI Integration**: Converted APIs become immediately available as tools for the AI assistant
+- **📊 Virtual Scrolling**: Optimized performance for browsing large API catalogs
+- **🔒 Authentication Support**: Built-in support for API keys, OAuth, and other authentication methods
+- **🎯 Smart Filtering**: Filter APIs by category, pricing model, authentication type, and more
+- **💾 Local Caching**: Fast browsing experience with intelligent caching and fallback handling
 
-#### 🔧 Technical Enhancements
+#### 🎨 Enhanced User Experience
 
-- **Type Safety**: Enhanced TypeScript interfaces for better type checking and IntelliSense
-- **Component Architecture**: Completely refactored AddServerDialog and ToolExecution components
-- **Parameter Pre-filling**: Server tool configurations automatically populate tool execution forms
-- **Visual Indicators**: Clear indication of which parameters are pre-configured from server settings
-- **Robust Validation**: JSON parsing validation and comprehensive error handling
+- **✨ Beautiful Loading States**: Modern animated spinners and progress indicators throughout the app
+- **🔄 Real-time Status Updates**: Live server connection status with automatic UI synchronization
+- **🎛️ Advanced Parameter Controls**: Type-specific input controls with validation for API testing
+- **📱 Responsive Design**: Improved layout and navigation for better desktop experience
+- **🚦 Error Handling**: User-friendly error messages with actionable suggestions for common issues
+
+#### 🔧 Technical Improvements
+
+- **🏗️ Robust Code Generation**: Enhanced TypeScript MCP server generation with better error handling
+- **🔌 Event-Driven Architecture**: Real-time status updates using IPC events between main and renderer processes
+- **🛠️ Improved Server Management**: Better integration between API servers and MCP server management
+- **📝 Enhanced Logging**: Comprehensive debugging and monitoring capabilities
+- **⚡ Performance Optimizations**: Virtual scrolling, debounced search, and optimized rendering
 
 ### Version 1.1.0 - UI/UX Redesign & Enhanced Logging
 
@@ -123,10 +255,11 @@ _Coming soon - Screenshots will be added after initial release_
    ```
 
 4. **Start the development server**
+
    ```bash
    # Start the full development environment
    npm run dev
-   
+
    # Or start individual processes
    npm run dev:main      # Start main process only
    npm run dev:renderer  # Start renderer process only
@@ -168,16 +301,21 @@ _Coming soon - Screenshots will be added after initial release_
 4. Watch as the AI executes tools and provides responses
 5. Expand the "Tools Used" section to see detailed execution information
 
-### Converting APIs to MCP Servers
+### Converting APIs to MCP Servers (Key Feature)
 
-1. Navigate to the "API to MCP" tab
-2. Click "Build New API to MCP Server"
-3. Fill in the API details:
-   - **API Name**: A friendly name for your API
-   - **Base URL**: The base URL of the REST API
-   - **Endpoints**: Define the API endpoints and their parameters
-4. Generate the MCP server code
-5. The generated server will be saved and can be started directly from the interface
+**The fastest way to expand your AI assistant's capabilities:**
+
+1. **Navigate** to the "Public APIs" tab
+2. **Browse or Search** for APIs by category, name, or functionality
+3. **View Details** to see available endpoints and documentation
+4. **Test Endpoints** to ensure the API works as expected
+5. **Convert to MCP** with one click - generates a complete TypeScript MCP server
+6. **Start the Server** directly from the API management interface
+7. **Use in Chat** - the API endpoints are now available as tools for your AI assistant
+
+**Example Workflow:**
+- Find "OpenWeatherMap API" → Test weather endpoint → Convert to MCP → Ask AI "What's the weather in Tokyo?"
+- Find "Language Translation API" → Test translation → Convert to MCP → Ask AI "Translate 'Hello' to French"
 
 ## Configuration
 
@@ -306,17 +444,32 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Roadmap
 
-- [x] Plugin system for custom MCP servers
-- [x] API to MCP server conversion tool
-- [x] Code generation for TypeScript MCP servers
-- [ ] Multi-language support
-- [ ] Advanced server management features
-- [ ] Cloud synchronization
-- [ ] Custom themes and styling options
-- [ ] Performance monitoring and analytics
-- [ ] Docker container support
-- [ ] CLI tool for server management
-- [ ] Support for additional programming languages in code generation
+### 🎯 Completed Features
+- [x] **Public API Discovery Engine** - Browse 1000+ APIs from multiple sources
+- [x] **Interactive API Testing** - Test endpoints with parameter validation
+- [x] **One-Click API to MCP Conversion** - Automatic server generation
+- [x] **Virtual Scrolling** - Optimized performance for large datasets
+- [x] **Real-time Status Updates** - Live server connection monitoring
+- [x] **Enhanced Code Generation** - Production-ready TypeScript MCP servers
+- [x] **Beautiful Loading States** - Modern UI with smooth animations
+
+### 🚀 Upcoming Features
+- [ ] **Multi-language Support** - Support for Python, JavaScript, and Go MCP server generation
+- [ ] **API Collections** - Save and organize favorite APIs for quick access
+- [ ] **Custom API Import** - Import custom OpenAPI specs from URLs or files
+- [ ] **Webhook Support** - Handle webhook endpoints in generated servers
+- [ ] **API Monitoring** - Track usage, performance, and error rates
+- [ ] **Cloud Sync** - Synchronize servers and configurations across devices
+- [ ] **Plugin Marketplace** - Community-contributed API plugins and templates
+- [ ] **Advanced Authentication** - OAuth2 flow handling and token management
+- [ ] **API Versioning** - Support for multiple API versions and migration paths
+- [ ] **Performance Analytics** - Detailed metrics and optimization suggestions
+
+### 🔮 Future Vision
+- [ ] **AI-Powered API Discovery** - Intelligent API recommendations based on user intent
+- [ ] **Natural Language API Query** - "Find me a weather API" → automatic discovery and setup
+- [ ] **Cross-Platform Mobile App** - Companion mobile app for API management
+- [ ] **Enterprise Features** - Team collaboration, role-based access, audit logs
 
 ---
 
