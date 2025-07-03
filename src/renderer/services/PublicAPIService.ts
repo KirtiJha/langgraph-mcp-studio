@@ -95,7 +95,7 @@ class PublicAPIService {
 
   async fetchAllAPIs(
     forceRefresh = false,
-    limit = 50
+    limit?: number // Remove default limit, make it optional
   ): Promise<PublicAPISpec[]> {
     if (!forceRefresh && this.isCacheValid() && this.cache.apis.length > 0) {
       return this.cache.apis;

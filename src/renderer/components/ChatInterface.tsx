@@ -12,6 +12,7 @@ import {
   PlayIcon,
   StopIcon,
   ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import {
   CpuChipIcon as CpuChipIconSolid,
@@ -59,7 +60,8 @@ type ChatMessage = UserMessage | AssistantMessage | ToolExecutionMessage;
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, model?: string) => void;
+  onClearChat?: () => void;
   isLoading?: boolean;
   connectedServers: number;
 }
@@ -67,10 +69,15 @@ interface ChatInterfaceProps {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   messages,
   onSendMessage,
+  onClearChat,
   isLoading = false,
   connectedServers,
 }) => {
   const [input, setInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState(
+    "ibm/granite-3-3-8b-instruct"
+  );
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>(
@@ -80,6 +87,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     Record<string, boolean>
   >({});
 
+  const availableModels = [
+    {
+      id: "ibm/granite-3-3-8b-instruct",
+      name: "Granite 3.3 8B",
+      description: "Latest IBM Granite model - balanced performance",
+      isDefault: true,
+    },
+    {
+      id: "ibm/granite-3-2-8b-instruct",
+      name: "Granite 3.2 8B",
+      description: "Previous IBM Granite model - reliable",
+      isDefault: false,
+    },
+    {
+      id: "meta-llama/llama-3-3-70b-instruct",
+      name: "Llama 3.3 70B",
+      description: "Large Meta Llama model - highest capability",
+      isDefault: false,
+    },
+  ];
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -88,7 +116,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    onSendMessage(input.trim());
+    onSendMessage(input.trim(), selectedModel);
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -126,7 +154,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     message: ToolExecutionMessage,
     index: number
   ) => {
-    const isExpanded = expandedToolExecution[message.id] ?? true; // Default to expanded
+    const isExpanded = expandedToolExecution[message.id] ?? false; // Default to collapsed
     const toggleExpanded = () => {
       setExpandedToolExecution((prev) => ({
         ...prev,
@@ -176,7 +204,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <WrenchScrewdriverIcon className="w-4 h-4 text-amber-400" />
                   </motion.div>
                   <span className="text-sm font-semibold text-amber-300">
-                    AI is executing tools ({message.tools.length})
+                    {message.tools.length === 1
+                      ? `AI is executing ${message.tools[0].name}`
+                      : `AI is executing tools (${message.tools.length})`}
                   </span>
                 </div>
                 <div className="flex gap-1">
@@ -605,28 +635,45 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
           </div>
 
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="flex items-center space-x-2 px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50"
-          >
-            <div
-              className={`w-2 h-2 rounded-full ${
-                isLoading
-                  ? "bg-yellow-400"
+          <div className="flex items-center gap-3">
+            {/* Start New Chat Button */}
+            {messages.length > 0 && onClearChat && (
+              <motion.button
+                onClick={onClearChat}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg text-slate-300 hover:text-white transition-all duration-200 text-sm font-medium"
+                title="Start a new chat session"
+              >
+                <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                <span>New Chat</span>
+              </motion.button>
+            )}
+
+            {/* Status Indicator */}
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="flex items-center space-x-2 px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50"
+            >
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  isLoading
+                    ? "bg-yellow-400"
+                    : connectedServers > 0
+                    ? "bg-emerald-400"
+                    : "bg-slate-500"
+                }`}
+              ></div>
+              <span className="text-sm text-slate-300">
+                {isLoading
+                  ? "Processing..."
                   : connectedServers > 0
-                  ? "bg-emerald-400"
-                  : "bg-slate-500"
-              }`}
-            ></div>
-            <span className="text-sm text-slate-300">
-              {isLoading
-                ? "Processing..."
-                : connectedServers > 0
-                ? "Ready with MCP tools"
-                : "Ready (no MCP tools)"}
-            </span>
-          </motion.div>
+                  ? "Ready with MCP tools"
+                  : "Ready (no MCP tools)"}
+              </span>
+            </motion.div>
+          </div>
         </div>
       </div>
 
@@ -766,7 +813,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 border-t border-slate-800/50 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl"
+        className="px-6 pt-6 pb-3 border-t border-slate-800/50 bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl"
       >
         <form onSubmit={handleSubmit} className="flex gap-4">
           <div className="flex-1 relative group">
@@ -781,10 +828,95 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   : "Ask me anything... (no MCP tools available)"
               }
               disabled={isLoading}
-              className="w-full bg-slate-800/90 backdrop-blur-sm border border-slate-700/50 rounded-xl px-5 py-4 pr-20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 resize-none min-h-[60px] max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg group-hover:shadow-emerald-500/10 focus:shadow-emerald-500/20"
+              className="w-full bg-slate-800/90 backdrop-blur-sm border border-slate-700/50 rounded-xl px-5 py-4 pr-32 pb-12 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 resize-none min-h-[60px] max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg group-hover:shadow-emerald-500/10 focus:shadow-emerald-500/20"
               rows={1}
             />
-            <div className="absolute right-5 bottom-4 flex items-center gap-2">
+
+            {/* Model Selector - Positioned inside textarea */}
+            <div className="absolute left-5 bottom-3 flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-700/60 hover:bg-slate-600/60 border border-slate-600/50 rounded-md text-slate-300 hover:text-white transition-all duration-200 text-xs font-medium"
+                >
+                  <CpuChipIcon className="w-3.5 h-3.5" />
+                  <span>
+                    {availableModels.find((m) => m.id === selectedModel)
+                      ?.name || "Model"}
+                  </span>
+                  <ChevronDownIcon
+                    className={`w-3 h-3 transition-transform duration-200 ${
+                      isModelDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {isModelDropdownOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setIsModelDropdownOpen(false)}
+                      />
+
+                      {/* Dropdown */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute bottom-full mb-2 left-0 w-80 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl z-20 overflow-hidden"
+                      >
+                        <div className="p-2">
+                          <div className="text-xs font-medium text-slate-400 px-3 py-2">
+                            Choose AI Model
+                          </div>
+                          {availableModels.map((model) => (
+                            <button
+                              key={model.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedModel(model.id);
+                                setIsModelDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 ${
+                                selectedModel === model.id
+                                  ? "bg-indigo-500/20 border border-indigo-500/30 text-white"
+                                  : "text-slate-300 hover:text-white hover:bg-slate-700/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-sm">
+                                    {model.name}
+                                    {model.isDefault && (
+                                      <span className="ml-2 text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                                        Default
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-slate-400 mt-1">
+                                    {model.description}
+                                  </div>
+                                </div>
+                                {selectedModel === model.id && (
+                                  <CheckCircleIcon className="w-4 h-4 text-indigo-400" />
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Character Count - Positioned inside textarea */}
+            <div className="absolute right-5 bottom-3 flex items-center gap-2">
               <span
                 className={`text-xs transition-colors duration-200 ${
                   input.length > 1800
@@ -823,32 +955,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             )}
           </motion.button>
         </form>
-
-        <div className="mt-4 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-4 text-slate-500">
-            <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 bg-slate-700/50 border border-slate-600/50 rounded text-xs font-mono">
-                Enter
-              </kbd>
-              <span>to send</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 bg-slate-700/50 border border-slate-600/50 rounded text-xs font-mono">
-                Shift+Enter
-              </kbd>
-              <span>for new line</span>
-            </div>
-          </div>
-          {connectedServers > 0 && (
-            <div className="flex items-center gap-2 text-emerald-400">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span>
-                {connectedServers} server{connectedServers !== 1 ? "s" : ""}{" "}
-                connected
-              </span>
-            </div>
-          )}
-        </div>
       </motion.div>
     </div>
   );

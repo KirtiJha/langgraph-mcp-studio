@@ -15,9 +15,20 @@ import {
   ChartBarIcon,
   WrenchScrewdriverIcon,
   ServerIcon,
+  MagnifyingGlassIcon,
+  BoltIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
-import { APIServerConfig, APIEndpoint } from "../../shared/apiServerTypes";
+import {
+  APIServerConfig,
+  APIEndpoint,
+  APIAuthentication,
+} from "../../shared/apiServerTypes";
 import { API_TEMPLATES } from "../../shared/apiTemplates";
+import { PublicAPISpec } from "../../shared/publicApiTypes";
+import PrivateAPIService from "../services/PrivateAPIService";
+import APIDiscoveryService from "../services/APIDiscoveryService";
+import { OAuth2FlowComponent } from "./OAuth2FlowComponent";
 
 interface APIServerBuilderProps {
   isOpen: boolean;
@@ -60,15 +71,31 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
   >({});
   const [testing, setTesting] = useState(false);
 
+  // Private API discovery state
+  const [discoveryUrl, setDiscoveryUrl] = useState("");
+  const [discovering, setDiscovering] = useState(false);
+  const [discoveryResults, setDiscoveryResults] =
+    useState<PublicAPISpec | null>(null);
+  const [discoveryError, setDiscoveryError] = useState("");
+
+  // Auto-configuration state
+  const [autoConfiguring, setAutoConfiguring] = useState(false);
+  const [autoConfigResults, setAutoConfigResults] = useState<{
+    suggested: APIServerConfig | null;
+    detected: any;
+  }>({ suggested: null, detected: null });
+
   const tabs = [
     { id: 0, name: "Templates", icon: DocumentTextIcon },
     { id: 1, name: "Basic Info", icon: CogIcon },
     { id: 2, name: "Import OpenAPI", icon: CloudArrowUpIcon },
-    { id: 3, name: "Endpoints", icon: PlusIcon },
-    { id: 4, name: "Authentication", icon: LockClosedIcon },
-    { id: 5, name: "Advanced", icon: WrenchScrewdriverIcon },
-    { id: 6, name: "Monitoring", icon: ChartBarIcon },
-    { id: 7, name: "Testing", icon: BeakerIcon },
+    { id: 3, name: "Discover API", icon: MagnifyingGlassIcon },
+    { id: 4, name: "Auto-Config", icon: BoltIcon },
+    { id: 5, name: "Endpoints", icon: PlusIcon },
+    { id: 6, name: "Authentication", icon: LockClosedIcon },
+    { id: 7, name: "Advanced", icon: WrenchScrewdriverIcon },
+    { id: 8, name: "Monitoring", icon: ChartBarIcon },
+    { id: 9, name: "Testing", icon: BeakerIcon },
   ];
 
   useEffect(() => {
@@ -113,6 +140,25 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
       });
     }
   }, [editingServer, isOpen]);
+
+  // Helper function to resolve $ref parameters
+  const resolveParameter = (param: any, spec: any) => {
+    if (param.$ref) {
+      // Extract the reference path (e.g., "#/components/parameters/PathAlbumId")
+      const refPath = param.$ref.replace("#/", "").split("/");
+      let resolved = spec;
+
+      // Navigate to the referenced parameter
+      for (const segment of refPath) {
+        resolved = resolved?.[segment];
+      }
+
+      return resolved;
+    }
+
+    // If not a reference, return the parameter as-is
+    return param;
+  };
 
   const handleImportFromUrl = async () => {
     if (!importUrl.trim()) return;
@@ -167,12 +213,15 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                       operation.description ||
                       `${method.toUpperCase()} ${path}`,
                     parameters:
-                      operation.parameters?.map((p: any) => ({
-                        name: p.name,
-                        type: p.schema?.type || "string",
-                        required: p.required || false,
-                        description: p.description || "",
-                      })) || [],
+                      operation.parameters?.map((p: any) => {
+                        const resolvedParam = resolveParameter(p, spec);
+                        return {
+                          name: resolvedParam.name,
+                          type: resolvedParam.schema?.type || "string",
+                          required: resolvedParam.required || false,
+                          description: resolvedParam.description || "",
+                        };
+                      }) || [],
                     enabled: true,
                   });
                 }
@@ -240,12 +289,15 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                       operation.description ||
                       `${method.toUpperCase()} ${path}`,
                     parameters:
-                      operation.parameters?.map((p: any) => ({
-                        name: p.name,
-                        type: p.schema?.type || "string",
-                        required: p.required || false,
-                        description: p.description || "",
-                      })) || [],
+                      operation.parameters?.map((p: any) => {
+                        const resolvedParam = resolveParameter(p, spec);
+                        return {
+                          name: resolvedParam.name,
+                          type: resolvedParam.schema?.type || "string",
+                          required: resolvedParam.required || false,
+                          description: resolvedParam.description || "",
+                        };
+                      }) || [],
                     enabled: true,
                   });
                 }
@@ -428,6 +480,147 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
     }
 
     setTesting(false);
+  };
+
+  // Private API discovery handler
+  const handleDiscoverAPI = async () => {
+    if (!discoveryUrl.trim()) return;
+
+    setDiscovering(true);
+    setDiscoveryError("");
+    setDiscoveryResults(null);
+
+    try {
+      const result = await APIDiscoveryService.discoverAPI(discoveryUrl, {
+        includeAuth: true,
+        validateEndpoints: true,
+      });
+
+      if (result.api) {
+        setDiscoveryResults(result.api);
+
+        // Optionally auto-populate the server config with discovered info
+        setServerConfig((prev) => ({
+          ...prev,
+          name: result.api?.name || prev.name,
+          description: result.api?.description || prev.description,
+          baseUrl: result.api?.baseUrl || prev.baseUrl,
+        }));
+      }
+    } catch (error) {
+      setDiscoveryError(
+        error instanceof Error ? error.message : "API discovery failed"
+      );
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  // Auto-configuration handler
+  const handleAutoConfig = async () => {
+    if (!serverConfig.baseUrl.trim()) return;
+
+    setAutoConfiguring(true);
+    try {
+      // First discover the API
+      const discoveryResult = await APIDiscoveryService.discoverAPI(
+        serverConfig.baseUrl,
+        {
+          includeAuth: true,
+          validateEndpoints: true,
+        }
+      );
+
+      if (discoveryResult.api) {
+        // Then auto-configure it
+        const configResult = await APIDiscoveryService.autoConfigureAPIServer(
+          discoveryResult.api,
+          {
+            includeAuth: true,
+            validateEndpoints: true,
+            generateDocs: true,
+          }
+        );
+
+        setAutoConfigResults({
+          suggested: configResult,
+          detected: discoveryResult,
+        });
+
+        // Optionally apply the suggested configuration
+        if (configResult) {
+          setServerConfig(configResult);
+        }
+      }
+    } catch (error) {
+      console.error("Auto-configuration failed:", error);
+    } finally {
+      setAutoConfiguring(false);
+    }
+  };
+
+  // Apply discovered configuration
+  const applyDiscoveredConfig = () => {
+    if (!discoveryResults) return;
+
+    const newConfig: APIServerConfig = {
+      ...serverConfig,
+      name: discoveryResults.name || serverConfig.name,
+      description: discoveryResults.description || serverConfig.description,
+      baseUrl: discoveryResults.baseUrl || serverConfig.baseUrl,
+      endpoints:
+        discoveryResults.endpoints?.map((endpoint) => ({
+          id: `endpoint-${Date.now()}-${Math.random()}`,
+          path: endpoint.path,
+          method: endpoint.method as any,
+          toolName:
+            endpoint.summary ||
+            `${endpoint.method}_${endpoint.path.replace(/[^a-zA-Z0-9]/g, "_")}`,
+          description:
+            endpoint.description ||
+            endpoint.summary ||
+            `${endpoint.method} ${endpoint.path}`,
+          parameters:
+            endpoint.parameters?.map((param) => ({
+              name: param.name,
+              type: param.type === "integer" ? "number" : (param.type as any),
+              required: param.required,
+              description: param.description || "",
+            })) || [],
+          enabled: true,
+        })) || serverConfig.endpoints,
+    };
+
+    if (
+      discoveryResults.authentication &&
+      discoveryResults.authentication.type !== "none"
+    ) {
+      // Convert PublicAPISpec authentication to APIServerConfig authentication
+      const convertedAuth: APIAuthentication = {
+        type:
+          discoveryResults.authentication.type === "apiKey"
+            ? "apikey"
+            : (discoveryResults.authentication.type as any),
+        credentials: discoveryResults.authentication.testCredentials || {},
+      };
+
+      // Add specific conversion logic for different auth types
+      switch (discoveryResults.authentication.type) {
+        case "apiKey":
+          convertedAuth.headerName = discoveryResults.authentication.keyName;
+          break;
+        case "oauth2":
+          convertedAuth.oauth2 = {
+            scopes: discoveryResults.authentication.scopes,
+            flow: discoveryResults.authentication.flow as any,
+          };
+          break;
+      }
+
+      newConfig.authentication = convertedAuth;
+    }
+
+    setServerConfig(newConfig);
   };
 
   if (!isOpen) return null;
@@ -740,26 +933,395 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
               </div>
             )}
 
-            {/* Endpoints Tab */}
+            {/* Discover API Tab */}
             {activeTab === 3 && (
+              <div className="space-y-6">
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-purple-300 mb-2">
+                    <MagnifyingGlassIcon className="w-4 h-4 inline mr-2" />
+                    Private API Discovery
+                  </h4>
+                  <p className="text-xs text-purple-200/80">
+                    Analyze and discover endpoints from private or internal
+                    APIs. This will inspect the API and attempt to identify
+                    available endpoints and authentication methods.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    API Base URL *
+                  </label>
+                  <input
+                    type="url"
+                    value={discoveryUrl}
+                    onChange={(e) => setDiscoveryUrl(e.target.value)}
+                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="https://api.example.com"
+                  />
+                </div>
+
+                <button
+                  onClick={handleDiscoverAPI}
+                  disabled={!discoveryUrl.trim() || discovering}
+                  className="w-full bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 hover:border-purple-500/50 text-purple-300 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {discovering ? (
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <MagnifyingGlassIcon className="w-4 h-4" />
+                  )}
+                  {discovering ? "Discovering..." : "Discover API"}
+                </button>
+
+                {discoveryError && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <p className="text-sm text-red-300">{discoveryError}</p>
+                  </div>
+                )}
+
+                {discoveryResults && (
+                  <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-sm font-medium text-slate-300">
+                        Discovery Results
+                      </h4>
+                      <button
+                        onClick={applyDiscoveredConfig}
+                        className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-300 px-3 py-1 rounded text-xs font-medium transition-colors"
+                      >
+                        Apply Configuration
+                      </button>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="text-slate-400">Name:</span>{" "}
+                        <span className="text-white">
+                          {discoveryResults.name}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Base URL:</span>{" "}
+                        <span className="text-white">
+                          {discoveryResults.baseUrl}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Endpoints:</span>{" "}
+                        <span className="text-white">
+                          {discoveryResults.endpoints?.length || 0} found
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Authentication:</span>{" "}
+                        <span className="text-white">
+                          {discoveryResults.authentication?.type === "apiKey"
+                            ? "API Key"
+                            : discoveryResults.authentication?.type === "oauth2"
+                            ? "OAuth 2.0"
+                            : discoveryResults.authentication?.type === "bearer"
+                            ? "Bearer Token"
+                            : discoveryResults.authentication?.type === "basic"
+                            ? "Basic Auth"
+                            : discoveryResults.authentication?.type || "none"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Auto-Config Tab */}
+            {activeTab === 4 && (
+              <div className="space-y-6">
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-orange-300 mb-2">
+                    <BoltIcon className="w-4 h-4 inline mr-2" />
+                    Intelligent Auto-Configuration
+                  </h4>
+                  <p className="text-xs text-orange-200/80">
+                    Automatically analyze and configure your API server based on
+                    the base URL. This will attempt to detect OpenAPI specs,
+                    introspect GraphQL schemas, and discover endpoints.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    API Base URL
+                  </label>
+                  <input
+                    type="url"
+                    value={serverConfig.baseUrl}
+                    onChange={(e) =>
+                      setServerConfig({
+                        ...serverConfig,
+                        baseUrl: e.target.value,
+                      })
+                    }
+                    className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="https://api.example.com"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    Auto-configuration will use this URL to discover API
+                    capabilities
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleAutoConfig}
+                  disabled={!serverConfig.baseUrl.trim() || autoConfiguring}
+                  className="w-full bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 hover:border-orange-500/50 text-orange-300 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {autoConfiguring ? (
+                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <BoltIcon className="w-4 h-4" />
+                  )}
+                  {autoConfiguring ? "Auto-Configuring..." : "Auto-Configure"}
+                </button>
+
+                {autoConfigResults.suggested && (
+                  <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-slate-300 mb-3">
+                      Suggested Configuration
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="text-slate-400">Name:</span>{" "}
+                        <span className="text-white">
+                          {autoConfigResults.suggested.name}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Description:</span>{" "}
+                        <span className="text-white">
+                          {autoConfigResults.suggested.description}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Endpoints:</span>{" "}
+                        <span className="text-white">
+                          {autoConfigResults.suggested.endpoints?.length || 0}{" "}
+                          detected
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Authentication:</span>{" "}
+                        <span className="text-white">
+                          {autoConfigResults.suggested.authentication?.type ||
+                            "none"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {autoConfigResults.detected && (
+                      <div className="mt-4 pt-3 border-t border-slate-700/50">
+                        <h5 className="text-xs font-medium text-slate-400 mb-2">
+                          Detection Details
+                        </h5>
+                        <div className="space-y-1 text-xs">
+                          {autoConfigResults.detected.openApiSpec && (
+                            <div className="text-green-400">
+                              ✓ OpenAPI specification detected
+                            </div>
+                          )}
+                          {autoConfigResults.detected.graphqlSchema && (
+                            <div className="text-green-400">
+                              ✓ GraphQL schema detected
+                            </div>
+                          )}
+                          {autoConfigResults.detected.restEndpoints && (
+                            <div className="text-green-400">
+                              ✓ REST endpoints discovered
+                            </div>
+                          )}
+                          {autoConfigResults.detected.authentication && (
+                            <div className="text-green-400">
+                              ✓ Authentication method identified
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Endpoints Tab */}
+            {activeTab === 5 && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-white">
                     API Endpoints
                   </h3>
-                  <p className="text-sm text-slate-400">
-                    {serverConfig.endpoints?.length || 0} endpoints configured
-                  </p>
+                  <div className="flex items-center gap-4">
+                    <p className="text-sm text-slate-400">
+                      {serverConfig.endpoints?.length || 0} endpoints configured
+                    </p>
+                    <button
+                      onClick={() => {
+                        const newEndpoint: APIEndpoint = {
+                          id: `endpoint-${Date.now()}`,
+                          path: "",
+                          method: "GET",
+                          toolName: "",
+                          description: "",
+                          parameters: [],
+                          enabled: true,
+                        };
+                        setServerConfig({
+                          ...serverConfig,
+                          endpoints: [
+                            ...(serverConfig.endpoints || []),
+                            newEndpoint,
+                          ],
+                        });
+                      }}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      Add Endpoint
+                    </button>
+                  </div>
                 </div>
 
                 {serverConfig.endpoints && serverConfig.endpoints.length > 0 ? (
                   <div className="space-y-4">
-                    {serverConfig.endpoints.map((endpoint) => (
+                    {serverConfig.endpoints.map((endpoint, index) => (
                       <div
                         key={endpoint.id}
                         className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4"
                       >
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                              Method
+                            </label>
+                            <select
+                              value={endpoint.method}
+                              onChange={(e) => {
+                                const updatedEndpoints = [
+                                  ...serverConfig.endpoints,
+                                ];
+                                updatedEndpoints[index] = {
+                                  ...endpoint,
+                                  method: e.target
+                                    .value as APIEndpoint["method"],
+                                };
+                                setServerConfig({
+                                  ...serverConfig,
+                                  endpoints: updatedEndpoints,
+                                });
+                              }}
+                              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="GET">GET</option>
+                              <option value="POST">POST</option>
+                              <option value="PUT">PUT</option>
+                              <option value="DELETE">DELETE</option>
+                              <option value="PATCH">PATCH</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                              Path
+                            </label>
+                            <input
+                              type="text"
+                              value={endpoint.path}
+                              onChange={(e) => {
+                                const updatedEndpoints = [
+                                  ...serverConfig.endpoints,
+                                ];
+                                updatedEndpoints[index] = {
+                                  ...endpoint,
+                                  path: e.target.value,
+                                };
+                                setServerConfig({
+                                  ...serverConfig,
+                                  endpoints: updatedEndpoints,
+                                });
+                              }}
+                              placeholder="/api/users"
+                              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                              Tool Name
+                            </label>
+                            <input
+                              type="text"
+                              value={endpoint.toolName}
+                              onChange={(e) => {
+                                const updatedEndpoints = [
+                                  ...serverConfig.endpoints,
+                                ];
+                                updatedEndpoints[index] = {
+                                  ...endpoint,
+                                  toolName: e.target.value,
+                                };
+                                setServerConfig({
+                                  ...serverConfig,
+                                  endpoints: updatedEndpoints,
+                                });
+                              }}
+                              placeholder="get_users"
+                              className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              onClick={() => {
+                                const updatedEndpoints =
+                                  serverConfig.endpoints.filter(
+                                    (_, i) => i !== index
+                                  );
+                                setServerConfig({
+                                  ...serverConfig,
+                                  endpoints: updatedEndpoints,
+                                });
+                              }}
+                              className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Description
+                          </label>
+                          <input
+                            type="text"
+                            value={endpoint.description}
+                            onChange={(e) => {
+                              const updatedEndpoints = [
+                                ...serverConfig.endpoints,
+                              ];
+                              updatedEndpoints[index] = {
+                                ...endpoint,
+                                description: e.target.value,
+                              };
+                              setServerConfig({
+                                ...serverConfig,
+                                endpoints: updatedEndpoints,
+                              });
+                            }}
+                            placeholder="Get all users from the system"
+                            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-3">
                           <span
                             className={`px-2 py-1 text-xs font-medium rounded ${
                               endpoint.method === "GET"
@@ -776,15 +1338,12 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                             {endpoint.method}
                           </span>
                           <span className="text-white font-mono">
-                            {endpoint.path}
+                            {endpoint.path || "/api/path"}
+                          </span>
+                          <span className="text-slate-400 text-sm">
+                            → {endpoint.toolName || "tool_name"}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-300">
-                          {endpoint.description}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Tool: {endpoint.toolName}
-                        </p>
                       </div>
                     ))}
                   </div>
@@ -792,16 +1351,39 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                   <div className="text-center py-12 text-slate-400">
                     <PlusIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No endpoints configured</p>
-                    <p className="text-sm">
-                      Import from OpenAPI spec to get started
+                    <p className="text-sm mb-4">
+                      Add endpoints manually or import from OpenAPI spec
                     </p>
+                    <button
+                      onClick={() => {
+                        const newEndpoint: APIEndpoint = {
+                          id: `endpoint-${Date.now()}`,
+                          path: "/oauth2/v2/userinfo",
+                          method: "GET",
+                          toolName: "get_user_profile",
+                          description:
+                            "Get authenticated user's profile information",
+                          parameters: [],
+                          enabled: true,
+                        };
+                        setServerConfig({
+                          ...serverConfig,
+                          endpoints: [newEndpoint],
+                        });
+                      }}
+                      className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2 mx-auto"
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                      Add Your First Endpoint
+                    </button>
                   </div>
                 )}
               </div>
             )}
 
             {/* Authentication Tab */}
-            {activeTab === 4 && (
+            {/* Authentication Tab */}
+            {activeTab === 6 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">
                   Authentication
@@ -828,6 +1410,12 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                     <option value="apikey">API Key</option>
                     <option value="bearer">Bearer Token</option>
                     <option value="basic">Basic Auth</option>
+                    <option value="oauth2">OAuth 2.0</option>
+                    <option value="jwt">JWT</option>
+                    <option value="digest">Digest Auth</option>
+                    <option value="aws-signature">AWS Signature</option>
+                    <option value="mutual-tls">Mutual TLS</option>
+                    <option value="custom">Custom</option>
                   </select>
                 </div>
 
@@ -882,11 +1470,269 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                     </div>
                   </>
                 )}
+
+                {serverConfig.authentication?.type === "bearer" && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Bearer Token
+                    </label>
+                    <input
+                      type="password"
+                      value={
+                        serverConfig.authentication.credentials?.token || ""
+                      }
+                      onChange={(e) =>
+                        setServerConfig({
+                          ...serverConfig,
+                          authentication: {
+                            ...serverConfig.authentication!,
+                            credentials: {
+                              ...serverConfig.authentication!.credentials,
+                              token: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                      className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="your-bearer-token"
+                    />
+                  </div>
+                )}
+
+                {serverConfig.authentication?.type === "basic" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          serverConfig.authentication.credentials?.username ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          setServerConfig({
+                            ...serverConfig,
+                            authentication: {
+                              ...serverConfig.authentication!,
+                              credentials: {
+                                ...serverConfig.authentication!.credentials,
+                                username: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="username"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        value={
+                          serverConfig.authentication.credentials?.password ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          setServerConfig({
+                            ...serverConfig,
+                            authentication: {
+                              ...serverConfig.authentication!,
+                              credentials: {
+                                ...serverConfig.authentication!.credentials,
+                                password: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="password"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {serverConfig.authentication?.type === "oauth2" && (
+                  <OAuth2FlowComponent
+                    serverConfig={serverConfig}
+                    setServerConfig={setServerConfig}
+                    serverId={serverConfig.id}
+                    onTokenReceived={(token) => {
+                      console.log("OAuth2 token received:", token);
+                      // Token is automatically stored in the serverConfig by the component
+                    }}
+                  />
+                )}
+
+                {serverConfig.authentication?.type === "aws-signature" && (
+                  <>
+                    <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+                      <p className="text-sm text-orange-300">
+                        AWS Signature v4 authentication for AWS services.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Access Key ID
+                        </label>
+                        <input
+                          type="text"
+                          value={
+                            serverConfig.authentication.awsSignature
+                              ?.accessKeyId || ""
+                          }
+                          onChange={(e) =>
+                            setServerConfig({
+                              ...serverConfig,
+                              authentication: {
+                                ...serverConfig.authentication!,
+                                awsSignature: {
+                                  ...serverConfig.authentication!.awsSignature,
+                                  accessKeyId: e.target.value,
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="AKIAIOSFODNN7EXAMPLE"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Secret Access Key
+                        </label>
+                        <input
+                          type="password"
+                          value={
+                            serverConfig.authentication.awsSignature
+                              ?.secretAccessKey || ""
+                          }
+                          onChange={(e) =>
+                            setServerConfig({
+                              ...serverConfig,
+                              authentication: {
+                                ...serverConfig.authentication!,
+                                awsSignature: {
+                                  ...serverConfig.authentication!.awsSignature,
+                                  secretAccessKey: e.target.value,
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="secret-key"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Region
+                        </label>
+                        <input
+                          type="text"
+                          value={
+                            serverConfig.authentication.awsSignature?.region ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            setServerConfig({
+                              ...serverConfig,
+                              authentication: {
+                                ...serverConfig.authentication!,
+                                awsSignature: {
+                                  ...serverConfig.authentication!.awsSignature,
+                                  region: e.target.value,
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="us-east-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Service
+                        </label>
+                        <input
+                          type="text"
+                          value={
+                            serverConfig.authentication.awsSignature?.service ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            setServerConfig({
+                              ...serverConfig,
+                              authentication: {
+                                ...serverConfig.authentication!,
+                                awsSignature: {
+                                  ...serverConfig.authentication!.awsSignature,
+                                  service: e.target.value,
+                                },
+                              },
+                            })
+                          }
+                          className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="execute-api"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {serverConfig.authentication?.type === "custom" && (
+                  <>
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
+                      <p className="text-sm text-purple-300">
+                        Custom authentication allows you to define custom
+                        headers and request processing logic.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Custom Headers (JSON)
+                      </label>
+                      <textarea
+                        value={JSON.stringify(
+                          serverConfig.authentication.custom?.headers || {},
+                          null,
+                          2
+                        )}
+                        onChange={(e) => {
+                          try {
+                            const headers = JSON.parse(e.target.value);
+                            setServerConfig({
+                              ...serverConfig,
+                              authentication: {
+                                ...serverConfig.authentication!,
+                                custom: {
+                                  ...serverConfig.authentication!.custom,
+                                  headers,
+                                },
+                              },
+                            });
+                          } catch (error) {
+                            // Invalid JSON, ignore
+                          }
+                        }}
+                        rows={4}
+                        className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        placeholder='{"Authorization": "Custom token", "X-Custom-Header": "value"}'
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
             {/* Advanced Tab */}
-            {activeTab === 5 && (
+            {activeTab === 7 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">
                   Advanced Configuration
@@ -1068,7 +1914,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Monitoring Tab */}
-            {activeTab === 6 && (
+            {activeTab === 8 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">
                   Monitoring & Logging
@@ -1283,7 +2129,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Testing Tab */}
-            {activeTab === 7 && (
+            {activeTab === 9 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <BeakerIcon className="w-5 h-5" />

@@ -49,6 +49,18 @@ const shortcuts: KeyboardShortcut[] = [
     category: "Navigation",
   },
   {
+    key: "Cmd+6",
+    description: "Switch to Public APIs",
+    action: "switch-public-apis",
+    category: "Navigation",
+  },
+  {
+    key: "Cmd+7",
+    description: "Switch to Private APIs",
+    action: "switch-private-apis",
+    category: "Navigation",
+  },
+  {
     key: "Cmd+N",
     description: "Add New Server",
     action: "add-server",

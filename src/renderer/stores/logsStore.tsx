@@ -39,6 +39,12 @@ export const LogsProvider: React.FC<LogsProviderProps> = ({ children }) => {
 
   const loadLogs = async () => {
     try {
+      if (!window.electronAPI) {
+        console.warn(
+          "ElectronAPI not available - logs not accessible in browser mode"
+        );
+        return;
+      }
       const logs = await (window as any).electronAPI.getLogs();
       setLogsState(logs);
     } catch (error) {

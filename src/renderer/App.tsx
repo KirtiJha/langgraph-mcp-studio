@@ -14,10 +14,9 @@ import {
   CogIcon,
   ClipboardDocumentListIcon,
   GlobeAltIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-
-// Add logging to track app initialization
-console.log("📱 App.tsx: Component loading...");
 
 // Components
 import StatusBar from "./components/StatusBar";
@@ -40,6 +39,8 @@ import DevModeIndicator from "./components/DevModeIndicator";
 import APIServerService from "./services/APIServerService";
 import PublicAPIToMCPService from "./services/PublicAPIToMCPService";
 import { LogsProvider } from "./stores/logsStore";
+import { ThemeProvider } from "./providers/ThemeProvider";
+import { SettingsProvider } from "./providers/SettingsProvider";
 
 // Types
 import {
@@ -56,6 +57,9 @@ interface ServerStatus {
   name: string;
   connected: boolean;
   error?: string;
+  uptime?: number;
+  lastActivity?: Date;
+  connectionStartTime?: Date;
 }
 
 interface BaseChatMessage {
@@ -98,16 +102,6 @@ interface ToolExecutionMessage extends BaseChatMessage {
 type ChatMessage = UserMessage | AssistantMessage | ToolExecutionMessage;
 
 function App() {
-  console.log("📱 App function: Component initializing...");
-
-  // Debug environment variables
-  console.log("🔍 Environment check:", {
-    NODE_ENV: process.env.NODE_ENV,
-    __DEV__: typeof __DEV__ !== "undefined" ? __DEV__ : "undefined",
-    isDevelopment: process.env.NODE_ENV === "development",
-    location: window.location.href,
-  });
-
   // Authentication state with persistence
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // In development mode, optionally reset auth state
@@ -117,13 +111,11 @@ function App() {
 
     if (resetAuth) {
       localStorage.removeItem("mcp_studio_authenticated");
-      console.log("🔐 Auth state reset for development");
       return false;
     }
 
     const authState =
       localStorage.getItem("mcp_studio_authenticated") === "true";
-    console.log("🔐 Auth state loaded:", authState);
     return authState;
   });
 
@@ -136,7 +128,6 @@ function App() {
 
   // Wrapper for setSelectedTab with logging
   const setSelectedTab = (tab: string) => {
-    console.log("🔄 Tab change requested:", tab);
     _setSelectedTab(tab);
   };
   const [isLoading, setIsLoading] = useState(true);
@@ -144,6 +135,7 @@ function App() {
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAddServerOpen, setIsAddServerOpen] = useState(false);
   const [isServerConfigOpen, setIsServerConfigOpen] = useState(false);
   const [selectedServerConfig, setSelectedServerConfig] =
@@ -160,8 +152,8 @@ function App() {
   } | null>(null);
 
   useEffect(() => {
-    // Only load data if authenticated
-    if (isAuthenticated) {
+    // Only load data if authenticated and electronAPI is available
+    if (isAuthenticated && window.electronAPI) {
       loadData();
 
       // Set up event listeners for real-time server status updates
@@ -172,7 +164,14 @@ function App() {
           // Update the specific server's status
           setServers((prevServers) =>
             prevServers.map((server) =>
-              server.id === serverId ? { ...server, connected: true } : server
+              server.id === serverId
+                ? {
+                    ...server,
+                    connected: true,
+                    connectionStartTime: new Date(),
+                    uptime: 0,
+                  }
+                : server
             )
           );
           // Refresh tools list to get the latest tools from the connected server
@@ -201,7 +200,14 @@ function App() {
           // Update the specific server's status
           setServers((prevServers) =>
             prevServers.map((server) =>
-              server.id === serverId ? { ...server, connected: false } : server
+              server.id === serverId
+                ? {
+                    ...server,
+                    connected: false,
+                    uptime: 0,
+                    connectionStartTime: undefined,
+                  }
+                : server
             )
           );
           // Remove tools from disconnected server
@@ -235,6 +241,35 @@ function App() {
     }
   }, [isAuthenticated]);
 
+  // Set up periodic refresh for server data (uptime and last activity)
+  useEffect(() => {
+    if (!isAuthenticated || !window.electronAPI) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const serverList = await window.electronAPI.listServers();
+
+        // Convert date strings back to Date objects for servers
+        const processedServers = serverList.map((server: any) => ({
+          ...server,
+          lastActivity: server.lastActivity
+            ? new Date(server.lastActivity)
+            : undefined,
+          connectionStartTime: server.connectionStartTime
+            ? new Date(server.connectionStartTime)
+            : undefined,
+        }));
+
+        setServers(processedServers);
+        setLastUpdate(new Date());
+      } catch (error) {
+        console.error("Error refreshing server data:", error);
+      }
+    }, 5000); // Refresh every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   const handleLogin = () => {
     setIsAuthenticated(true);
     localStorage.setItem("mcp_studio_authenticated", "true");
@@ -253,17 +288,33 @@ function App() {
 
   const loadData = async () => {
     try {
-      console.log("App.tsx: Loading data...");
       setIsLoading(true);
+
+      // Check if electronAPI is available
+      if (!window.electronAPI) {
+        console.warn("ElectronAPI not available - running in browser mode");
+        setIsLoading(false);
+        return;
+      }
+
       const [serverList, toolList, apiServerList] = await Promise.all([
         window.electronAPI.listServers(),
         window.electronAPI.listTools(),
         APIServerService.getAllServers(),
       ]);
-      console.log("App.tsx: Loaded servers:", serverList);
-      console.log("App.tsx: Loaded tools:", toolList);
-      console.log("App.tsx: Loaded API servers:", apiServerList);
-      setServers(serverList);
+
+      // Convert date strings back to Date objects for servers
+      const processedServers = serverList.map((server: any) => ({
+        ...server,
+        lastActivity: server.lastActivity
+          ? new Date(server.lastActivity)
+          : undefined,
+        connectionStartTime: server.connectionStartTime
+          ? new Date(server.connectionStartTime)
+          : undefined,
+      }));
+
+      setServers(processedServers);
       setTools(toolList);
       setApiServers(apiServerList);
 
@@ -416,7 +467,10 @@ function App() {
     );
   };
 
-  const sendMessage = async (message: string) => {
+  const sendMessage = async (
+    message: string,
+    model: string = "ibm/granite-3-3-8b-instruct"
+  ) => {
     if (!message.trim() || isSending) return;
 
     const userMessage: UserMessage = {
@@ -430,32 +484,62 @@ function App() {
     setIsSending(true);
 
     try {
-      const response = await window.electronAPI.sendMessage(message);
+      const response = await window.electronAPI.sendMessage(message, model);
+
+      // Extract the thought section from the response content (if it starts with 💭)
+      let thoughtContent = "";
+      let cleanContent = response.content;
+
+      if (response.content.startsWith("💭")) {
+        const thoughtMatch = response.content.match(
+          /💭 \*\*My Plan\*\*: (.*?)(?:\n\n)([\s\S]*)/
+        );
+        if (thoughtMatch) {
+          thoughtContent = thoughtMatch[1];
+          cleanContent = thoughtMatch[2];
+        }
+      }
+
+      // If we have a thought, show it first
+      if (thoughtContent) {
+        const thoughtMessage: AssistantMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: thoughtContent,
+          timestamp: new Date(),
+        };
+        setChatMessages((prev) => [...prev, thoughtMessage]);
+      }
 
       // Check if the response contains tool calls information
       if (response.toolCalls && response.toolCalls.length > 0) {
-        // Create a tool execution message first
-        const toolExecutionMessage: ToolExecutionMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "tool-execution",
-          content: "Executing tools...",
-          timestamp: new Date(),
-          tools: response.toolCalls.map((tool: any) => ({
-            name: tool.name,
-            args: tool.args,
-            result: tool.result,
-            status: "completed" as const,
-            duration: tool.duration,
-          })),
-        };
-        setChatMessages((prev) => [...prev, toolExecutionMessage]);
+        // Create separate tool execution messages for each tool
+        const toolExecutionMessages: ToolExecutionMessage[] =
+          response.toolCalls.map((tool: any, index: number) => ({
+            id: (Date.now() + 2 + index).toString(),
+            role: "tool-execution" as const,
+            content: `Executing ${tool.name}...`,
+            timestamp: new Date(),
+            tools: [
+              {
+                name: tool.name,
+                args: tool.args,
+                result: tool.result,
+                status: "completed" as const,
+                duration: tool.duration,
+              },
+            ],
+          }));
+
+        // Add all tool execution messages at once
+        setChatMessages((prev) => [...prev, ...toolExecutionMessages]);
       }
 
-      // Then add the assistant's response
+      // Then add the assistant's clean response (without the thought section)
       const assistantMessage: AssistantMessage = {
-        id: (Date.now() + 2).toString(),
+        id: (Date.now() + 100).toString(),
         role: "assistant",
-        content: response.content,
+        content: cleanContent,
         timestamp: new Date(),
         toolCalls: response.toolCalls,
       };
@@ -474,6 +558,10 @@ function App() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const clearChat = () => {
+    setChatMessages([]);
   };
 
   const handleKeyboardAction = (action: string) => {
@@ -495,6 +583,9 @@ function App() {
         break;
       case "switch-public-apis":
         setSelectedTab("public-apis");
+        break;
+      case "switch-private-apis":
+        setSelectedTab("private-apis");
         break;
       case "add-server":
         setIsAddServerOpen(true);
@@ -523,22 +614,29 @@ function App() {
     args: any,
     serverId?: string
   ) => {
-    // Mock implementation - replace with actual API call
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (Math.random() > 0.3) {
-          resolve({
-            success: true,
-            result: `Tool ${toolName} executed successfully${
-              serverId ? ` on server ${serverId}` : ""
-            }`,
-            data: args,
-          });
-        } else {
-          reject(new Error(`Failed to execute tool ${toolName}`));
-        }
-      }, 1000 + Math.random() * 2000);
-    });
+    try {
+      console.log(
+        `🔧 Executing tool ${toolName} on server ${serverId} with args:`,
+        args
+      );
+
+      if (!serverId) {
+        throw new Error("No server ID provided for tool execution");
+      }
+
+      // Make actual IPC call to execute the tool
+      const result = await window.electronAPI.executeTool(
+        serverId,
+        toolName,
+        args
+      );
+
+      console.log(`✅ Tool ${toolName} executed successfully:`, result);
+      return result;
+    } catch (error) {
+      console.error(`❌ Tool ${toolName} execution failed:`, error);
+      throw error;
+    }
   };
 
   const handleConvertPublicAPIToMCP = async (publicAPI: PublicAPISpec) => {
@@ -568,250 +666,107 @@ function App() {
     }
   };
 
+  const handleCreateAPIServer = async (config: APIServerConfig) => {
+    try {
+      // Create the API server using the existing service
+      await APIServerService.saveServer(config);
+
+      // Reload data to reflect the new server
+      await loadData();
+
+      // Switch to the API servers tab to show the newly created server
+      setSelectedTab("api-servers");
+
+      // Show success notification
+      console.log(`Successfully created API server: ${config.name}`);
+    } catch (error) {
+      console.error("Failed to create API server:", error);
+      // Show error notification
+      alert(
+        `Failed to create API server: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  };
+
   return (
     <ErrorBoundary>
-      <LogsProvider>
-        {!isAuthenticated ? (
-          <LandingPage onLogin={handleLogin} />
-        ) : isLoading ? (
-          <LoadingScreen message="Initializing MCP Studio..." />
-        ) : (
-          <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased overflow-hidden">
-            {/* Development Mode Indicator */}
-            <DevModeIndicator
-              message="Development Mode Active"
-              position="top"
-            />
+      <ThemeProvider>
+        <SettingsProvider>
+          <LogsProvider>
+            {!isAuthenticated ? (
+              <LandingPage onLogin={handleLogin} />
+            ) : isLoading ? (
+              <LoadingScreen message="Initializing MCP Studio..." />
+            ) : (
+              <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased overflow-hidden">
+                {/* Development Mode Indicator */}
+                <DevModeIndicator
+                  message="Development Mode Active"
+                  position="top"
+                />
 
-            {/* Keyboard Shortcuts Handler */}
-            <KeyboardShortcuts onAction={handleKeyboardAction} />
+                {/* Keyboard Shortcuts Handler */}
+                <KeyboardShortcuts onAction={handleKeyboardAction} />
 
-            {/* Settings Modal */}
-            <SettingsModal
-              isOpen={isSettingsOpen}
-              onClose={() => setIsSettingsOpen(false)}
-            />
+                {/* Settings Modal */}
+                <SettingsModal
+                  isOpen={isSettingsOpen}
+                  onClose={() => setIsSettingsOpen(false)}
+                />
 
-            {/* Add Server Dialog */}
-            <AddServerDialog
-              open={isAddServerOpen}
-              onClose={() => setIsAddServerOpen(false)}
-              onAdd={handleAddServer}
-            />
+                {/* Add Server Dialog */}
+                <AddServerDialog
+                  open={isAddServerOpen}
+                  onClose={() => setIsAddServerOpen(false)}
+                  onAdd={handleAddServer}
+                />
 
-            {/* Server Configuration Modal */}
-            <ServerConfigModal
-              isOpen={isServerConfigOpen}
-              onClose={handleCloseServerConfig}
-              onSave={(config) => {
-                handleSaveServerConfig(config);
-              }}
-              serverConfig={selectedServerConfig}
-              mode={serverConfigMode}
-            />
+                {/* Server Configuration Modal */}
+                <ServerConfigModal
+                  isOpen={isServerConfigOpen}
+                  onClose={handleCloseServerConfig}
+                  onSave={(config) => {
+                    handleSaveServerConfig(config);
+                  }}
+                  serverConfig={selectedServerConfig}
+                  mode={serverConfigMode}
+                />
 
-            {/* Delete Server Confirmation Dialog */}
-            <ConfirmDialog
-              open={isDeleteDialogOpen}
-              title="Delete Server"
-              message={`Are you sure you want to delete the server "${serverToDelete?.name}"? This action cannot be undone.`}
-              confirmText="Delete"
-              cancelText="Cancel"
-              onConfirm={confirmDeleteServer}
-              onCancel={cancelDeleteServer}
-              destructive={true}
-            />
-            {/* Modern Header with Glass Effect */}
-            <motion.header
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50 px-6 py-3 relative"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5"></div>
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Logo size="sm" />
-                  <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
-                      MCP Studio
-                    </h1>
-                    <p className="text-xs text-slate-400 font-medium">
-                      Model Context Protocol Client
-                    </p>
-                  </div>
-                </div>
+                {/* Delete Server Confirmation Dialog */}
+                <ConfirmDialog
+                  open={isDeleteDialogOpen}
+                  title="Delete Server"
+                  message={`Are you sure you want to delete the server "${serverToDelete?.name}"? This action cannot be undone.`}
+                  confirmText="Delete"
+                  cancelText="Cancel"
+                  onConfirm={confirmDeleteServer}
+                  onCancel={cancelDeleteServer}
+                  destructive={true}
+                />
+                {/* Modern Header with Glass Effect */}
+                <motion.header
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50 px-6 py-3 relative z-30 titlebar"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5"></div>
+                  <div className="relative flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <Logo size="sm" />
+                      <div>
+                        <h1 className="text-lg font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
+                          MCP Studio
+                        </h1>
+                        <p className="text-xs text-slate-400 font-medium">
+                          Model Context Protocol Client
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2 px-2.5 py-1.5 bg-slate-800/50 rounded-md border border-slate-700/50">
-                    <div
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        servers.some((s) => s.connected)
-                          ? "bg-emerald-400"
-                          : "bg-slate-500"
-                      }`}
-                    ></div>
-                    <span className="text-xs text-slate-300">
-                      {servers.filter((s) => s.connected).length} /{" "}
-                      {servers.length} connected
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => setIsAddServerOpen(true)}
-                    className="group relative bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-1.5 rounded-lg flex items-center space-x-2 transition-all duration-200 shadow-md hover:shadow-indigo-500/25 hover:scale-105 text-sm"
-                  >
-                    <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                    <PlusIcon className="w-3.5 h-3.5 relative z-10" />
-                    <span className="font-medium relative z-10">
-                      Add Server
-                    </span>
-                  </button>
-
-                  <UserMenu
-                    onLogout={handleLogout}
-                    onSettings={() => setIsSettingsOpen(true)}
-                  />
-                </div>
-              </div>
-            </motion.header>
-
-            <div className="flex flex-1 overflow-hidden">
-              {/* Enhanced Sidebar */}
-              <aside className="w-64 bg-slate-900/50 backdrop-blur-xl border-r border-slate-800/50 flex flex-col">
-                {/* Navigation */}
-                <nav className="p-4">
-                  <div className="space-y-2">
-                    {[
-                      {
-                        id: "servers",
-                        label: "MCP Servers",
-                        icon: ServerIcon,
-                        count: servers.length,
-                        color: "emerald",
-                      },
-                      {
-                        id: "public-apis",
-                        label: "Public APIs",
-                        icon: GlobeAltIcon,
-                        count: 0,
-                        color: "cyan",
-                      },
-                      {
-                        id: "api-servers",
-                        label: "API to MCP",
-                        icon: ServerIcon,
-                        count: apiServers.length,
-                        color: "indigo",
-                      },
-                      {
-                        id: "tools",
-                        label: "Tools",
-                        icon: WrenchScrewdriverIcon,
-                        count: tools.length,
-                        color: "blue",
-                      },
-                      {
-                        id: "chat",
-                        label: "AI Chat",
-                        icon: ChatBubbleLeftRightIcon,
-                        count: chatMessages.length,
-                        color: "purple",
-                      },
-                      {
-                        id: "resources",
-                        label: "Resources",
-                        icon: DocumentTextIcon,
-                        count: 0,
-                        color: "amber",
-                      },
-                      {
-                        id: "logs",
-                        label: "Logs",
-                        icon: ClipboardDocumentListIcon,
-                        count: 0,
-                        color: "slate",
-                      },
-                    ].map((tab) => {
-                      const isActive = selectedTab === tab.id;
-                      const colorClasses = {
-                        emerald: isActive
-                          ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
-                          : "hover:bg-emerald-500/10 hover:border-emerald-500/20",
-                        cyan: isActive
-                          ? "bg-cyan-500/20 border-cyan-500/30 text-cyan-300"
-                          : "hover:bg-cyan-500/10 hover:border-cyan-500/20",
-                        indigo: isActive
-                          ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-300"
-                          : "hover:bg-indigo-500/10 hover:border-indigo-500/20",
-                        blue: isActive
-                          ? "bg-blue-500/20 border-blue-500/30 text-blue-300"
-                          : "hover:bg-blue-500/10 hover:border-blue-500/20",
-                        purple: isActive
-                          ? "bg-purple-500/20 border-purple-500/30 text-purple-300"
-                          : "hover:bg-purple-500/10 hover:border-purple-500/20",
-                        amber: isActive
-                          ? "bg-amber-500/20 border-amber-500/30 text-amber-300"
-                          : "hover:bg-amber-500/10 hover:border-amber-500/20",
-                        slate: isActive
-                          ? "bg-slate-500/20 border-slate-500/30 text-slate-300"
-                          : "hover:bg-slate-500/10 hover:border-slate-500/20",
-                      };
-
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => setSelectedTab(tab.id)}
-                          className={`group w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200 border text-sm ${
-                            isActive
-                              ? `${
-                                  colorClasses[
-                                    tab.color as keyof typeof colorClasses
-                                  ]
-                                } shadow-md scale-105`
-                              : `text-slate-300 border-transparent ${
-                                  colorClasses[
-                                    tab.color as keyof typeof colorClasses
-                                  ]
-                                } hover:text-white`
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2.5">
-                            <div
-                              className={`p-1 rounded-md transition-colors duration-200 ${
-                                isActive
-                                  ? "bg-white/10"
-                                  : "group-hover:bg-white/5"
-                              }`}
-                            >
-                              <tab.icon className="w-4 h-4" />
-                            </div>
-                            <span className="font-medium">{tab.label}</span>
-                          </div>
-                          {tab.count > 0 && (
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors duration-200 ${
-                                isActive
-                                  ? "bg-white/20 text-white"
-                                  : "bg-slate-700/50 text-slate-400 group-hover:bg-slate-600/50 group-hover:text-slate-300"
-                              }`}
-                            >
-                              {tab.count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </nav>
-
-                {/* Enhanced Server Status */}
-                <div className="mt-auto p-4 border-t border-slate-800/50">
-                  <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-3 border border-slate-700/50">
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="text-slate-400 font-medium">
-                        System Status
-                      </span>
-                      <div className="flex items-center space-x-1.5">
+                    <div className="flex items-center space-x-3 no-drag">
+                      <div className="flex items-center space-x-2 px-2.5 py-1.5 bg-slate-800/50 rounded-md border border-slate-700/50">
                         <div
                           className={`w-1.5 h-1.5 rounded-full ${
                             servers.some((s) => s.connected)
@@ -819,242 +774,507 @@ function App() {
                               : "bg-slate-500"
                           }`}
                         ></div>
-                        <span className="text-slate-300 font-medium text-xs">
-                          {servers.filter((s) => s.connected).length}/
-                          {servers.length}
+                        <span className="text-xs text-slate-300">
+                          {servers.filter((s) => s.connected).length} /{" "}
+                          {servers.length} connected
                         </span>
                       </div>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">Servers</span>
-                        <span className="text-emerald-400">
-                          {servers.filter((s) => s.connected).length} online
+                      <button
+                        onClick={() => setIsAddServerOpen(true)}
+                        className="group relative bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-1.5 rounded-lg flex items-center space-x-2 transition-all duration-200 shadow-md hover:shadow-indigo-500/25 hover:scale-105 text-sm"
+                      >
+                        <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        <PlusIcon className="w-3.5 h-3.5 relative z-10" />
+                        <span className="font-medium relative z-10">
+                          Add Server
                         </span>
-                      </div>
-                      <div className="w-full bg-slate-700/50 rounded-full h-1">
-                        <div
-                          className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-1 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${
-                              servers.length > 0
-                                ? (servers.filter((s) => s.connected).length /
-                                    servers.length) *
-                                  100
-                                : 0
-                            }%`,
-                          }}
-                        />
-                      </div>
+                      </button>
 
-                      <div className="flex justify-between text-xs pt-0.5">
-                        <span className="text-slate-400">Tools Available</span>
-                        <span className="text-blue-400">{tools.length}</span>
-                      </div>
+                      <UserMenu
+                        onLogout={handleLogout}
+                        onSettings={() => setIsSettingsOpen(true)}
+                      />
                     </div>
                   </div>
-                </div>
-              </aside>
+                </motion.header>
 
-              {/* Enhanced Main Content */}
-              <main className="flex-1 flex flex-col bg-slate-950/50 overflow-hidden">
-                {/* Tab Content Rendering */}
-                {(() => {
-                  console.log("🎯 Current selectedTab:", selectedTab);
-                  console.log("🎯 Checking tabs:", {
-                    servers: selectedTab === "servers",
-                    tools: selectedTab === "tools",
-                    "public-apis": selectedTab === "public-apis",
-                    resources: selectedTab === "resources",
-                    prompts: selectedTab === "prompts",
-                    chat: selectedTab === "chat",
-                    "api-servers": selectedTab === "api-servers",
-                    logs: selectedTab === "logs",
-                  });
-                  return null;
-                })()}
-
-                {/* Servers Tab */}
-                {selectedTab === "servers" && (
-                  <div className="flex-1 p-6">
-                    <div className="mb-6">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent mb-2">
-                        MCP Servers
-                      </h2>
-                      <p className="text-slate-400 text-sm">
-                        Manage your Model Context Protocol server connections
-                      </p>
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Enhanced Collapsible Sidebar */}
+                  <aside
+                    className={`${
+                      isSidebarCollapsed ? "w-16" : "w-64"
+                    } bg-slate-900/50 backdrop-blur-xl border-r border-slate-800/50 flex flex-col transition-all duration-300 ease-in-out`}
+                  >
+                    {/* Sidebar Header with Toggle */}
+                    <div className="p-4 border-b border-slate-800/50">
+                      <div className="flex items-center justify-between">
+                        {!isSidebarCollapsed && (
+                          <h2 className="text-sm font-semibold text-slate-200">
+                            Navigation
+                          </h2>
+                        )}
+                        <button
+                          onClick={() =>
+                            setIsSidebarCollapsed(!isSidebarCollapsed)
+                          }
+                          className="p-1.5 rounded-lg hover:bg-slate-800/50 transition-colors duration-200 text-slate-400 hover:text-slate-200"
+                          title={
+                            isSidebarCollapsed
+                              ? "Expand sidebar"
+                              : "Collapse sidebar"
+                          }
+                        >
+                          {isSidebarCollapsed ? (
+                            <ChevronRightIcon className="w-4 h-4" />
+                          ) : (
+                            <ChevronLeftIcon className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    {isLoading ? (
-                      <div className="flex items-center justify-center h-64">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-                      </div>
-                    ) : (
-                      <div className="grid gap-4">
-                        {servers.map((server) => (
-                          <ServerCard
-                            key={server.id}
-                            server={server}
-                            toolCount={getToolCountForServer(server.id)}
-                            contextParamsCount={getContextParamsCountForServer(
-                              server.id
-                            )}
-                            onConnect={handleConnect}
-                            onDisconnect={handleDisconnect}
-                            onView={handleViewServerConfig}
-                            onEdit={handleEditServerConfig}
-                            onDelete={handleDeleteServer}
-                            isLoading={isLoading}
-                          />
-                        ))}
+                    {/* Navigation */}
+                    <nav
+                      className={`${isSidebarCollapsed ? "p-2" : "p-4"} flex-1`}
+                    >
+                      <div className="space-y-2">
+                        {[
+                          {
+                            id: "servers",
+                            label: "MCP Servers",
+                            icon: ServerIcon,
+                            count: servers.length,
+                            color: "emerald",
+                          },
+                          {
+                            id: "public-apis",
+                            label: "Public APIs",
+                            icon: GlobeAltIcon,
+                            count: 0,
+                            color: "cyan",
+                          },
+                          {
+                            id: "api-servers",
+                            label: "API to MCP",
+                            icon: ServerIcon,
+                            count: apiServers.length,
+                            color: "indigo",
+                          },
+                          {
+                            id: "tools",
+                            label: "Tools",
+                            icon: WrenchScrewdriverIcon,
+                            count: tools.length,
+                            color: "blue",
+                          },
+                          {
+                            id: "chat",
+                            label: "AI Chat",
+                            icon: ChatBubbleLeftRightIcon,
+                            count: chatMessages.length,
+                            color: "purple",
+                          },
+                          {
+                            id: "resources",
+                            label: "Resources",
+                            icon: DocumentTextIcon,
+                            count: 0,
+                            color: "amber",
+                          },
+                          {
+                            id: "logs",
+                            label: "Logs",
+                            icon: ClipboardDocumentListIcon,
+                            count: 0,
+                            color: "slate",
+                          },
+                        ].map((tab) => {
+                          const isActive = selectedTab === tab.id;
+                          const colorClasses = {
+                            emerald: isActive
+                              ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300"
+                              : "hover:bg-emerald-500/10 hover:border-emerald-500/20",
+                            cyan: isActive
+                              ? "bg-cyan-500/20 border-cyan-500/30 text-cyan-300"
+                              : "hover:bg-cyan-500/10 hover:border-cyan-500/20",
+                            indigo: isActive
+                              ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-300"
+                              : "hover:bg-indigo-500/10 hover:border-indigo-500/20",
+                            blue: isActive
+                              ? "bg-blue-500/20 border-blue-500/30 text-blue-300"
+                              : "hover:bg-blue-500/10 hover:border-blue-500/20",
+                            purple: isActive
+                              ? "bg-purple-500/20 border-purple-500/30 text-purple-300"
+                              : "hover:bg-purple-500/10 hover:border-purple-500/20",
+                            amber: isActive
+                              ? "bg-amber-500/20 border-amber-500/30 text-amber-300"
+                              : "hover:bg-amber-500/10 hover:border-amber-500/20",
+                            slate: isActive
+                              ? "bg-slate-500/20 border-slate-500/30 text-slate-300"
+                              : "hover:bg-slate-500/10 hover:border-slate-500/20",
+                          };
 
-                        {servers.length === 0 && (
-                          <div className="text-center py-12">
-                            <ServerIcon className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-zinc-300 mb-2">
-                              No servers configured
-                            </h3>
-                            <p className="text-zinc-500 mb-6">
-                              Add your first MCP server to get started
-                            </p>
+                          return (
                             <button
-                              onClick={() => setIsAddServerOpen(true)}
-                              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-all duration-200"
+                              key={tab.id}
+                              onClick={() => setSelectedTab(tab.id)}
+                              className={`group w-full flex items-center ${
+                                isSidebarCollapsed
+                                  ? "justify-center px-2 py-3"
+                                  : "justify-between px-3 py-2"
+                              } rounded-lg text-left transition-all duration-200 border text-sm ${
+                                isActive
+                                  ? `${
+                                      colorClasses[
+                                        tab.color as keyof typeof colorClasses
+                                      ]
+                                    } shadow-md scale-105`
+                                  : `text-slate-300 border-transparent ${
+                                      colorClasses[
+                                        tab.color as keyof typeof colorClasses
+                                      ]
+                                    } hover:text-white`
+                              }`}
+                              title={isSidebarCollapsed ? tab.label : undefined}
                             >
-                              <PlusIcon className="w-5 h-5" />
-                              <span>Add Server</span>
+                              {isSidebarCollapsed ? (
+                                // Collapsed view - icon only
+                                <div className="relative">
+                                  <div
+                                    className={`p-1 rounded-md transition-colors duration-200 ${
+                                      isActive
+                                        ? "bg-white/10"
+                                        : "group-hover:bg-white/5"
+                                    }`}
+                                  >
+                                    <tab.icon className="w-5 h-5" />
+                                  </div>
+                                  {tab.count > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                                      {tab.count > 99 ? "99+" : tab.count}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                // Expanded view - icon and label
+                                <>
+                                  <div className="flex items-center space-x-2.5">
+                                    <div
+                                      className={`p-1 rounded-md transition-colors duration-200 ${
+                                        isActive
+                                          ? "bg-white/10"
+                                          : "group-hover:bg-white/5"
+                                      }`}
+                                    >
+                                      <tab.icon className="w-4 h-4" />
+                                    </div>
+                                    <span className="font-medium">
+                                      {tab.label}
+                                    </span>
+                                  </div>
+                                  {tab.count > 0 && (
+                                    <span
+                                      className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors duration-200 ${
+                                        isActive
+                                          ? "bg-white/20 text-white"
+                                          : "bg-slate-700/50 text-slate-400 group-hover:bg-slate-600/50 group-hover:text-slate-300"
+                                      }`}
+                                    >
+                                      {tab.count}
+                                    </span>
+                                  )}
+                                </>
+                              )}
                             </button>
+                          );
+                        })}
+                      </div>
+                    </nav>
+
+                    {/* Enhanced Server Status */}
+                    <div
+                      className={`mt-auto ${
+                        isSidebarCollapsed ? "p-2" : "p-4"
+                      } border-t border-slate-800/50`}
+                    >
+                      <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-3 border border-slate-700/50">
+                        {isSidebarCollapsed ? (
+                          // Collapsed view - just status indicator
+                          <div className="flex flex-col items-center space-y-2">
+                            <div
+                              className={`w-3 h-3 rounded-full ${
+                                servers.some((s) => s.connected)
+                                  ? "bg-emerald-400"
+                                  : "bg-slate-500"
+                              }`}
+                              title={`${
+                                servers.filter((s) => s.connected).length
+                              }/${servers.length} servers connected`}
+                            ></div>
+                            <span className="text-slate-300 font-medium text-xs">
+                              {servers.filter((s) => s.connected).length}/
+                              {servers.length}
+                            </span>
                           </div>
+                        ) : (
+                          // Expanded view - full status
+                          <>
+                            <div className="flex items-center justify-between text-xs mb-2">
+                              <span className="text-slate-400 font-medium">
+                                System Status
+                              </span>
+                              <div className="flex items-center space-x-1.5">
+                                <div
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    servers.some((s) => s.connected)
+                                      ? "bg-emerald-400"
+                                      : "bg-slate-500"
+                                  }`}
+                                ></div>
+                                <span className="text-slate-300 font-medium text-xs">
+                                  {servers.filter((s) => s.connected).length}/
+                                  {servers.length}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-xs">
+                                <span className="text-slate-400">Servers</span>
+                                <span className="text-emerald-400">
+                                  {servers.filter((s) => s.connected).length}{" "}
+                                  online
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-700/50 rounded-full h-1">
+                                <div
+                                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-1 rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${
+                                      servers.length > 0
+                                        ? (servers.filter((s) => s.connected)
+                                            .length /
+                                            servers.length) *
+                                          100
+                                        : 0
+                                    }%`,
+                                  }}
+                                />
+                              </div>
+
+                              <div className="flex justify-between text-xs pt-0.5">
+                                <span className="text-slate-400">
+                                  Tools Available
+                                </span>
+                                <span className="text-blue-400">
+                                  {tools.length}
+                                </span>
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
+                    </div>
+                  </aside>
+
+                  {/* Enhanced Main Content */}
+                  <main className="flex-1 flex flex-col bg-slate-950/50 overflow-hidden">
+                    {/* Servers Tab */}
+                    {selectedTab === "servers" && (
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-shrink-0 p-6 pb-4">
+                          <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent mb-2">
+                            MCP Servers
+                          </h2>
+                          <p className="text-slate-400 text-sm">
+                            Manage your Model Context Protocol server
+                            connections
+                          </p>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-6 pb-6">
+                          {isLoading ? (
+                            <div className="flex items-center justify-center h-64">
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                            </div>
+                          ) : (
+                            <div className="grid gap-4">
+                              {servers.map((server) => (
+                                <ServerCard
+                                  key={server.id}
+                                  server={server}
+                                  toolCount={getToolCountForServer(server.id)}
+                                  contextParamsCount={getContextParamsCountForServer(
+                                    server.id
+                                  )}
+                                  onConnect={handleConnect}
+                                  onDisconnect={handleDisconnect}
+                                  onView={handleViewServerConfig}
+                                  onEdit={handleEditServerConfig}
+                                  onDelete={handleDeleteServer}
+                                  isLoading={isLoading}
+                                />
+                              ))}
+
+                              {servers.length === 0 && (
+                                <div className="text-center py-12">
+                                  <ServerIcon className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+                                  <h3 className="text-xl font-semibold text-zinc-300 mb-2">
+                                    No servers configured
+                                  </h3>
+                                  <p className="text-zinc-500 mb-6">
+                                    Add your first MCP server to get started
+                                  </p>
+                                  <button
+                                    onClick={() => setIsAddServerOpen(true)}
+                                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-all duration-200"
+                                  >
+                                    <PlusIcon className="w-5 h-5" />
+                                    <span>Add Server</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </div>
-                )}
 
-                {/* API to MCP Tab */}
-                {selectedTab === "api-servers" && (
-                  <div className="flex-1 p-6">
-                    <div className="mb-6">
-                      <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-100 to-indigo-300 bg-clip-text text-transparent mb-2">
-                        API to MCP Conversion
-                      </h2>
-                      <p className="text-slate-400 text-sm">
-                        Convert REST APIs into MCP servers with authentication
-                        and testing capabilities
-                      </p>
-                    </div>
+                    {/* API to MCP Tab */}
+                    {selectedTab === "api-servers" && (
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-shrink-0 p-6 pb-4">
+                          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-100 to-indigo-300 bg-clip-text text-transparent mb-2">
+                            API to MCP Conversion
+                          </h2>
+                          <p className="text-slate-400 text-sm">
+                            Convert REST APIs into MCP servers with
+                            authentication and testing capabilities
+                          </p>
+                        </div>
 
-                    <APIServerManager onServerStatusChange={loadData} />
-                  </div>
-                )}
+                        <div className="flex-1 overflow-y-auto px-6 pb-6">
+                          <APIServerManager onServerStatusChange={loadData} />
+                        </div>
+                      </div>
+                    )}
 
-                {/* Tools Tab */}
-                {selectedTab === "tools" && (
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key="tools"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                      className="flex-1 h-full overflow-hidden"
-                    >
-                      <ToolExecution
-                        tools={tools}
-                        servers={servers}
-                        onExecuteTool={handleExecuteTool}
+                    {/* Tools Tab */}
+                    {selectedTab === "tools" && (
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key="tools"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex-1 h-full overflow-hidden"
+                        >
+                          <ToolExecution
+                            tools={tools}
+                            servers={servers}
+                            onExecuteTool={handleExecuteTool}
+                          />
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
+
+                    {/* Public APIs Tab */}
+                    {selectedTab === "public-apis" && (
+                      <motion.div
+                        key="public-apis"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex-1 h-full overflow-hidden"
+                      >
+                        {(() => {
+                          console.log(
+                            "🌐 PublicAPIExplorer: Rendering component"
+                          );
+                          return (
+                            <PublicAPIExplorer
+                              onConvertToMCP={handleConvertPublicAPIToMCP}
+                            />
+                          );
+                        })()}
+                      </motion.div>
+                    )}
+
+                    {/* Chat Tab */}
+                    {selectedTab === "chat" && (
+                      <ChatInterface
+                        messages={chatMessages}
+                        onSendMessage={sendMessage}
+                        onClearChat={clearChat}
+                        isLoading={isSending}
+                        connectedServers={
+                          servers.filter((s) => s.connected).length
+                        }
                       />
-                    </motion.div>
-                  </AnimatePresence>
-                )}
+                    )}
 
-                {/* Public APIs Tab */}
-                {selectedTab === "public-apis" && (
-                  <motion.div
-                    key="public-apis"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex-1 h-full overflow-hidden"
-                  >
-                    {(() => {
-                      console.log("🌐 PublicAPIExplorer: Rendering component");
-                      return (
-                        <PublicAPIExplorer
-                          onConvertToMCP={handleConvertPublicAPIToMCP}
-                        />
-                      );
-                    })()}
-                  </motion.div>
-                )}
+                    {/* Resources Tab */}
+                    {selectedTab === "resources" && (
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-shrink-0 p-6 pb-4">
+                          <h2 className="text-2xl font-bold text-white mb-2">
+                            Resources
+                          </h2>
+                          <p className="text-zinc-400">
+                            Resources provided by your MCP servers
+                          </p>
+                        </div>
 
-                {/* Chat Tab */}
-                {selectedTab === "chat" && (
-                  <ChatInterface
-                    messages={chatMessages}
-                    onSendMessage={sendMessage}
-                    isLoading={isSending}
-                    connectedServers={servers.filter((s) => s.connected).length}
-                  />
-                )}
+                        <div className="flex-1 overflow-y-auto px-6 pb-6">
+                          <div className="text-center py-12">
+                            <DocumentTextIcon className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-semibold text-zinc-300 mb-2">
+                              Resources coming soon
+                            </h3>
+                            <p className="text-zinc-500">
+                              Resource management will be available in a future
+                              update
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                {/* Resources Tab */}
-                {selectedTab === "resources" && (
-                  <div className="flex-1 p-6">
-                    <div className="mb-6">
-                      <h2 className="text-2xl font-bold text-white mb-2">
-                        Resources
-                      </h2>
-                      <p className="text-zinc-400">
-                        Resources provided by your MCP servers
-                      </p>
-                    </div>
+                    {/* Logs Tab */}
+                    {selectedTab === "logs" && (
+                      <AnimatePresence mode="wait">
+                        {" "}
+                        <motion.div
+                          key="logs"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex-1 h-full overflow-hidden"
+                        >
+                          <LogsConsole />
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
+                  </main>
+                </div>
 
-                    <div className="text-center py-12">
-                      <DocumentTextIcon className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-zinc-300 mb-2">
-                        Resources coming soon
-                      </h3>
-                      <p className="text-zinc-500">
-                        Resource management will be available in a future update
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Logs Tab */}
-                {selectedTab === "logs" && (
-                  <AnimatePresence mode="wait">
-                    {" "}
-                    <motion.div
-                      key="logs"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}
-                      className="flex-1 h-full overflow-hidden"
-                    >
-                      <LogsConsole />
-                    </motion.div>
-                  </AnimatePresence>
-                )}
-              </main>
-            </div>
-
-            {/* Status Bar */}
-            <StatusBar
-              serverCount={servers.length}
-              connectedServers={servers.filter((s) => s.connected).length}
-              toolCount={tools.length}
-              lastUpdate={lastUpdate}
-              isOnline={true}
-            />
-          </div>
-        )}
-      </LogsProvider>
+                {/* Status Bar */}
+                <StatusBar
+                  serverCount={servers.length}
+                  connectedServers={servers.filter((s) => s.connected).length}
+                  toolCount={tools.length}
+                  lastUpdate={lastUpdate}
+                  isOnline={true}
+                />
+              </div>
+            )}
+          </LogsProvider>
+        </SettingsProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

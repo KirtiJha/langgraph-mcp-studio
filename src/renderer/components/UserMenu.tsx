@@ -41,7 +41,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onSettings }) => {
           <>
             {/* Backdrop */}
             <div
-              className="fixed inset-0 z-10"
+              className="fixed inset-0 z-40"
               onClick={() => setIsOpen(false)}
             />
 
@@ -51,7 +51,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onSettings }) => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl z-20 overflow-hidden"
+              className="absolute right-0 top-full mt-2 w-48 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-xl shadow-2xl z-50 overflow-hidden"
             >
               <div className="p-3 border-b border-slate-700/50">
                 <div className="flex items-center gap-2">

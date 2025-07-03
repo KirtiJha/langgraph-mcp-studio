@@ -73,6 +73,14 @@ class APIServerService {
         return this.testAPICall(url, options);
       }
     );
+
+    // Transfer OAuth2 token from renderer to main process
+    ipcMain.handle(
+      "api-server:transfer-oauth2-token",
+      async (_, serverId: string, tokenData: any) => {
+        return this.storeOAuth2Token(serverId, tokenData);
+      }
+    );
   }
 
   private setupDocumentationHandler() {
@@ -95,7 +103,6 @@ class APIServerService {
         servers.forEach((server) => {
           this.apiServers.set(server.id, server);
         });
-        console.log(`Loaded ${servers.length} saved API servers`);
       }
     } catch (error) {
       console.error("Failed to load saved servers:", error);
@@ -133,8 +140,6 @@ class APIServerService {
 
       // Save to disk
       await this.saveConfig();
-
-      console.log(`Saved API server: ${config.name} (${config.id})`);
     } catch (error) {
       console.error("Failed to save server:", error);
       throw error;
@@ -146,6 +151,20 @@ class APIServerService {
       // Stop server if running
       if (this.runningServers.has(serverId)) {
         await this.stopServer(serverId);
+      }
+
+      // Remove from MCPManager if available
+      if (this.mcpManager) {
+        try {
+          await this.mcpManager.removeServer(serverId);
+          console.log(`Removed MCP server from manager: ${serverId}`);
+        } catch (error) {
+          console.warn(
+            `Failed to remove MCP server from manager: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
       }
 
       // Remove from memory
@@ -185,6 +204,11 @@ class APIServerService {
         config.id
       );
       await fs.mkdir(serverDir, { recursive: true });
+
+      // Handle OAuth2 token transfer from browser to file system
+      if (config.authentication?.type === "oauth2") {
+        await this.copyOAuth2TokenToFileSystem(config.id);
+      }
 
       // Write server file
       const serverPath = path.join(serverDir, "server.ts");
@@ -622,6 +646,52 @@ ${
 
     await Promise.all(stopPromises);
     console.log("All API servers stopped");
+  }
+
+  private async copyOAuth2TokenToFileSystem(serverId: string): Promise<void> {
+    try {
+      // Get the server config to access OAuth2 token data
+      const config = this.apiServers.get(serverId);
+      if (
+        config?.authentication?.type === "oauth2" &&
+        config.authentication.oauth2?.accessToken
+      ) {
+        const tokenData = {
+          access_token: config.authentication.oauth2.accessToken,
+          refresh_token: config.authentication.oauth2.refreshToken,
+          expires_at: config.authentication.oauth2.tokenExpiry,
+          stored_at: Date.now(),
+        };
+
+        await this.storeOAuth2Token(serverId, tokenData);
+        console.log(`OAuth2 token copied to file system for ${serverId}`);
+      } else {
+        console.log(`No OAuth2 token available in config for ${serverId}`);
+      }
+    } catch (error) {
+      console.warn(`Could not copy OAuth2 token for ${serverId}:`, error);
+    }
+  }
+
+  private async storeOAuth2Token(
+    serverId: string,
+    tokenData: any
+  ): Promise<void> {
+    try {
+      const os = await import("os");
+      const dataDir = path.join(os.homedir(), ".mcp-client");
+
+      // Create directory if it doesn't exist
+      await fs.mkdir(dataDir, { recursive: true });
+
+      const tokenFile = path.join(dataDir, `oauth2_token_${serverId}.json`);
+      await fs.writeFile(tokenFile, JSON.stringify(tokenData, null, 2));
+
+      console.log(`OAuth2 token stored for server: ${serverId}`);
+    } catch (error) {
+      console.error(`Failed to store OAuth2 token for ${serverId}:`, error);
+      throw error;
+    }
   }
 }
 

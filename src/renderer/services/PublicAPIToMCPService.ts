@@ -149,9 +149,10 @@ class PublicAPIToMCPService {
           type: "oauth2",
           credentials: {},
           oauth2: {
+            authUrl: "",
+            tokenUrl: "",
             scopes: auth.scopes || [],
-            clientId: "",
-            clientSecret: "",
+            flow: (auth.flow as any) || "authorization_code",
           },
         };
 
@@ -159,6 +160,43 @@ class PublicAPIToMCPService {
         return {
           type: "basic",
           credentials: {},
+        };
+
+      case "digest":
+        return {
+          type: "digest",
+          credentials: {},
+          digest: {
+            realm: "",
+            qop: "auth",
+          },
+        };
+
+      case "aws-signature":
+        return {
+          type: "aws-signature",
+          credentials: {},
+          awsSignature: {
+            region: "us-east-1",
+            service: "execute-api",
+          },
+        };
+
+      case "mutual-tls":
+        return {
+          type: "mutual-tls",
+          credentials: {},
+          mutualTls: {},
+        };
+
+      case "custom":
+        return {
+          type: "custom",
+          credentials: {},
+          custom: {
+            headers: {},
+            beforeRequest: "// Custom authentication logic",
+          },
         };
 
       default:
@@ -646,29 +684,85 @@ class PublicAPIToMCPService {
     return `
 // Auto-generated MCP Server for ${config.name}
 // Generated on ${new Date().toISOString()}
+// Enhanced with WebSocket, GraphQL, and advanced authentication support
 
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import compression from 'compression';
 import { z } from 'zod';
+import WebSocket from 'ws';
+import expressWs from 'express-ws';
+import jwt from 'jsonwebtoken';
+import aws4 from 'aws4';
+import crypto from 'crypto';
 
 const app = express();
+const wsInstance = expressWs(app);
 const PORT = process.env.PORT || 3000;
 
 // Configuration
 const config = ${JSON.stringify(config, null, 2)};
 
-// Middleware
-app.use(cors(${JSON.stringify({ origin: "*", credentials: true })}));
-app.use(express.json());
-
-// Rate limiting
-if (${config.rateLimit ? "true" : "false"}) {
-  const limiter = rateLimit(${JSON.stringify(config.rateLimit || {})});
-  app.use(limiter);
+// Security middleware
+${config.security?.helmet ? "app.use(helmet());" : "// Helmet disabled"}
+${
+  config.security?.cors
+    ? `app.use(cors(${JSON.stringify({
+        origin: config.cors?.origins || "*",
+        credentials: config.cors?.credentials || true,
+        methods: config.cors?.methods || [
+          "GET",
+          "POST",
+          "PUT",
+          "DELETE",
+          "PATCH",
+        ],
+        allowedHeaders: config.cors?.headers || [
+          "Content-Type",
+          "Authorization",
+          "X-API-Key",
+        ],
+      })}));`
+    : "// CORS disabled"
 }
 
-// Authentication middleware
+// Compression and parsing
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Enhanced rate limiting
+${
+  config.rateLimit
+    ? `
+const limiter = rateLimit({
+  windowMs: ${config.rateLimit.windowMs || 60000},
+  max: ${config.rateLimit.requests || 100},
+  standardHeaders: true,
+  legacyHeaders: false,
+  ${
+    config.rateLimit.skipSuccessfulRequests
+      ? "skipSuccessfulRequests: true,"
+      : ""
+  }
+  ${config.rateLimit.skipFailedRequests ? "skipFailedRequests: true," : ""}
+  ${
+    config.rateLimit.keyGenerator
+      ? `keyGenerator: ${config.rateLimit.keyGenerator},`
+      : ""
+  }
+  message: {
+    error: 'Too many requests',
+    retryAfter: 60
+  }
+});
+app.use(limiter);`
+    : "// Rate limiting disabled"
+}
+
+// Enhanced authentication middleware
 const authenticate = (req, res, next) => {
   const authType = '${config.authentication.type}';
   
@@ -702,6 +796,53 @@ const authenticate = (req, res, next) => {
       const credentials = Buffer.from(basicAuth.substring(6), 'base64').toString().split(':');
       req.auth = { username: credentials[0], password: credentials[1] };
       break;
+
+    case 'jwt':
+      const jwtHeader = req.headers.authorization;
+      if (!jwtHeader || !jwtHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'JWT token required' });
+      }
+      try {
+        const token = jwtHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret');
+        req.auth = { user: decoded };
+      } catch (error) {
+        return res.status(401).json({ error: 'Invalid JWT token' });
+      }
+      break;
+
+    case 'digest':
+      const digestAuth = req.headers.authorization;
+      if (!digestAuth || !digestAuth.startsWith('Digest ')) {
+        return res.status(401).json({ 
+          error: 'Digest authentication required',
+          'WWW-Authenticate': 'Digest realm="${
+            config.authentication.digest?.realm || "api"
+          }", qop="auth", nonce="' + crypto.randomUUID() + '"'
+        });
+      }
+      // Digest auth parsing logic would go here
+      req.auth = { digest: true };
+      break;
+
+    case 'aws-signature':
+      // AWS signature validation would go here
+      req.auth = { aws: true };
+      break;
+
+    case 'mutual-tls':
+      if (!req.client.authorized) {
+        return res.status(401).json({ error: 'Client certificate required' });
+      }
+      req.auth = { cert: req.client.getPeerCertificate() };
+      break;
+
+    case 'custom':
+      ${
+        config.authentication.custom?.beforeRequest ||
+        "// Custom authentication logic"
+      }
+      break;
       
     case 'none':
     default:
@@ -712,44 +853,192 @@ const authenticate = (req, res, next) => {
   next();
 };
 
-// Health check endpoint
+// Enhanced health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
+  const healthData = { 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     service: '${config.name}',
-    version: '1.0.0'
-  });
+    version: '1.0.0',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    endpoints: ${config.endpoints.length},
+    authentication: '${config.authentication.type}'
+  };
+
+  ${
+    config.monitoring?.healthCheck?.enabled
+      ? `
+  // Additional health checks
+  healthData.database = 'connected'; // Add actual DB check
+  healthData.externalServices = 'operational'; // Add external service checks
+  `
+      : ""
+  }
+
+  res.json(healthData);
 });
 
-// Tool endpoints
+// Metrics endpoint
+${
+  config.monitoring?.metrics?.enabled
+    ? `
+app.get('/metrics', (req, res) => {
+  const metrics = {
+    requests_total: global.requestCount || 0,
+    errors_total: global.errorCount || 0,
+    response_time_avg: global.avgResponseTime || 0,
+    active_connections: global.activeConnections || 0,
+    timestamp: new Date().toISOString()
+  };
+  
+  if ('${config.monitoring.metrics.exportFormat}' === 'prometheus') {
+    let prometheusMetrics = '';
+    Object.entries(metrics).forEach(([key, value]) => {
+      if (typeof value === 'number') {
+        prometheusMetrics += \`# TYPE \${key} gauge\\n\${key} \${value}\\n\`;
+      }
+    });
+    res.set('Content-Type', 'text/plain');
+    res.send(prometheusMetrics);
+  } else {
+    res.json(metrics);
+  }
+});`
+    : "// Metrics disabled"
+}
+
+// Request logging and metrics middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  
+  ${
+    config.logging?.requests
+      ? `
+  console.log(\`[\${new Date().toISOString()}] \${req.method} \${req.path}\`);
+  `
+      : ""
+  }
+  
+  // Track metrics
+  global.requestCount = (global.requestCount || 0) + 1;
+  
+  res.on('finish', () => {
+    const responseTime = Date.now() - startTime;
+    global.avgResponseTime = ((global.avgResponseTime || 0) + responseTime) / 2;
+    
+    if (res.statusCode >= 400) {
+      global.errorCount = (global.errorCount || 0) + 1;
+    }
+    
+    ${
+      config.logging?.responses
+        ? `
+    console.log(\`[\${new Date().toISOString()}] \${req.method} \${req.path} - \${res.statusCode} - \${responseTime}ms\`);
+    `
+        : ""
+    }
+  });
+  
+  next();
+});
+
+// Generated API endpoints
 ${config.endpoints
+  .filter((endpoint) => endpoint.enabled)
   .map((endpoint) => this.generateEndpointCode(endpoint, config))
   .join("\n\n")}
 
-// Error handling middleware
+// Enhanced error handling middleware
 app.use((error, req, res, next) => {
   console.error('Server error:', error);
+  
+  ${
+    config.monitoring?.alerts?.enabled
+      ? `
+  // Send alert if error threshold exceeded
+  global.errorCount = (global.errorCount || 0) + 1;
+  if (global.errorCount > ${config.monitoring.alerts.errorThreshold || 10}) {
+    // Send webhook alert
+    fetch('${config.monitoring.alerts.webhookUrl || ""}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alert: 'High error rate',
+        service: '${config.name}',
+        errorCount: global.errorCount,
+        timestamp: new Date().toISOString()
+      })
+    }).catch(console.error);
+  }
+  `
+      : ""
+  }
+  
   res.status(500).json({ 
     error: 'Internal server error',
-    message: error.message,
-    timestamp: new Date().toISOString()
+    message: ${
+      config.logging?.level === "debug" ? "error.message" : "'Server error'"
+    },
+    timestamp: new Date().toISOString(),
+    requestId: req.id || crypto.randomUUID()
   });
 });
 
-// Start server
+// Start server with enhanced configuration
+${
+  config.websocket?.enabled
+    ? `
+const server = app.listen(PORT, () => {
+  console.log(\`🚀 \${config.name} MCP Server running on port \${PORT}\`);
+  console.log(\`📖 Base URL: \${config.baseUrl}\`);
+  console.log(\`🔒 Authentication: \${config.authentication.type}\`);
+  console.log(\`⚡ Endpoints: \${config.endpoints.length}\`);
+  console.log(\`🔌 WebSocket: Enabled\`);
+  console.log(\`📊 Metrics: \${config.monitoring?.metrics?.enabled ? 'Enabled' : 'Disabled'}\`);
+});
+
+// WebSocket server setup
+global.activeConnections = 0;
+`
+    : `
 app.listen(PORT, () => {
-  console.log(\`🚀 ${config.name} MCP Server running on port \${PORT}\`);
-  console.log(\`📖 Base URL: ${config.baseUrl}\`);
-  console.log(\`🔒 Authentication: ${config.authentication.type}\`);
-  console.log(\`⚡ Endpoints: ${config.endpoints.length}\`);
+  console.log(\`🚀 \${config.name} MCP Server running on port \${PORT}\`);
+  console.log(\`📖 Base URL: \${config.baseUrl}\`);
+  console.log(\`🔒 Authentication: \${config.authentication.type}\`);
+  console.log(\`⚡ Endpoints: \${config.endpoints.length}\`);
+  console.log(\`📊 Metrics: \${config.monitoring?.metrics?.enabled ? 'Enabled' : 'Disabled'}\`);
+});`
+}
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, shutting down gracefully');
+  ${config.websocket?.enabled ? "server.close(() => {" : ""}
+    console.log('Server closed');
+    process.exit(0);
+  ${config.websocket?.enabled ? "});" : ""}
 });
 
 export default app;
 `.trim();
   }
-
   private generateEndpointCode(
+    endpoint: APIEndpoint,
+    config: APIServerConfig
+  ): string {
+    // Handle different endpoint types
+    switch (endpoint.method) {
+      case "WEBSOCKET":
+        return this.generateWebSocketEndpointCode(endpoint, config);
+      case "GRAPHQL":
+        return this.generateGraphQLEndpointCode(endpoint, config);
+      default:
+        return this.generateRESTEndpointCode(endpoint, config);
+    }
+  }
+
+  private generateRESTEndpointCode(
     endpoint: APIEndpoint,
     config: APIServerConfig
   ): string {
@@ -790,16 +1079,42 @@ app.${endpoint.method.toLowerCase()}('${
     // Add authentication headers
     ${this.generateAuthHeaderCode(config.authentication)}
     
-    // Make API request
-    const apiResponse = await fetch(url.toString(), {
-      method: '${endpoint.method}',
-      headers,
-      ${
-        endpoint.method !== "GET"
-          ? "body: req.body ? JSON.stringify(req.body) : undefined"
-          : ""
+    // Execute middleware before request
+    ${
+      endpoint.middleware?.beforeRequest
+        ?.map((mw) => `${mw}(req, res);`)
+        .join("\n    ") || ""
+    }
+    
+    // Make API request with retry logic
+    let apiResponse;
+    let attempt = 0;
+    const maxRetries = ${endpoint.retries?.count || 3};
+    
+    while (attempt <= maxRetries) {
+      try {
+        apiResponse = await fetch(url.toString(), {
+          method: '${endpoint.method}',
+          headers,
+          ${
+            endpoint.method !== "GET"
+              ? "body: req.body ? JSON.stringify(req.body) : undefined,"
+              : ""
+          }
+          timeout: ${endpoint.timeout || 30000},
+          ${config.ssl?.verify === false ? "rejectUnauthorized: false," : ""}
+        });
+        break;
+      } catch (error) {
+        attempt++;
+        if (attempt > maxRetries) throw error;
+        
+        const delay = ${endpoint.retries?.delay || 1000} * Math.pow(${
+      endpoint.retries?.backoff === "exponential" ? 2 : 1
+    }, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-    });
+    }
     
     const responseData = await apiResponse.json();
     
@@ -811,7 +1126,7 @@ app.${endpoint.method.toLowerCase()}('${
         data: responseData
       });
     }
-    
+
     // Transform response if needed
     const result = ${
       endpoint.responseMapping?.successPath
@@ -819,13 +1134,21 @@ app.${endpoint.method.toLowerCase()}('${
         : "responseData"
     };
     
+    // Execute middleware after response
+    ${
+      endpoint.middleware?.afterResponse
+        ?.map((mw) => `${mw}(req, res, result);`)
+        .join("\n    ") || ""
+    }
+    
     res.json({
       success: true,
       data: result,
       metadata: {
         endpoint: '${endpoint.toolName}',
         timestamp: new Date().toISOString(),
-        status: apiResponse.status
+        status: apiResponse.status,
+        cached: false
       }
     });
     
@@ -833,6 +1156,131 @@ app.${endpoint.method.toLowerCase()}('${
     console.error('Endpoint error:', error);
     res.status(500).json({
       error: 'Endpoint execution failed',
+      message: error.message,
+      endpoint: '${endpoint.toolName}',
+      timestamp: new Date().toISOString()
+    });
+  }
+});`.trim();
+  }
+
+  private generateWebSocketEndpointCode(
+    endpoint: APIEndpoint,
+    config: APIServerConfig
+  ): string {
+    return `
+// WebSocket endpoint: ${endpoint.description}
+const WebSocket = require('ws');
+
+app.ws('${endpoint.path}', (ws, req) => {
+  console.log('WebSocket connection established for ${endpoint.toolName}');
+  
+  // Setup heartbeat
+  const heartbeat = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    }
+  }, ${endpoint.websocket?.heartbeat || 30000});
+  
+  // Handle messages
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      
+      // Custom message handler
+      ${
+        endpoint.websocket?.messageHandler ||
+        `
+      // Echo message back
+      ws.send(JSON.stringify({
+        type: 'response',
+        data: data,
+        timestamp: new Date().toISOString()
+      }));`
+      }
+      
+    } catch (error) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }));
+    }
+  });
+  
+  // Handle connection events
+  ws.on('close', () => {
+    console.log('WebSocket connection closed for ${endpoint.toolName}');
+    clearInterval(heartbeat);
+    
+    ${endpoint.websocket?.connectionHandler || "// Custom close handler"}
+  });
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+    clearInterval(heartbeat);
+  });
+});`.trim();
+  }
+
+  private generateGraphQLEndpointCode(
+    endpoint: APIEndpoint,
+    config: APIServerConfig
+  ): string {
+    return `
+// GraphQL endpoint: ${endpoint.description}
+app.post('${endpoint.path}', authenticate, async (req, res) => {
+  try {
+    const { query, variables, operationName } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({
+        error: 'GraphQL query is required'
+      });
+    }
+    
+    // Prepare GraphQL request
+    const graphqlRequest = {
+      query,
+      variables: variables || {},
+      operationName
+    };
+    
+    // Make request to GraphQL endpoint
+    const response = await fetch('${config.baseUrl}${endpoint.path}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...${JSON.stringify(config.globalHeaders || {})},
+      },
+      body: JSON.stringify(graphqlRequest)
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: 'GraphQL request failed',
+        status: response.status,
+        data: result
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: result,
+      metadata: {
+        endpoint: '${endpoint.toolName}',
+        operationType: '${endpoint.graphql?.operationType || "query"}',
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('GraphQL endpoint error:', error);
+    res.status(500).json({
+      error: 'GraphQL execution failed',
       message: error.message,
       endpoint: '${endpoint.toolName}',
       timestamp: new Date().toISOString()
@@ -907,6 +1355,85 @@ ${validationRules}
     if (req.auth?.username && req.auth?.password) {
       const credentials = Buffer.from(\`\${req.auth.username}:\${req.auth.password}\`).toString('base64');
       headers['Authorization'] = \`Basic \${credentials}\`;
+    }`.trim();
+
+      case "oauth2":
+        return `
+    // OAuth2 authentication with automatic token management
+    if (req.auth?.accessToken) {
+      headers['Authorization'] = \`Bearer \${req.auth.accessToken}\`;
+    } else {
+      // Token missing or expired - should trigger re-authentication
+      return res.status(401).json({ 
+        error: 'OAuth2 token required',
+        authRequired: true,
+        authUrl: '${auth.oauth2?.authUrl || ""}',
+        message: 'Please complete OAuth2 authentication flow'
+      });
+    }`.trim();
+
+      case "digest":
+        return `
+    if (req.auth?.username && req.auth?.password) {
+      // Digest authentication implementation
+      const ha1 = require('crypto').createHash('md5').update(\`\${req.auth.username}:\${auth.digest?.realm || 'api'}:\${req.auth.password}\`).digest('hex');
+      const ha2 = require('crypto').createHash('md5').update(\`\${req.method}:\${req.path}\`).digest('hex');
+      const response = require('crypto').createHash('md5').update(\`\${ha1}:\${req.auth.nonce}:\${ha2}\`).digest('hex');
+      headers['Authorization'] = \`Digest username="\${req.auth.username}", realm="\${auth.digest?.realm || 'api'}", nonce="\${req.auth.nonce}", uri="\${req.path}", response="\${response}"\`;
+    }`.trim();
+
+      case "aws-signature":
+        return `
+    if (req.auth?.accessKeyId && req.auth?.secretAccessKey) {
+      const aws4 = require('aws4');
+      const opts = {
+        service: '${auth.awsSignature?.service || "execute-api"}',
+        region: '${auth.awsSignature?.region || "us-east-1"}',
+        method: req.method,
+        path: req.path,
+        headers: headers,
+        body: req.body ? JSON.stringify(req.body) : undefined
+      };
+      aws4.sign(opts, {
+        accessKeyId: req.auth.accessKeyId,
+        secretAccessKey: req.auth.secretAccessKey,
+        sessionToken: req.auth.sessionToken
+      });
+      Object.assign(headers, opts.headers);
+    }`.trim();
+
+      case "jwt":
+        return `
+    if (req.auth?.secret) {
+      const jwt = require('jsonwebtoken');
+      const payload = {
+        iss: '${auth.jwt?.issuer || "mcp-studio"}',
+        aud: '${auth.jwt?.audience || "api"}',
+        sub: '${auth.jwt?.subject || "user"}',
+        exp: Math.floor(Date.now() / 1000) + (${auth.jwt?.expiresIn || "3600"})
+      };
+      const token = jwt.sign(payload, req.auth.secret, { algorithm: '${
+        auth.jwt?.algorithm || "HS256"
+      }' });
+      headers['Authorization'] = \`Bearer \${token}\`;
+    }`.trim();
+
+      case "mutual-tls":
+        return `
+    // mTLS configuration handled at request level
+    // Client certificates should be configured in the request options
+    `.trim();
+
+      case "custom":
+        return `
+    // Custom authentication headers
+    ${Object.entries(auth.custom?.headers || {})
+      .map(([key, value]) => `headers['${key}'] = '${value}';`)
+      .join("\n    ")}
+    
+    // Custom authentication logic
+    ${
+      auth.custom?.beforeRequest || "// Add custom authentication logic here"
     }`.trim();
 
       default:

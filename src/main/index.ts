@@ -11,8 +11,10 @@ if (process.env.NODE_ENV === "development") {
   });
 }
 
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, shell } from "electron";
 import path from "path";
+import http from "http";
+import url from "url";
 import { MCPManager } from "./mcp/MCPManager";
 import { LangGraphAgent } from "./agent/LangGraphAgent";
 import Store from "electron-store";
@@ -24,7 +26,81 @@ let mainWindow: BrowserWindow | null = null;
 let mcpManager: MCPManager;
 let agent: LangGraphAgent;
 let apiServerService: APIServerService;
+let oauth2Server: http.Server | null = null;
 const store = new Store();
+
+// Simple OAuth2 callback server
+function createOAuth2Server() {
+  oauth2Server = http.createServer((req, res) => {
+    const parsedUrl = url.parse(req.url || "", true);
+
+    if (
+      parsedUrl.pathname === "/oauth-callback.html" ||
+      parsedUrl.pathname === "/oauth_callback.html"
+    ) {
+      console.log("🔗 OAuth2 callback received:", req.url);
+
+      // Send the full callback URL to the renderer
+      if (mainWindow) {
+        mainWindow.webContents.send(
+          "oauth2-callback",
+          `http://${req.headers.host}${req.url}`
+        );
+      }
+
+      // Serve a simple success page
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>OAuth2 Success</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 50px; background: #1e1e1e; color: white; }
+            .container { max-width: 400px; margin: 0 auto; }
+            .success { color: #4ade80; font-size: 24px; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="success">✅ Authentication Successful!</div>
+            <p>You can close this window and return to the MCP Client.</p>
+          </div>
+          <script>
+            // Close the window after a delay
+            setTimeout(() => {
+              window.close();
+            }, 3000);
+          </script>
+        </body>
+        </html>
+      `);
+    } else {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+    }
+  });
+
+  // Try different ports starting from 3000
+  function tryListen(port: number) {
+    oauth2Server
+      ?.listen(port, "127.0.0.1", () => {
+        console.log(
+          `🔗 OAuth2 callback server listening on http://127.0.0.1:${port}`
+        );
+      })
+      .on("error", (err: any) => {
+        if (err.code === "EADDRINUSE" && port < 3010) {
+          console.log(`Port ${port} in use, trying ${port + 1}`);
+          tryListen(port + 1);
+        } else {
+          console.error("Failed to start OAuth2 callback server:", err);
+        }
+      });
+  }
+
+  tryListen(3000);
+}
 
 function createWindow() {
   // Debug paths
@@ -137,8 +213,51 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
 
+  // Start OAuth2 callback server
+  createOAuth2Server();
+
+  // Register custom OAuth2 protocol (backup method)
+  app.setAsDefaultProtocolClient("mcp-oauth2");
+
+  // Handle OAuth2 callback URLs - both custom protocol and HTTP intercepted URLs
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    console.log("🔗 OAuth2 callback URL received via open-url:", url);
+
+    if (
+      url.startsWith("mcp-oauth2://callback") ||
+      url.includes("oauth_callback.html") ||
+      url.includes("oauth-callback.html")
+    ) {
+      // Send the callback URL to the renderer process
+      if (mainWindow) {
+        mainWindow.webContents.send("oauth2-callback", url);
+      }
+    }
+  });
+
+  // Also handle the case where OAuth2 URLs are opened directly
+  app.on("second-instance", (event, commandLine, workingDirectory) => {
+    // Check if any of the command line arguments contain OAuth2 callback
+    const oauthUrl = commandLine.find(
+      (arg) =>
+        arg.includes("oauth_callback.html") ||
+        arg.includes("oauth-callback.html") ||
+        arg.startsWith("mcp-oauth2://callback")
+    );
+
+    if (oauthUrl && mainWindow) {
+      console.log("🔗 OAuth2 callback from second instance:", oauthUrl);
+      mainWindow.webContents.send("oauth2-callback", oauthUrl);
+
+      // Focus the main window
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
   // Initialize MCP Manager
-  mcpManager = new MCPManager(store);
+  mcpManager = new MCPManager(store, loggingService);
   loggingService.log("MCP Manager initialized", { timestamp: new Date() });
 
   // Initialize API Server Service with MCP Manager
@@ -164,6 +283,12 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", async () => {
+  // Cleanup OAuth2 server
+  if (oauth2Server) {
+    oauth2Server.close();
+    oauth2Server = null;
+  }
+
   // Cleanup API servers before quitting
   if (apiServerService) {
     await apiServerService.cleanup();
@@ -224,7 +349,7 @@ function setupIpcHandlers() {
   ipcMain.handle(IpcChannels.LIST_TOOLS, async (_, serverId) => {
     console.log("Main process: LIST_TOOLS called with serverId:", serverId);
     try {
-      const result = await mcpManager.listTools(serverId);
+      const result = await mcpManager.listToolsForUI(serverId); // Use UI-specific method to hide sequential thinking
       console.log(
         "Main process: LIST_TOOLS returning:",
         result.length,
@@ -245,13 +370,13 @@ function setupIpcHandlers() {
   );
 
   // Agent operations
-  ipcMain.handle(IpcChannels.SEND_MESSAGE, async (_, message) => {
+  ipcMain.handle(IpcChannels.SEND_MESSAGE, async (_, { message, model }) => {
     if (!agent) {
       throw new Error(
         "Chat agent is not available. Please configure Watsonx credentials in your environment variables."
       );
     }
-    return await agent.processMessage(message);
+    return await agent.processMessage(message, model);
   });
 
   // Resource operations
@@ -287,6 +412,13 @@ function setupIpcHandlers() {
 
   ipcMain.handle(IpcChannels.UPDATE_SERVER, async (_, id, config) => {
     return await mcpManager.updateServer(id, config);
+  });
+
+  // OAuth2 operations
+  ipcMain.handle("oauth2-open-url", async (_, url) => {
+    console.log("🔗 Opening OAuth2 URL externally:", url);
+    await shell.openExternal(url);
+    return true;
   });
 
   // Logging operations

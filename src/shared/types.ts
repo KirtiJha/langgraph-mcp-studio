@@ -81,6 +81,10 @@ export interface LogEntry {
   source: string;
   message: string;
   details?: any;
+  serverId?: string; // ID of the server this log is related to
+  serverName?: string; // Human-readable server name
+  toolName?: string; // Name of the tool being executed (if applicable)
+  category?: "system" | "server" | "tool" | "api" | "ui"; // Category for better organization
 }
 
 export interface ContextParam {
@@ -100,6 +104,9 @@ export interface ServerStatus {
   resources?: Resource[];
   prompts?: Prompt[];
   toolConfigs?: Record<string, Record<string, any>>; // Pre-configured tool parameters
+  uptime?: number; // Connection uptime in seconds
+  lastActivity?: Date; // Last time the server was used for a tool call or other operation
+  connectionStartTime?: Date; // When the connection was established
 }
 
 export interface ChatMessage {

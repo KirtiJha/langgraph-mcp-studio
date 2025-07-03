@@ -18,21 +18,26 @@
     font-variation-settings: "opsz" 20;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar for dark theme */
   ::-webkit-scrollbar {
     @apply w-2;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-dark-900;
+    @apply bg-slate-900/50;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-dark-700 rounded;
+    @apply bg-slate-700 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-dark-600;
+    @apply bg-slate-600;
+  }
+
+  /* Scrollbar corner */
+  ::-webkit-scrollbar-corner {
+    @apply bg-slate-900/50;
   }
 }
 
@@ -48,6 +53,15 @@
 
   .card {
     @apply bg-gray-800 border border-gray-700 rounded-lg shadow-md;
+  }
+
+  /* Line clamp utility for truncating text */
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .input-field {
@@ -103,4 +117,26 @@
 
 .status-warning {
   color: #f59e0b;
+}
+
+/* Electron draggable regions */
+.draggable {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Titlebar styles for better dragging */
+.titlebar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.titlebar button,
+.titlebar input,
+.titlebar select,
+.titlebar .interactive {
+  -webkit-app-region: no-drag;
 }

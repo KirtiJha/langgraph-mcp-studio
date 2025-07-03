@@ -69,7 +69,13 @@ export class LoggingService {
     level: LogEntry["level"],
     source: string,
     message: string,
-    details?: any
+    details?: any,
+    options?: {
+      serverId?: string;
+      serverName?: string;
+      toolName?: string;
+      category?: LogEntry["category"];
+    }
   ) {
     const logEntry: LogEntry = {
       id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -78,6 +84,10 @@ export class LoggingService {
       source,
       message,
       details,
+      serverId: options?.serverId,
+      serverName: options?.serverName,
+      toolName: options?.toolName,
+      category: options?.category || "system",
     };
 
     this.logs.push(logEntry);

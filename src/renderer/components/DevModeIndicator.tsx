@@ -22,14 +22,6 @@ const DevModeIndicator: React.FC<DevModeIndicatorProps> = ({
       (typeof __DEV__ !== "undefined" && __DEV__) ||
       window.location.hostname === "localhost" ||
       window.location.protocol === "http:";
-
-    console.log("🔍 DevModeIndicator check:", {
-      NODE_ENV: process.env.NODE_ENV,
-      __DEV__: typeof __DEV__ !== "undefined" ? __DEV__ : "undefined",
-      hostname: window.location.hostname,
-      protocol: window.location.protocol,
-      isDev,
-    });
   } catch (error) {
     console.error("DevModeIndicator error:", error);
     // Fallback for any errors - assume dev if on localhost

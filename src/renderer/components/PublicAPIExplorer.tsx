@@ -114,7 +114,7 @@ const PublicAPIExplorer: React.FC<PublicAPIExplorerProps> = ({
     try {
       setLoading(true);
       const [apisData, categoriesData] = await Promise.all([
-        PublicAPIService.fetchAllAPIs(forceRefresh, 100), // Load more initially
+        PublicAPIService.fetchAllAPIs(forceRefresh), // Load all APIs without limit
         PublicAPIService.getCategories(),
       ]);
 

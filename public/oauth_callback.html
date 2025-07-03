@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OAuth2 Callback - Spotify</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: linear-gradient(135deg, #1db954 0%, #191414 100%);
+        color: white;
+      }
+      .container {
+        text-align: center;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #1db954;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .success {
+        color: #1db954;
+      }
+      .error {
+        color: #f87171;
+      }
+      .spotify-note {
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="spinner" id="spinner"></div>
+      <h2 id="status">Processing Spotify authentication...</h2>
+      <p id="message">
+        Please wait while we complete your Spotify authentication.
+      </p>
+      <div class="spotify-note">
+        🎵 Spotify OAuth2 Callback (IPv4 compliant)
+      </div>
+    </div>
+
+    <script>
+      function updateStatus(status, message, isError = false) {
+        document.getElementById("status").textContent = status;
+        document.getElementById("message").textContent = message;
+        document.getElementById("spinner").style.display = isError
+          ? "none"
+          : "block";
+
+        if (isError) {
+          document.getElementById("status").className = "error";
+        } else if (status.includes("Success")) {
+          document.getElementById("status").className = "success";
+          document.getElementById("spinner").style.display = "none";
+        }
+      }
+
+      function handleOAuthCallback() {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const code = urlParams.get("code");
+          const state = urlParams.get("state");
+          const error = urlParams.get("error");
+          const errorDescription = urlParams.get("error_description");
+
+          if (error) {
+            updateStatus(
+              "Spotify Authentication Failed",
+              errorDescription || `Spotify OAuth2 error: ${error}`,
+              true
+            );
+            return;
+          }
+
+          if (!code) {
+            updateStatus(
+              "Spotify Authentication Failed",
+              "No authorization code received from Spotify",
+              true
+            );
+            return;
+          }
+
+          // Try to send message to parent window (for web-based flows)
+          if (window.opener) {
+            updateStatus(
+              "Spotify Authentication Successful!",
+              "Redirecting back to the application..."
+            );
+
+            window.opener.postMessage(
+              {
+                type: "oauth_callback",
+                provider: "spotify",
+                url: window.location.href,
+                code: code,
+                state: state,
+              },
+              window.location.origin
+            );
+
+            // Close this window after a short delay
+            setTimeout(() => {
+              window.close();
+            }, 2000);
+          } else if (window.parent && window.parent !== window) {
+            // For iframe-based flows
+            updateStatus(
+              "Spotify Authentication Successful!",
+              "Redirecting back to the application..."
+            );
+
+            window.parent.postMessage(
+              {
+                type: "oauth_callback",
+                provider: "spotify",
+                url: window.location.href,
+                code: code,
+                state: state,
+              },
+              window.location.origin
+            );
+          } else {
+            // For same-window flows, try to redirect back to main app
+            updateStatus(
+              "Spotify Authentication Successful!",
+              "Redirecting to main application..."
+            );
+
+            // Store the callback data in localStorage for pickup
+            localStorage.setItem(
+              "oauth2_callback_spotify",
+              JSON.stringify({
+                provider: "spotify",
+                url: window.location.href,
+                code: code,
+                state: state,
+                timestamp: Date.now(),
+              })
+            );
+
+            // Also store in the general callback location
+            localStorage.setItem(
+              "oauth2_callback",
+              JSON.stringify({
+                provider: "spotify",
+                url: window.location.href,
+                code: code,
+                state: state,
+                timestamp: Date.now(),
+              })
+            );
+
+            // Redirect back to main app
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 1500);
+          }
+        } catch (err) {
+          console.error("Spotify OAuth callback error:", err);
+          updateStatus(
+            "Spotify Authentication Failed",
+            "An error occurred while processing the Spotify authentication callback",
+            true
+          );
+        }
+      }
+
+      // Run the callback handler when the page loads
+      document.addEventListener("DOMContentLoaded", handleOAuthCallback);
+    </script>
+  </body>
+</html>

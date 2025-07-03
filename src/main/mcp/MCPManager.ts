@@ -11,6 +11,7 @@ import {
   Resource,
   Prompt,
 } from "../../shared/types";
+import { LoggingService } from "../services/LoggingService";
 
 // Define the store schema
 interface StoreSchema {
@@ -21,11 +22,74 @@ export class MCPManager extends EventEmitter {
   private servers: Map<string, ServerStatus> = new Map();
   private clients: Map<string, Client> = new Map();
   private store: any; // Using any to avoid electron-store typing issues
+  private uptimeTrackers: Map<string, NodeJS.Timeout> = new Map(); // Track uptime intervals
+  private loggingService: LoggingService;
 
-  constructor(store: Store<StoreSchema>) {
+  constructor(store: Store<StoreSchema>, loggingService: LoggingService) {
     super();
     this.store = store;
+    this.loggingService = loggingService;
     this.loadServers();
+    // Auto-start sequential thinking server
+    this.ensureSequentialThinkingServer();
+  }
+
+  private async ensureSequentialThinkingServer() {
+    const SEQUENTIAL_THINKING_SERVER_ID = "sequential-thinking-builtin";
+
+    // Check if sequential thinking server already exists
+    const servers: ServerConfig[] = this.store.get("servers", []);
+    const existingServer = servers.find(
+      (s) => s.id === SEQUENTIAL_THINKING_SERVER_ID
+    );
+
+    if (!existingServer) {
+      // Add the sequential thinking server configuration
+      const sequentialThinkingConfig: ServerConfig = {
+        id: SEQUENTIAL_THINKING_SERVER_ID,
+        name: "Sequential Thinking (Built-in)",
+        type: "stdio",
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+        env: {},
+      };
+
+      try {
+        await this.addServer(sequentialThinkingConfig);
+
+        // Auto-connect the server
+        setTimeout(async () => {
+          try {
+            await this.connectServer(SEQUENTIAL_THINKING_SERVER_ID);
+          } catch (error) {
+            console.warn(
+              "⚠️ Failed to auto-connect sequential thinking server:",
+              error
+            );
+          }
+        }, 1000); // Small delay to ensure server is ready
+      } catch (error) {
+        console.warn("⚠️ Failed to add sequential thinking server:", error);
+      }
+    } else {
+      // Server exists, try to connect if not already connected
+      const serverStatus = this.servers.get(SEQUENTIAL_THINKING_SERVER_ID);
+      if (serverStatus && !serverStatus.connected) {
+        setTimeout(async () => {
+          try {
+            await this.connectServer(SEQUENTIAL_THINKING_SERVER_ID);
+            console.log(
+              "✅ Sequential thinking server reconnected automatically"
+            );
+          } catch (error) {
+            console.warn(
+              "⚠️ Failed to reconnect sequential thinking server:",
+              error
+            );
+          }
+        }, 1000);
+      }
+    }
   }
 
   private loadServers() {
@@ -121,10 +185,21 @@ export class MCPManager extends EventEmitter {
           return arg;
         });
 
-        console.log("MCPManager: Starting server with:");
-        console.log("  Command:", config.command);
-        console.log("  Original args:", config.args);
-        console.log("  Cleaned args:", cleanArgs);
+        this.loggingService.addLog(
+          "info",
+          "MCPManager",
+          `Starting server "${config.name}"`,
+          {
+            command: config.command,
+            args: cleanArgs,
+            type: config.type,
+          },
+          {
+            serverId: id,
+            serverName: config.name,
+            category: "server",
+          }
+        );
 
         transport = new StdioClientTransport({
           command: config.command!,
@@ -152,9 +227,27 @@ export class MCPManager extends EventEmitter {
 
       const status = this.servers.get(id)!;
       status.connected = true;
+      status.connectionStartTime = new Date();
+      status.uptime = 0;
       this.servers.set(id, status);
 
-      console.log(`MCPManager: Server ${id} connected successfully`);
+      // Start uptime tracking
+      this.startUptimeTracking(id);
+
+      this.loggingService.addLog(
+        "success",
+        "MCPManager",
+        `Server "${status.name}" connected successfully`,
+        {
+          serverId: id,
+          connectionTime: new Date().toISOString(),
+        },
+        {
+          serverId: id,
+          serverName: status.name,
+          category: "server",
+        }
+      );
 
       // Try to list tools immediately after connection and populate the status
       try {
@@ -169,12 +262,38 @@ export class MCPManager extends EventEmitter {
             toolsResponse.tools.map((t) => t.name)
           );
           status.tools = toolsResponse.tools;
+
+          this.loggingService.addLog(
+            "info",
+            "MCPManager",
+            `Loaded ${toolsResponse.tools.length} tools from server "${status.name}"`,
+            {
+              tools: toolsResponse.tools.map((t) => t.name),
+            },
+            {
+              serverId: id,
+              serverName: status.name,
+              category: "server",
+            }
+          );
         } else {
           status.tools = [];
         }
       } catch (toolError) {
         console.log(`MCPManager: Error listing tools for ${id}:`, toolError);
         status.tools = [];
+
+        this.loggingService.addLog(
+          "warning",
+          "MCPManager",
+          `Failed to load tools from server "${status.name}"`,
+          { error: String(toolError) },
+          {
+            serverId: id,
+            serverName: status.name,
+            category: "server",
+          }
+        );
       }
 
       // Try to list resources
@@ -244,6 +363,9 @@ export class MCPManager extends EventEmitter {
   }
 
   async disconnectServer(id: string): Promise<void> {
+    // Stop uptime tracking
+    this.stopUptimeTracking(id);
+
     const client = this.clients.get(id);
     if (client) {
       await client.close();
@@ -257,24 +379,19 @@ export class MCPManager extends EventEmitter {
       status.tools = [];
       status.resources = [];
       status.prompts = [];
+      status.uptime = 0;
+      status.connectionStartTime = undefined;
       this.servers.set(id, status);
       this.emit("serverDisconnected", status);
     }
   }
 
   async listTools(serverId?: string): Promise<Tool[]> {
-    console.log("MCPManager: listTools called with serverId:", serverId);
     const tools: Tool[] = [];
 
     const clientsToQuery = serverId
       ? ([this.clients.get(serverId)].filter(Boolean) as Client[])
       : Array.from(this.clients.values());
-
-    console.log(
-      "MCPManager: Querying",
-      clientsToQuery.length,
-      "clients for tools"
-    );
 
     for (const client of clientsToQuery) {
       try {
@@ -286,9 +403,7 @@ export class MCPManager extends EventEmitter {
           )?.[0];
 
         const response = await client.listTools();
-        console.log("MCPManager: Got tools response:", response);
         if (response.tools) {
-          console.log("MCPManager: Found", response.tools.length, "tools");
           tools.push(
             ...response.tools.map((tool) => ({
               name: tool.name,
@@ -297,16 +412,25 @@ export class MCPManager extends EventEmitter {
               serverId: currentServerId, // Track which server this tool belongs to
             }))
           );
-        } else {
-          console.log("MCPManager: No tools in response");
         }
       } catch (error) {
         console.error("MCPManager: Error listing tools:", error);
       }
     }
 
-    console.log("MCPManager: Returning", tools.length, "total tools");
     return tools;
+  }
+
+  // Method for UI - filters out sequential thinking tools
+  async listToolsForUI(serverId?: string): Promise<Tool[]> {
+    const allTools = await this.listTools(serverId);
+    // Filter out sequential thinking tools from UI display
+    return allTools.filter((tool) => tool.name !== "sequentialthinking");
+  }
+
+  // Method for agent - includes all tools including sequential thinking
+  async listToolsForAgent(serverId?: string): Promise<Tool[]> {
+    return this.listTools(serverId);
   }
 
   async listResources(serverId?: string): Promise<Resource[]> {
@@ -372,11 +496,31 @@ export class MCPManager extends EventEmitter {
         throw new Error(`Server ${serverId} not connected`);
       }
 
+      const serverStatus = this.servers.get(serverId);
+      const serverName = serverStatus?.name || serverId;
+
       // Auto-inject context parameters for this server
       const enhancedArgs = this.enhanceArgsWithContext(serverId, args);
       console.log(
         `MCPManager: Calling tool ${name} on server ${serverId} with enhanced args:`,
         enhancedArgs
+      );
+
+      this.loggingService.addLog(
+        "info",
+        "MCPManager",
+        `Executing tool "${name}" on server "${serverName}"`,
+        {
+          toolName: name,
+          arguments: enhancedArgs,
+          serverId,
+        },
+        {
+          serverId,
+          serverName,
+          toolName: name,
+          category: "tool",
+        }
       );
 
       // Debug: Let's also log the tool schema to understand what it expects
@@ -393,9 +537,53 @@ export class MCPManager extends EventEmitter {
         console.log(`MCPManager: Could not get tool schema for ${name}`);
       }
 
-      const response = await client.callTool({ name, arguments: enhancedArgs });
-      console.log(`MCPManager: Raw response from tool ${name}:`, response);
-      return response.content;
+      // Update last activity before calling the tool
+      this.updateLastActivity(serverId);
+
+      try {
+        const response = await client.callTool({
+          name,
+          arguments: enhancedArgs,
+        });
+        // console.log(`MCPManager: Raw response from tool ${name}:`, response);
+
+        this.loggingService.addLog(
+          "success",
+          "MCPManager",
+          `Tool "${name}" executed successfully on server "${serverName}"`,
+          {
+            toolName: name,
+            result: response.content,
+            serverId,
+          },
+          {
+            serverId,
+            serverName,
+            toolName: name,
+            category: "tool",
+          }
+        );
+
+        return response.content;
+      } catch (error) {
+        this.loggingService.addLog(
+          "error",
+          "MCPManager",
+          `Tool "${name}" failed on server "${serverName}"`,
+          {
+            toolName: name,
+            error: String(error),
+            serverId,
+          },
+          {
+            serverId,
+            serverName,
+            toolName: name,
+            category: "tool",
+          }
+        );
+        throw error;
+      }
     }
 
     // Otherwise, try all connected clients until one succeeds
@@ -403,6 +591,10 @@ export class MCPManager extends EventEmitter {
     for (const [id, client] of this.clients.entries()) {
       try {
         const enhancedArgs = this.enhanceArgsWithContext(id, args);
+
+        // Update last activity for this server
+        this.updateLastActivity(id);
+
         const response = await client.callTool({
           name,
           arguments: enhancedArgs,
@@ -444,6 +636,10 @@ export class MCPManager extends EventEmitter {
       if (!client) {
         throw new Error(`Server ${serverId} not connected`);
       }
+
+      // Update last activity
+      this.updateLastActivity(serverId);
+
       const response = await client.readResource({ uri });
       return response.contents;
     }
@@ -452,6 +648,9 @@ export class MCPManager extends EventEmitter {
     const errors: string[] = [];
     for (const [id, client] of this.clients.entries()) {
       try {
+        // Update last activity for this server
+        this.updateLastActivity(id);
+
         const response = await client.readResource({ uri });
         return response.contents;
       } catch (error) {
@@ -668,5 +867,41 @@ export class MCPManager extends EventEmitter {
     }
 
     return "";
+  }
+
+  private startUptimeTracking(serverId: string): void {
+    // Clear any existing tracker
+    this.stopUptimeTracking(serverId);
+
+    // Start a new interval tracker
+    const interval = setInterval(() => {
+      const status = this.servers.get(serverId);
+      if (status && status.connected && status.connectionStartTime) {
+        const now = new Date();
+        status.uptime = Math.floor(
+          (now.getTime() - status.connectionStartTime.getTime()) / 1000
+        );
+        this.servers.set(serverId, status);
+      }
+    }, 1000); // Update every second
+
+    this.uptimeTrackers.set(serverId, interval);
+  }
+
+  private stopUptimeTracking(serverId: string): void {
+    const interval = this.uptimeTrackers.get(serverId);
+    if (interval) {
+      clearInterval(interval);
+      this.uptimeTrackers.delete(serverId);
+    }
+  }
+
+  public updateLastActivity(serverId: string): void {
+    const status = this.servers.get(serverId);
+    if (status) {
+      status.lastActivity = new Date();
+      this.servers.set(serverId, status);
+      console.log(`MCPManager: Updated last activity for server ${serverId}`);
+    }
   }
 }

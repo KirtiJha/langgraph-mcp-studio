@@ -21,9 +21,67 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import fetch from "node-fetch";
 import { createHash } from "crypto";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 // Server configuration
 const SERVER_CONFIG: any = __SERVER_CONFIG__;
+
+// OAuth2 Token Storage (for Electron/Node.js environment)
+class OAuth2TokenManager {
+  private tokenFile: string;
+
+  constructor(serverId: string) {
+    const dataDir = path.join(os.homedir(), '.mcp-client');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    this.tokenFile = path.join(dataDir, \`oauth2_token_\${serverId}.json\`);
+  }
+
+  getToken(): any {
+    try {
+      if (fs.existsSync(this.tokenFile)) {
+        const tokenData = JSON.parse(fs.readFileSync(this.tokenFile, 'utf8'));
+        
+        // Check if token is expired
+        if (tokenData.expires_at && tokenData.expires_at > Date.now()) {
+          return tokenData;
+        } else {
+          console.log('OAuth2 token expired');
+          return null;
+        }
+      }
+    } catch (error) {
+      console.error('Error reading OAuth2 token:', error);
+    }
+    return null;
+  }
+
+  storeToken(tokenData: any): void {
+    try {
+      fs.writeFileSync(this.tokenFile, JSON.stringify(tokenData, null, 2));
+    } catch (error) {
+      console.error('Error storing OAuth2 token:', error);
+    }
+  }
+
+  clearToken(): void {
+    try {
+      if (fs.existsSync(this.tokenFile)) {
+        fs.unlinkSync(this.tokenFile);
+      }
+    } catch (error) {
+      console.error('Error clearing OAuth2 token:', error);
+    }
+  }
+}
+
+// Initialize OAuth2 token manager if OAuth2 is configured
+const oauth2Manager = SERVER_CONFIG.authentication?.type === 'oauth2' 
+  ? new OAuth2TokenManager(SERVER_CONFIG.id) 
+  : null;
 
 interface RequestCache {
   [key: string]: {
@@ -120,22 +178,33 @@ server.run().catch(console.error);`;
    */
   async generateMCPServerCode(config: APIServerConfig): Promise<string> {
     try {
+      console.log("Generating MCP server code for:", config.name);
+
+      // Validate config
+      if (!config || !config.endpoints) {
+        throw new Error("Invalid configuration: missing endpoints");
+      }
+
       // Get the embedded template
       const template = this.getTemplate();
 
       // Generate code components
+      console.log("Generating code components...");
       const codeComponents = this.generateCodeComponents(config);
 
       // Replace placeholders in template
+      console.log("Replacing template placeholders...");
       let generatedCode = template
         .replace("__SERVER_CONFIG__", codeComponents.serverConfig)
         .replace("__TOOLS__", codeComponents.tools)
         .replace("__TOOL_HANDLERS__", codeComponents.toolHandlers)
         .replace("__MAKE_API_CALL__", codeComponents.makeApiCall);
 
+      console.log("MCP server code generation completed successfully");
       return generatedCode;
     } catch (error) {
       console.error("Error generating MCP server code:", error);
+      console.error("Config:", JSON.stringify(config, null, 2));
       throw new Error(
         `Failed to generate server code: ${
           error instanceof Error ? error.message : String(error)
@@ -183,7 +252,23 @@ server.run().catch(console.error);`;
         const required: string[] = [];
 
         parameters.forEach((param) => {
+          // Ensure param and param.name exist
+          if (!param || typeof param !== "object") {
+            console.log("Skipping invalid parameter:", param);
+            return; // Skip invalid parameters
+          }
+
+          // Debug logging
+          console.log("Processing parameter:", JSON.stringify(param, null, 2));
+
           const paramName = this.sanitizeParameterName(param.name);
+          console.log(
+            "Sanitized parameter name:",
+            paramName,
+            "from original:",
+            param.name
+          );
+
           properties[paramName] = {
             type: param.type || "string",
             description: this.escapeString(param.description || ""),
@@ -250,24 +335,38 @@ server.run().catch(console.error);`;
     }
 
     // Build URL
-    let url = "${baseUrl}" + endpoint.path;
+    let url = SERVER_CONFIG.baseUrl + endpoint.path;
     
-    // Replace path parameters
-    const pathParams = endpoint.parameters?.filter((p: any) => p.in === "path") || [];
-    pathParams.forEach((param: any) => {
-      const paramValue = params[param.name];
+    // Replace path parameters (detect from URL pattern)
+    const pathParamMatches = endpoint.path.match(/\\{([^}]+)\\}/g) || [];
+    const pathParamNames = pathParamMatches.map((match: string) => match.slice(1, -1)); // Remove { }
+    
+    pathParamNames.forEach((paramName: string) => {
+      const paramValue = params[paramName];
       if (paramValue !== undefined) {
-        url = url.replace(":" + param.name, encodeURIComponent(String(paramValue)));
+        url = url.replace(\`{\${paramName}}\`, encodeURIComponent(String(paramValue)));
       }
     });
 
-    // Add query parameters
-    const queryParams = endpoint.parameters?.filter((p: any) => p.in === "query") || [];
+    // Add query parameters (exclude path parameters)
+    const pathParamNamesSet = new Set(pathParamNames);
+    const queryParams = endpoint.parameters?.filter((p: any) => 
+      p && p.name && (p.in === "query" || (endpoint.method === "GET" && !p.in && !pathParamNamesSet.has(p.name)))
+    ) || [];
     const searchParams = new URLSearchParams();
     queryParams.forEach((param: any) => {
+      if (!param || !param.name) return; // Skip invalid parameters
+      
       const paramValue = params[param.name];
       if (paramValue !== undefined) {
-        searchParams.append(param.name, String(paramValue));
+        if (Array.isArray(paramValue)) {
+          // Handle array parameters
+          paramValue.forEach((value) => {
+            searchParams.append(param.name, String(value));
+          });
+        } else {
+          searchParams.append(param.name, String(paramValue));
+        }
       }
     });
     
@@ -296,10 +395,33 @@ server.run().catch(console.error);`;
     // Add authentication
     if (SERVER_CONFIG.authentication) {
       const auth = SERVER_CONFIG.authentication;
-      if (auth.type === "apikey" && auth.headerName && auth.credentials.apiKey) {
-        headers[auth.headerName] = auth.credentials.apiKey;
+      if (auth.type === "apikey" && auth.headerName && auth.credentials.apikey) {
+        headers[auth.headerName] = auth.credentials.apikey;
       } else if (auth.type === "bearer" && auth.credentials.token) {
         headers["Authorization"] = "Bearer " + auth.credentials.token;
+      } else if (auth.type === "oauth2") {
+        // Try to get OAuth2 token from multiple sources
+        let accessToken = null;
+        
+        // 1. From server config (if available)
+        if (auth.oauth2?.accessToken) {
+          accessToken = auth.oauth2.accessToken;
+        }
+        
+        // 2. From OAuth2 token manager (file storage)
+        if (!accessToken && oauth2Manager) {
+          const tokenData = oauth2Manager.getToken();
+          if (tokenData?.access_token) {
+            accessToken = tokenData.access_token;
+          }
+        }
+        
+        // 3. Throw error if no token available
+        if (!accessToken) {
+          throw new Error("OAuth2 authentication required. Please authenticate via the MCP client.");
+        }
+        
+        headers["Authorization"] = "Bearer " + accessToken;
       }
     }
 
@@ -312,10 +434,19 @@ server.run().catch(console.error);`;
 
     // Add body for POST/PUT/PATCH requests
     if (["POST", "PUT", "PATCH"].includes(endpoint.method.toUpperCase())) {
-      const bodyParams = endpoint.parameters?.filter((p: any) => p.in === "body") || [];
+      // For POST/PUT/PATCH, treat all parameters as body parameters (except path and query)
+      const queryParams = endpoint.parameters?.filter((p: any) => p && p.name && p.in === "query") || [];
+      const queryParamNames = new Set(queryParams.map((p: any) => p.name).filter(name => name));
+      
+      const bodyParams = endpoint.parameters?.filter((p: any) => 
+        p && p.name && !pathParamNamesSet.has(p.name) && !queryParamNames.has(p.name)
+      ) || [];
+      
       if (bodyParams.length > 0) {
         const body: Record<string, any> = {};
         bodyParams.forEach((param: any) => {
+          if (!param || !param.name) return; // Skip invalid parameters
+          
           const paramValue = params[param.name];
           if (paramValue !== undefined) {
             body[param.name] = paramValue;
@@ -366,6 +497,9 @@ server.run().catch(console.error);`;
   }
 
   private sanitizeToolName(name: string): string {
+    if (!name || typeof name !== "string") {
+      return "unnamed_tool";
+    }
     return name
       .replace(/[^a-zA-Z0-9_-]/g, "_")
       .replace(/^[^a-zA-Z_]/, "_")
@@ -374,6 +508,9 @@ server.run().catch(console.error);`;
   }
 
   private sanitizeParameterName(name: string): string {
+    if (!name || typeof name !== "string") {
+      return "unnamed_param";
+    }
     return name
       .replace(/[^a-zA-Z0-9_]/g, "_")
       .replace(/^[^a-zA-Z_]/, "_")
@@ -382,6 +519,9 @@ server.run().catch(console.error);`;
   }
 
   private escapeString(str: string): string {
+    if (!str || typeof str !== "string") {
+      return "";
+    }
     return str
       .replace(/\\/g, "\\\\")
       .replace(/"/g, '\\"')

@@ -10,11 +10,27 @@ export interface PublicAPISpec {
   tags: string[];
   documentation?: string;
   authentication?: {
-    type: "none" | "apiKey" | "oauth2" | "basic" | "bearer";
+    type:
+      | "none"
+      | "apiKey"
+      | "oauth2"
+      | "basic"
+      | "bearer"
+      | "digest"
+      | "aws-signature"
+      | "mutual-tls"
+      | "custom";
     description?: string;
     keyName?: string;
     keyLocation?: "header" | "query" | "cookie";
     scopes?: string[];
+    flow?:
+      | "authorization_code"
+      | "client_credentials"
+      | "password"
+      | "implicit"
+      | "pkce";
+    testCredentials?: Record<string, any>; // For testing purposes
   };
   contact?: {
     name?: string;
@@ -28,14 +44,19 @@ export interface PublicAPISpec {
   rateLimit?: {
     requests: number;
     period: string;
+    burst?: number; // Allow burst requests
   };
   openApiSpec?: any; // Full OpenAPI spec
   endpoints?: PublicAPIEndpoint[];
   pricing?: "free" | "freemium" | "paid";
-  status: "active" | "deprecated" | "beta";
+  status: "active" | "deprecated" | "beta" | "private" | "internal";
   lastUpdated: string;
   popularity?: number;
   featured?: boolean;
+  isPrivate?: boolean; // Flag for private/internal APIs
+  accessLevel?: "public" | "private" | "internal" | "partner";
+  environment?: "production" | "staging" | "development" | "sandbox";
+  customFields?: Record<string, any>; // For extensibility
 }
 
 export interface PublicAPIEndpoint {

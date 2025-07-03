@@ -6,6 +6,13 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   ClipboardDocumentIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  ServerIcon,
+  WrenchScrewdriverIcon,
+  CpuChipIcon,
+  GlobeAltIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { LogEntry } from "../../shared/types";
 import { useLogsStore } from "../stores/logsStore";
@@ -30,15 +37,45 @@ const levelColors = {
   debug: "text-slate-400 bg-slate-500/10 border-slate-500/20",
 };
 
+const categoryIcons = {
+  system: CpuChipIcon,
+  server: ServerIcon,
+  tool: WrenchScrewdriverIcon,
+  api: GlobeAltIcon,
+  ui: EyeIcon,
+};
+
 export const LogsConsole: React.FC<LogsConsoleProps> = () => {
   const { logs, clearAllLogs } = useLogsStore();
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [autoScroll, setAutoScroll] = useState(true);
+  const [collapsedLogs, setCollapsedLogs] = useState<Set<string>>(new Set());
+  const [compactView, setCompactView] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filteredLogs =
     filter === "all" ? logs : logs.filter((log) => log.level === filter);
+
+  const toggleLogCollapse = (logId: string) => {
+    const newCollapsed = new Set(collapsedLogs);
+    if (newCollapsed.has(logId)) {
+      newCollapsed.delete(logId);
+    } else {
+      newCollapsed.add(logId);
+    }
+    setCollapsedLogs(newCollapsed);
+  };
+
+  const toggleAllLogs = () => {
+    if (collapsedLogs.size === filteredLogs.length) {
+      // All are collapsed, expand all
+      setCollapsedLogs(new Set());
+    } else {
+      // Some or none are collapsed, collapse all
+      setCollapsedLogs(new Set(filteredLogs.map((log) => log.id)));
+    }
+  };
 
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -106,6 +143,34 @@ export const LogsConsole: React.FC<LogsConsoleProps> = () => {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Compact View Toggle */}
+            <button
+              onClick={() => setCompactView(!compactView)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                compactView
+                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                  : "bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700"
+              }`}
+              title="Toggle compact view"
+            >
+              Compact {compactView ? "ON" : "OFF"}
+            </button>
+
+            {/* Collapse All Toggle */}
+            <button
+              onClick={toggleAllLogs}
+              className="px-3 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-700 transition-all duration-200"
+              title={
+                collapsedLogs.size === filteredLogs.length
+                  ? "Expand all logs"
+                  : "Collapse all logs"
+              }
+            >
+              {collapsedLogs.size === filteredLogs.length
+                ? "Expand All"
+                : "Collapse All"}
+            </button>
+
             {/* Filter */}
             <select
               value={filter}
@@ -163,40 +228,120 @@ export const LogsConsole: React.FC<LogsConsoleProps> = () => {
           >
             {filteredLogs.map((log) => {
               const IconComponent = levelIcons[log.level];
+              const CategoryIcon = categoryIcons[log.category || "system"];
+              const isCollapsed = collapsedLogs.has(log.id);
+
               return (
                 <div
                   key={log.id}
-                  className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-all duration-200 hover:bg-slate-800/50 ${
+                  className={`border rounded-lg transition-all duration-200 ${
                     selectedLog?.id === log.id
                       ? "bg-slate-800/80 border-slate-600"
                       : `${levelColors[log.level]} hover:border-slate-600`
                   }`}
-                  onClick={() => setSelectedLog(log)}
                 >
-                  <div className="flex-shrink-0 mt-0.5">
-                    <IconComponent className="w-4 h-4" />
+                  {/* Log Header */}
+                  <div
+                    className={`flex items-start space-x-3 p-3 cursor-pointer transition-all duration-200 hover:bg-slate-800/50 ${
+                      compactView ? "py-2" : "py-3"
+                    }`}
+                    onClick={() => setSelectedLog(log)}
+                  >
+                    {/* Collapse Toggle */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLogCollapse(log.id);
+                      }}
+                      className="flex-shrink-0 p-0.5 text-slate-400 hover:text-slate-200 transition-colors duration-200"
+                    >
+                      {isCollapsed ? (
+                        <ChevronRightIcon className="w-4 h-4" />
+                      ) : (
+                        <ChevronDownIcon className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    {/* Level Icon */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      <IconComponent className="w-4 h-4" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 flex-wrap">
+                        {/* Timestamp */}
+                        <span className="text-slate-500 text-xs font-mono">
+                          {formatTimestamp(log.timestamp)}
+                        </span>
+
+                        {/* Level Badge */}
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded uppercase font-medium ${
+                            levelColors[log.level]
+                          }`}
+                        >
+                          {log.level}
+                        </span>
+
+                        {/* Category Badge */}
+                        {log.category && (
+                          <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 bg-slate-700/50 text-slate-300 rounded">
+                            <CategoryIcon className="w-3 h-3" />
+                            <span>{log.category}</span>
+                          </span>
+                        )}
+
+                        {/* Server Info */}
+                        {log.serverName && (
+                          <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded">
+                            <ServerIcon className="w-3 h-3" />
+                            <span>{log.serverName}</span>
+                          </span>
+                        )}
+
+                        {/* Tool Info */}
+                        {log.toolName && (
+                          <span className="inline-flex items-center space-x-1 text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">
+                            <WrenchScrewdriverIcon className="w-3 h-3" />
+                            <span>{log.toolName}</span>
+                          </span>
+                        )}
+
+                        {/* Source */}
+                        <span className="text-slate-400 text-xs px-2 py-0.5 bg-slate-800/50 rounded">
+                          {log.source}
+                        </span>
+                      </div>
+
+                      {/* Message - Always show first line, full message when expanded */}
+                      <div className="mt-1">
+                        {isCollapsed ? (
+                          <p className="text-slate-200 text-sm break-words line-clamp-1">
+                            {log.message.split("\n")[0]}
+                            {log.message.includes("\n") && (
+                              <span className="text-slate-500 ml-2">...</span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-slate-200 text-sm break-words whitespace-pre-wrap">
+                            {log.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-slate-500 text-xs">
-                        {formatTimestamp(log.timestamp)}
-                      </span>
-                      <span className="text-slate-400 text-xs px-2 py-0.5 bg-slate-800/50 rounded">
-                        {log.source}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded uppercase font-medium ${
-                          levelColors[log.level]
-                        }`}
-                      >
-                        {log.level}
-                      </span>
+                  {/* Expanded Details */}
+                  {!isCollapsed && log.details && (
+                    <div className="border-t border-slate-700/50 p-3 bg-slate-800/30">
+                      <div className="text-xs text-slate-400 mb-2">
+                        Details:
+                      </div>
+                      <pre className="text-slate-300 text-xs bg-slate-900/50 p-2 rounded font-mono overflow-x-auto max-h-32">
+                        {JSON.stringify(log.details, null, 2)}
+                      </pre>
                     </div>
-                    <p className="text-slate-200 mt-1 break-words">
-                      {log.message}
-                    </p>
-                  </div>
+                  )}
                 </div>
               );
             })}

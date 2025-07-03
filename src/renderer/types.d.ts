@@ -3,7 +3,7 @@ declare global {
   const __DEV__: boolean;
   namespace NodeJS {
     interface ProcessEnv {
-      NODE_ENV: 'development' | 'production' | 'test';
+      NODE_ENV: "development" | "production" | "test";
     }
   }
 
@@ -27,7 +27,7 @@ declare global {
       ) => Promise<any>;
 
       // Agent operations
-      sendMessage: (message: string) => Promise<any>;
+      sendMessage: (message: string, model?: string) => Promise<any>;
 
       // Resource operations
       listResources: (serverId: string) => Promise<any[]>;
@@ -41,6 +41,15 @@ declare global {
       discoverContextParams: (
         serverId: string
       ) => Promise<Record<string, string>>;
+
+      // OAuth2 operations
+      openOAuth2Url: (url: string) => Promise<boolean>;
+      onOAuth2Callback: (callback: (url: string) => void) => () => void;
+
+      // Shell operations (for OAuth2)
+      shell?: {
+        openExternal: (url: string) => Promise<void>;
+      };
 
       // API Server operations
       "api-server:get-all": () => Promise<any[]>;

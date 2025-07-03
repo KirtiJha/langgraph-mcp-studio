@@ -46,8 +46,8 @@ const api = {
     ipcRenderer.invoke(IpcChannels.EXECUTE_TOOL, { serverId, toolName, args }),
 
   // Agent operations
-  sendMessage: (message: string) =>
-    ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, message),
+  sendMessage: (message: string, model?: string) =>
+    ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, { message, model }),
 
   // Resource operations
   listResources: (serverId: string) =>
@@ -76,6 +76,16 @@ const api = {
     headers?: Record<string, string>;
     body?: any;
   }) => ipcRenderer.invoke(IpcChannels.TEST_PUBLIC_API, options),
+
+  // OAuth2 operations
+  openOAuth2Url: (url: string) => ipcRenderer.invoke("oauth2-open-url", url),
+  onOAuth2Callback: (callback: Function) => {
+    const subscription = (_: any, url: string) => callback(url);
+    ipcRenderer.on("oauth2-callback", subscription);
+    return () => {
+      ipcRenderer.removeListener("oauth2-callback", subscription);
+    };
+  },
 
   // API Server operations
   "api-server:get-all": () => ipcRenderer.invoke("api-server:get-all"),
