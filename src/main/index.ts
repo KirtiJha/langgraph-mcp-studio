@@ -416,9 +416,138 @@ function setupIpcHandlers() {
 
   // OAuth2 operations
   ipcMain.handle("oauth2-open-url", async (_, url) => {
-    console.log("🔗 Opening OAuth2 URL externally:", url);
-    await shell.openExternal(url);
+    console.log("🔗 Opening OAuth2 URL in Electron window:", url);
+    
+    // Create a new Electron window for OAuth2 instead of opening externally
+    const oauth2Window = new BrowserWindow({
+      width: 500,
+      height: 700,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        webSecurity: true,
+      },
+      modal: true,
+      parent: mainWindow || undefined,
+      show: false,
+      title: "OAuth2 Authentication",
+      autoHideMenuBar: true,
+    });
+
+    // Handle navigation to detect callback URL
+    oauth2Window.webContents.on('will-navigate', (event, navigationUrl) => {
+      console.log("🔗 OAuth2 window navigating to:", navigationUrl);
+      
+      // Check if this is a callback URL
+      if (navigationUrl.includes('localhost:3000') || 
+          navigationUrl.includes('127.0.0.1:3000') ||
+          navigationUrl.includes('code=')) {
+        event.preventDefault();
+        
+        // Send the callback URL to the main window
+        if (mainWindow) {
+          mainWindow.webContents.send("oauth2-callback", navigationUrl);
+        }
+        
+        // Close the OAuth2 window
+        oauth2Window.close();
+      }
+    });
+
+    // Show window after it's ready to prevent white flash
+    oauth2Window.once('ready-to-show', () => {
+      oauth2Window.show();
+    });
+
+    // Clean up when window is closed
+    oauth2Window.on('closed', () => {
+      console.log("🔗 OAuth2 window closed");
+    });
+
+    // Load the OAuth2 URL
+    await oauth2Window.loadURL(url);
+    
     return true;
+  });
+
+  // OAuth2 token exchange (moved to main process to avoid CORS)
+  ipcMain.handle("oauth2-exchange-token", async (_, { config, callbackUrl }) => {
+    console.log("🔗 Exchanging OAuth2 code for token in main process");
+    
+    try {
+      const url = new URL(callbackUrl);
+      const params = new URLSearchParams(url.search);
+      
+      const code = params.get("code");
+      const state = params.get("state");
+      const error = params.get("error");
+
+      if (error) {
+        throw new Error(`OAuth2 error: ${error}`);
+      }
+
+      if (!code) {
+        throw new Error("Authorization code not found in callback");
+      }
+
+      // Prepare token exchange request
+      const tokenParams = new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code,
+        redirect_uri: config.redirectUri,
+        client_id: config.clientId,
+      });
+
+      // Add client secret or PKCE challenge
+      if (config.usePKCE && config.codeVerifier) {
+        tokenParams.append("code_verifier", config.codeVerifier);
+      } else if (config.clientSecret) {
+        tokenParams.append("client_secret", config.clientSecret);
+      }
+
+      console.log("🔗 Making token exchange request to:", config.tokenUrl);
+
+      // Make token exchange request using Node.js fetch (no CORS restrictions)
+      const response = await fetch(config.tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json",
+          "User-Agent": "MCP-Studio/1.0",
+        },
+        body: tokenParams.toString(),
+      });
+
+      const responseText = await response.text();
+      console.log("🔗 Token exchange response status:", response.status);
+      console.log("🔗 Token exchange response:", responseText.substring(0, 200));
+
+      if (!response.ok) {
+        console.error("Token exchange failed:", response.status, responseText);
+        throw new Error(`Token exchange failed: ${response.status} ${response.statusText} - ${responseText}`);
+      }
+
+      let tokenResponse;
+      try {
+        tokenResponse = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse token response:", responseText);
+        throw new Error("Invalid JSON response from token endpoint");
+      }
+
+      console.log("🔗 Token exchange successful");
+      
+      return {
+        access_token: tokenResponse.access_token,
+        refresh_token: tokenResponse.refresh_token,
+        expires_in: tokenResponse.expires_in || 3600,
+        token_type: tokenResponse.token_type || "Bearer",
+        scope: tokenResponse.scope,
+      };
+    } catch (error) {
+      console.error("🔗 Token exchange error:", error);
+      throw error;
+    }
   });
 
   // Logging operations

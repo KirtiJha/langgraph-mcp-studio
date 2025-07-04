@@ -44,6 +44,7 @@ declare global {
 
       // OAuth2 operations
       openOAuth2Url: (url: string) => Promise<boolean>;
+      exchangeOAuth2Token: (config: any, callbackUrl: string) => Promise<any>;
       onOAuth2Callback: (callback: (url: string) => void) => () => void;
 
       // Shell operations (for OAuth2)

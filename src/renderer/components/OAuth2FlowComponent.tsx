@@ -126,13 +126,28 @@ export const OAuth2FlowComponent: React.FC<OAuth2FlowComponentProps> = ({
         );
         // Store unsubscribe function to clean up later
         (window as any).oauth2Unsubscribe = unsubscribe;
+        
+        // Set a timeout to clean up if no callback is received
+        const timeoutId = setTimeout(() => {
+          console.log("🔗 OAuth2 timeout - cleaning up listener");
+          unsubscribe();
+          delete (window as any).oauth2Unsubscribe;
+          if (authStatus === "pending") {
+            setAuthError("Authentication timed out. Please try again.");
+            setAuthStatus("error");
+            setIsAuthenticating(false);
+          }
+        }, 5 * 60 * 1000); // 5 minute timeout
+        
+        // Store timeout ID for cleanup
+        (window as any).oauth2Timeout = timeoutId;
       } else {
         // For web browsers, use message listener
         window.addEventListener("message", handleAuthCallback, false);
       }
 
-      // Start the OAuth2 flow
-      const authUrl = await oauth2Service.initiateAuth(oauth2Config);
+      // Start the OAuth2 flow - don't auto-open since we handle it ourselves
+      const authUrl = await oauth2Service.initiateAuth(oauth2Config, false);
 
       // Open URL externally for Electron or in popup for web
       if (window.electronAPI) {
@@ -306,10 +321,15 @@ export const OAuth2FlowComponent: React.FC<OAuth2FlowComponentProps> = ({
     } finally {
       setIsAuthenticating(false);
 
-      // Clean up the callback listener
+      // Clean up the callback listener and timeout
       if ((window as any).oauth2Unsubscribe) {
         (window as any).oauth2Unsubscribe();
         delete (window as any).oauth2Unsubscribe;
+      }
+      
+      if ((window as any).oauth2Timeout) {
+        clearTimeout((window as any).oauth2Timeout);
+        delete (window as any).oauth2Timeout;
       }
     }
   };

@@ -79,6 +79,8 @@ const api = {
 
   // OAuth2 operations
   openOAuth2Url: (url: string) => ipcRenderer.invoke("oauth2-open-url", url),
+  exchangeOAuth2Token: (config: any, callbackUrl: string) => 
+    ipcRenderer.invoke("oauth2-exchange-token", { config, callbackUrl }),
   onOAuth2Callback: (callback: Function) => {
     const subscription = (_: any, url: string) => callback(url);
     ipcRenderer.on("oauth2-callback", subscription);

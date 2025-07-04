@@ -148,10 +148,10 @@
               window.location.origin
             );
           } else {
-            // For same-window flows, try to redirect back to main app
+            // For same-window flows, try to communicate with the Electron app
             updateStatus(
               "Spotify Authentication Successful!",
-              "Redirecting to main application..."
+              "Communicating with MCP Studio..."
             );
 
             // Store the callback data in localStorage for pickup
@@ -178,10 +178,53 @@
               })
             );
 
-            // Redirect back to main app
+            // Try multiple methods to return to the Electron app
             setTimeout(() => {
-              window.location.href = "/";
-            }, 1500);
+              // Method 1: Try to send message to Electron app if it's a child window
+              if (window.opener && window.opener.postMessage) {
+                try {
+                  window.opener.postMessage(
+                    {
+                      type: "oauth_callback",
+                      url: window.location.href,
+                      code: code,
+                      state: state,
+                      provider: "spotify",
+                    },
+                    "*"
+                  );
+                } catch (e) {
+                  console.log("Failed to send message to opener:", e);
+                }
+              }
+
+              // Method 2: Try to make a direct HTTP request to the local OAuth server
+              fetch("http://127.0.0.1:3000/oauth_callback.html?" + window.location.search, {
+                method: "GET",
+                mode: "no-cors"
+              }).catch(() => {
+                // If fetch fails, try other ports
+                fetch("http://127.0.0.1:3001/oauth_callback.html?" + window.location.search, {
+                  method: "GET",
+                  mode: "no-cors"
+                }).catch(() => {
+                  fetch("http://127.0.0.1:3002/oauth_callback.html?" + window.location.search, {
+                    method: "GET",
+                    mode: "no-cors"
+                  }).catch(() => {
+                    console.log("Could not reach local OAuth server");
+                  });
+                });
+              });
+
+              // Method 3: Show manual instructions
+              setTimeout(() => {
+                document.getElementById("status").textContent = "Return to MCP Studio";
+                document.getElementById("message").textContent = 
+                  "Spotify authentication complete! Please return to the MCP Studio desktop application and try the OAuth flow again if needed.";
+                document.getElementById("spinner").style.display = "none";
+              }, 3000);
+            }, 1000);
           }
         } catch (err) {
           console.error("Spotify OAuth callback error:", err);

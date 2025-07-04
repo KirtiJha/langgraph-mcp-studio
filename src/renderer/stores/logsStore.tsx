@@ -68,6 +68,12 @@ export const LogsProvider: React.FC<LogsProviderProps> = ({ children }) => {
 
   // Listen for new log events
   useEffect(() => {
+    // Only set up listeners if electronAPI is available
+    if (!window.electronAPI) {
+      console.warn("ElectronAPI not available - logs not accessible in browser mode");
+      return;
+    }
+
     const unsubscribe = (window as any).electronAPI.on(
       "log-event",
       (logEntry: LogEntry) => {

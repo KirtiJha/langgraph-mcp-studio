@@ -102,6 +102,11 @@ interface ToolExecutionMessage extends BaseChatMessage {
 type ChatMessage = UserMessage | AssistantMessage | ToolExecutionMessage;
 
 function App() {
+  // Check if running in browser mode (e.g., after OAuth2 callback)
+  const [isBrowserMode, setIsBrowserMode] = useState(() => {
+    return !window.electronAPI;
+  });
+
   // Authentication state with persistence
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     // In development mode, optionally reset auth state
@@ -238,6 +243,10 @@ function App() {
         unsubscribeDisconnected();
         unsubscribeError();
       };
+    } else if (isAuthenticated && !window.electronAPI) {
+      // Handle browser mode - show message that Electron is required
+      console.warn("🌐 App is running in browser mode - Electron features unavailable");
+      setIsLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -690,12 +699,98 @@ function App() {
     }
   };
 
+  // Handle OAuth2 callback and browser mode
+  useEffect(() => {
+    // Check if this is an OAuth2 callback
+    if (isBrowserMode && window.location.search.includes('code=')) {
+      console.log("🔐 OAuth2 callback detected in browser mode");
+      
+      // Show a message to the user about the OAuth2 callback
+      const message = "OAuth2 authentication completed! Please return to the main application.";
+      
+      // Try to close the window if it was opened as a popup
+      if (window.opener) {
+        window.close();
+      } else {
+        // Show a message to the user
+        alert(message);
+      }
+      return;
+    }
+
+    // Check if there's a stored OAuth2 callback to process
+    const storedCallback = localStorage.getItem('oauth2_callback');
+    if (storedCallback) {
+      try {
+        const callbackData = JSON.parse(storedCallback);
+        // Only process if it's recent (within 5 minutes)
+        if (Date.now() - callbackData.timestamp < 5 * 60 * 1000) {
+          console.log("🔐 Processing stored OAuth2 callback");
+          // Clear the stored callback
+          localStorage.removeItem('oauth2_callback');
+          
+          // If we have electronAPI, send the callback data
+          if (window.electronAPI) {
+            // Send the callback to the OAuth2 flow component
+            window.dispatchEvent(new CustomEvent('oauth2-callback-processed', {
+              detail: callbackData
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error processing stored OAuth2 callback:", error);
+        localStorage.removeItem('oauth2_callback');
+      }
+    }
+  }, [isBrowserMode]);
+
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <SettingsProvider>
           <LogsProvider>
-            {!isAuthenticated ? (
+            {/* Handle OAuth2 callback in browser mode */}
+            {isBrowserMode && window.location.search.includes('code=') ? (
+              <div className="h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                  <h2 className="text-xl font-semibold mb-2">OAuth2 Authentication Complete</h2>
+                  <p className="text-slate-400 mb-4">
+                    Authentication successful! Please return to the main MCP Studio application.
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (window.opener) {
+                        window.close();
+                      } else {
+                        window.location.href = '/';
+                      }
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
+                  >
+                    {window.opener ? 'Close Window' : 'Return to App'}
+                  </button>
+                </div>
+              </div>
+            ) : isBrowserMode ? (
+              // Browser mode without OAuth2 callback - show message
+              <div className="h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+                <div className="text-center max-w-md">
+                  <div className="text-6xl mb-4">🖥️</div>
+                  <h2 className="text-2xl font-bold mb-4">Electron App Required</h2>
+                  <p className="text-slate-400 mb-6">
+                    MCP Studio is designed to run as an Electron application. 
+                    Please download and install the desktop version to access all features.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-500">
+                      If you're seeing this after OAuth2 authentication, 
+                      please return to the main application.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : !isAuthenticated ? (
               <LandingPage onLogin={handleLogin} />
             ) : isLoading ? (
               <LoadingScreen message="Initializing MCP Studio..." />

@@ -33,7 +33,7 @@ export class OAuth2Service {
   /**
    * Initiate OAuth2 authorization flow
    */
-  async initiateAuth(config: OAuth2Config): Promise<string> {
+  async initiateAuth(config: OAuth2Config, autoOpen: boolean = true): Promise<string> {
     // Generate state for CSRF protection
     this.state = this.generateRandomString(32);
 
@@ -59,8 +59,10 @@ export class OAuth2Service {
 
     const authUrl = `${config.authUrl}?${authParams.toString()}`;
 
-    // Open authorization URL in user's browser
-    await this.openInBrowser(authUrl);
+    // Only open browser automatically if requested (for backward compatibility)
+    if (autoOpen) {
+      await this.openInBrowser(authUrl);
+    }
 
     return authUrl;
   }
@@ -91,8 +93,17 @@ export class OAuth2Service {
       throw new Error("Invalid state parameter");
     }
 
-    // Exchange authorization code for access token
-    return this.exchangeCodeForToken(config, code);
+    // Use main process for token exchange if in Electron (to avoid CORS)
+    if ((window as any).electronAPI?.exchangeOAuth2Token) {
+      const configWithVerifier = {
+        ...config,
+        codeVerifier: this.codeVerifier,
+      };
+      return await (window as any).electronAPI.exchangeOAuth2Token(configWithVerifier, callbackUrl);
+    } else {
+      // Fallback to browser-based exchange for web environments
+      return this.exchangeCodeForToken(config, code);
+    }
   }
 
   /**
