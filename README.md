@@ -87,8 +87,13 @@ After starting the application with `npm run dev` or `npm start`, you'll see a *
 
 1. **Start the app**: Run `npm run dev` or `npm start`
 2. **Landing Page**: You'll see the MCP Studio welcome screen
-3. **Click "Sign in with IBM SSO"**: This button simulates login (no real credentials needed)
-4. **Main Interface**: After clicking login, you'll access the full MCP Studio with all tabs
+3. **Choose Authentication**: Click "Sign In" and select your preferred provider:
+   - Google OAuth2
+   - GitHub OAuth2
+   - Microsoft OAuth2
+   - IBM SSO
+   - Enterprise SSO
+4. **Main Interface**: After authentication, you'll access the full MCP Studio with all tabs
 
 **Available Tabs After Login:**
 
@@ -100,6 +105,46 @@ After starting the application with `npm run dev` or `npm start`, you'll see a *
 - 💬 **Chat**: Interact with your AI agent using all available tools
 - 🔘 **API Servers**: Build custom API servers
 - 📊 **Logs**: View system logs and debugging info
+
+## 🔐 Authentication
+
+MCP Studio supports multiple authentication providers for secure access:
+
+### Supported Providers
+
+- **🔵 Google OAuth2**: Sign in with your Google account
+- **⚫ GitHub OAuth2**: Sign in with your GitHub account  
+- **🔷 Microsoft OAuth2**: Sign in with your Microsoft account
+- **🔳 IBM SSO**: Sign in with your IBM enterprise account
+- **🏢 Enterprise SSO**: Configure custom organization SSO
+
+### Quick Setup
+
+1. **Development**: For development, you can use the demo mode (no real credentials needed)
+2. **Production**: Set up your OAuth2 credentials in the `.env` file:
+
+```env
+# Google OAuth2
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# GitHub OAuth2  
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Microsoft OAuth2
+MICROSOFT_CLIENT_ID=your_microsoft_client_id
+MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
+
+# IBM SSO
+IBM_CLIENT_ID=your_ibm_client_id
+IBM_CLIENT_SECRET=your_ibm_client_secret
+```
+
+### Setup Guides
+
+- 📖 **IBM SSO Setup**: See [IBM_SSO_AUTH_SETUP_GUIDE.md](IBM_SSO_AUTH_SETUP_GUIDE.md)
+- 📖 **OAuth2 Setup**: See [OAUTH2_SETUP_GUIDE.md](OAUTH2_SETUP_GUIDE.md)
 
 ## 🌟 Key Features
 

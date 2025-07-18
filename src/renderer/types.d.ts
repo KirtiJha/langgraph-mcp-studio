@@ -27,7 +27,11 @@ declare global {
       ) => Promise<any>;
 
       // Agent operations
-      sendMessage: (message: string, model?: string) => Promise<any>;
+      sendMessage: (params: {
+        message: string;
+        model?: string;
+      }) => Promise<any>;
+      clearChat: () => Promise<{ success: boolean }>;
 
       // Resource operations
       listResources: (serverId: string) => Promise<any[]>;
@@ -47,6 +51,9 @@ declare global {
       exchangeOAuth2Token: (config: any, callbackUrl: string) => Promise<any>;
       onOAuth2Callback: (callback: (url: string) => void) => () => void;
 
+      // Authentication configuration
+      getAuthConfig: () => any;
+
       // Shell operations (for OAuth2)
       shell?: {
         openExternal: (url: string) => Promise<void>;
@@ -64,6 +71,26 @@ declare global {
         endpointId: string,
         params?: any
       ) => Promise<any>;
+
+      // Server code management
+      selectDirectory: () => Promise<string | null>;
+      readServerCode: (serverId: string, fileName?: string) => Promise<string>;
+      writeServerCode: (
+        serverId: string,
+        fileName: string,
+        content: string
+      ) => Promise<void>;
+      getServerFiles: (serverId: string) => Promise<{
+        exists: boolean;
+        files: Array<{
+          name: string;
+          path: string;
+          size: number;
+          modified: Date;
+          type: "file" | "directory";
+        }>;
+      }>;
+      openServerFolder: (serverId: string) => Promise<void>;
 
       // Generic invoke method
       invoke: (channel: string, ...args: any[]) => Promise<any>;

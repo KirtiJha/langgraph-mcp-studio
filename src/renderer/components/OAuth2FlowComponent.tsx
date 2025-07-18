@@ -45,7 +45,48 @@ export const OAuth2FlowComponent: React.FC<OAuth2FlowComponentProps> = ({
         setAuthStatus("idle");
       }
     }
-  }, [serverId]);
+
+    // Add localStorage polling for OAuth callback
+    const pollForOAuthCallback = () => {
+      const callbackData = localStorage.getItem("oauth2_callback");
+      if (callbackData) {
+        try {
+          const data = JSON.parse(callbackData);
+          // Check if this is a recent callback (within last 5 minutes)
+          if (Date.now() - data.timestamp < 300000) {
+            console.log("Found OAuth callback in localStorage, processing...", data);
+            localStorage.removeItem("oauth2_callback");
+            handleOAuth2CallbackFromStorage(data.url);
+          }
+        } catch (e) {
+          console.error("Error parsing OAuth callback data:", e);
+        }
+      }
+    };
+
+    // Poll every 1 second when authenticating
+    let pollingInterval: NodeJS.Timeout;
+    if (authStatus === "pending") {
+      pollingInterval = setInterval(pollForOAuthCallback, 1000);
+    }
+
+    // Listen for custom OAuth callback events
+    const handleCustomOAuthEvent = (event: CustomEvent) => {
+      if (event.type === "oauth2-callback" && event.detail) {
+        console.log("Received custom OAuth callback event:", event.detail);
+        handleOAuth2CallbackFromStorage(event.detail.url);
+      }
+    };
+
+    window.addEventListener("oauth2-callback", handleCustomOAuthEvent as EventListener);
+
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      window.removeEventListener("oauth2-callback", handleCustomOAuthEvent as EventListener);
+    };
+  }, [serverId, authStatus]);
 
   // Also check server config for valid tokens and sync states
   useEffect(() => {
@@ -79,6 +120,11 @@ export const OAuth2FlowComponent: React.FC<OAuth2FlowComponentProps> = ({
         // For Spotify, always use the IPv4 address and underscore format
         if (selectedTemplate === "spotify") {
           return "http://127.0.0.1:3000/oauth_callback.html";
+        }
+
+        // For IBM SSO templates, use standard localhost format
+        if (selectedTemplate === "ibmSso" || selectedTemplate === "ibmWatson" || selectedTemplate === "ibmCloudant") {
+          return "http://localhost:3000/oauth-callback.html";
         }
 
         if (window.location.protocol === "file:") {
@@ -168,12 +214,19 @@ export const OAuth2FlowComponent: React.FC<OAuth2FlowComponentProps> = ({
   };
 
   const handleAuthCallback = async (event: MessageEvent) => {
-    if (
-      event.origin !== window.location.origin &&
-      event.origin !== "http://localhost:3000" &&
-      event.origin !== "http://127.0.0.1:3000"
-    )
-      return;
+    // For OAuth callbacks, we need to be more permissive with origins
+    // since the callback can come from any OAuth provider domain
+    if (event.data.type === "oauth_callback") {
+      console.log("OAuth callback received via message:", event.data);
+    } else {
+      // For other message types, still check origin
+      if (
+        event.origin !== window.location.origin &&
+        event.origin !== "http://localhost:3000" &&
+        event.origin !== "http://127.0.0.1:3000"
+      )
+        return;
+    }
 
     if (event.data.type === "oauth_callback") {
       try {
@@ -246,6 +299,81 @@ export const OAuth2FlowComponent: React.FC<OAuth2FlowComponentProps> = ({
         setIsAuthenticating(false);
         window.removeEventListener("message", handleAuthCallback, false);
       }
+    }
+  };
+
+  const handleOAuth2CallbackFromStorage = async (callbackUrl: string) => {
+    console.log("🔗 OAuth2 callback received from localStorage/events:", callbackUrl);
+
+    try {
+      // Use the same redirect URI logic
+      const getRedirectUri = () => {
+        // For Spotify, always use the IPv4 address and underscore format
+        if (selectedTemplate === "spotify") {
+          return "http://127.0.0.1:3000/oauth_callback.html";
+        }
+
+        if (window.location.protocol === "file:") {
+          return "http://localhost:3000/oauth-callback.html";
+        } else {
+          return `${window.location.origin}/oauth-callback.html`;
+        }
+      };
+
+      const oauth2Config: OAuth2Config = {
+        authUrl: serverConfig.authentication.oauth2.authUrl || "",
+        tokenUrl: serverConfig.authentication.oauth2.tokenUrl || "",
+        clientId: serverConfig.authentication.oauth2.clientId || "",
+        clientSecret: serverConfig.authentication.oauth2.clientSecret || "",
+        scopes: serverConfig.authentication.oauth2.scopes || [],
+        redirectUri: getRedirectUri(),
+        usePKCE: serverConfig.authentication.oauth2.flow === "pkce",
+      };
+
+      const tokenResponse = await oauth2Service.handleCallback(
+        oauth2Config,
+        callbackUrl
+      );
+
+      // Store token in OAuth2Service with server ID for OAuth2IntegrationService compatibility
+      if (serverId && serverId !== "default") {
+        // Store the token explicitly with server ID
+        localStorage.setItem(
+          `oauth2_token_${serverId}`,
+          JSON.stringify({
+            ...tokenResponse,
+            expires_at: Date.now() + tokenResponse.expires_in * 1000,
+            stored_at: Date.now(),
+          })
+        );
+      }
+
+      // Update server config with token
+      setServerConfig({
+        ...serverConfig,
+        authentication: {
+          ...serverConfig.authentication,
+          oauth2: {
+            ...serverConfig.authentication.oauth2,
+            accessToken: tokenResponse.access_token,
+            refreshToken: tokenResponse.refresh_token,
+            tokenExpiry: Date.now() + tokenResponse.expires_in * 1000,
+          },
+        },
+      });
+
+      setAuthStatus("success");
+      setAuthStatusInfo("authenticated");
+      onTokenReceived?.(tokenResponse.access_token);
+    } catch (error) {
+      console.error("OAuth callback from storage failed:", error);
+      setAuthError(
+        error instanceof Error ? error.message : "Token exchange failed"
+      );
+      setAuthStatus("error");
+      setAuthStatusInfo("missing");
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 

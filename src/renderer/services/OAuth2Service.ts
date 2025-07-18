@@ -34,12 +34,23 @@ export class OAuth2Service {
    * Initiate OAuth2 authorization flow
    */
   async initiateAuth(config: OAuth2Config, autoOpen: boolean = true): Promise<string> {
+    console.log("🔗 OAuth2Service.initiateAuth called with:", {
+      authUrl: config.authUrl,
+      redirectUri: config.redirectUri,
+      clientId: config.clientId,
+      scopes: config.scopes,
+      usePKCE: config.usePKCE,
+      autoOpen,
+    });
+
     // Generate state for CSRF protection
     this.state = this.generateRandomString(32);
+    console.log("🔗 Generated state:", this.state);
 
     // Generate PKCE parameters if enabled
     if (config.usePKCE) {
       this.codeVerifier = this.generateRandomString(128);
+      console.log("🔗 Generated PKCE code verifier");
     }
 
     const authParams = new URLSearchParams({
@@ -55,9 +66,11 @@ export class OAuth2Service {
       const codeChallenge = await this.generateCodeChallenge(this.codeVerifier);
       authParams.append("code_challenge", codeChallenge);
       authParams.append("code_challenge_method", "S256");
+      console.log("🔗 Added PKCE challenge");
     }
 
     const authUrl = `${config.authUrl}?${authParams.toString()}`;
+    console.log("🔗 Final auth URL:", authUrl);
 
     // Only open browser automatically if requested (for backward compatibility)
     if (autoOpen) {
@@ -74,22 +87,97 @@ export class OAuth2Service {
     config: OAuth2Config,
     callbackUrl: string
   ): Promise<OAuth2TokenResponse> {
+    console.log("🔗 OAuth2Service.handleCallback called with:", {
+      callbackUrl,
+      redirectUri: config.redirectUri,
+      clientId: config.clientId,
+      usePKCE: config.usePKCE,
+    });
+
     const url = new URL(callbackUrl);
     const params = new URLSearchParams(url.search);
+    
+    // Also check URL fragment for parameters (some OAuth2 providers use hash instead of query params)
+    const fragmentParams = new URLSearchParams(url.hash.substring(1));
 
-    const code = params.get("code");
-    const state = params.get("state");
-    const error = params.get("error");
+    console.log("🔗 Parsed callback URL params:", {
+      search: url.search,
+      hash: url.hash,
+      queryParams: {
+        code: params.get("code"),
+        state: params.get("state"),
+        error: params.get("error"),
+        error_description: params.get("error_description"),
+      },
+      fragmentParams: {
+        code: fragmentParams.get("code"),
+        state: fragmentParams.get("state"),
+        error: fragmentParams.get("error"),
+        error_description: fragmentParams.get("error_description"),
+      },
+    });
+
+    // Check both query params and fragment params
+    let code = params.get("code") || fragmentParams.get("code");
+    let state = params.get("state") || fragmentParams.get("state");
+    let error = params.get("error") || fragmentParams.get("error");
+    
+    // If we still don't have parameters, try to handle IBM SSO OIDC special case
+    if (!code && !error && callbackUrl.includes("localhost:3000")) {
+      // For IBM SSO OIDC, check if there's any way to get the authorization code
+      // This might be a redirect to the homepage with a POST request or other mechanism
+      console.log("🔗 Checking for IBM SSO OIDC special callback handling");
+      
+      // Check if there's a session storage or local storage value that might contain the code
+      try {
+        const storedCallback = localStorage.getItem("oauth2_callback");
+        if (storedCallback) {
+          const callbackData = JSON.parse(storedCallback);
+          if (callbackData.code) {
+            console.log("🔗 Found authorization code in localStorage:", callbackData.code);
+            code = callbackData.code;
+            state = callbackData.state;
+            localStorage.removeItem("oauth2_callback"); // Clean up
+          }
+        }
+      } catch (e) {
+        console.log("🔗 No stored callback data found");
+      }
+    }
 
     if (error) {
-      throw new Error(`OAuth2 error: ${error}`);
+      const errorDescription = params.get("error_description") || error;
+      throw new Error(`OAuth2 error: ${errorDescription}`);
     }
 
     if (!code) {
-      throw new Error("Authorization code not found in callback");
+      // Provide more detailed error information for debugging
+      const errorMessage = `Authorization code not found in callback URL.
+      
+Callback URL: ${callbackUrl}
+Query parameters: ${JSON.stringify(Object.fromEntries(params.entries()))}
+Fragment parameters: ${JSON.stringify(Object.fromEntries(fragmentParams.entries()))}
+
+This could mean:
+1. The OAuth2 provider is not correctly configured with the redirect URI
+2. The provider is using a different mechanism to return the authorization code
+3. There was an error in the OAuth2 flow that wasn't captured
+
+For IBM SSO OIDC, make sure your redirect URI is exactly: http://localhost:3000/oauth-callback.html`;
+      
+      console.error("🔗 Authorization code not found:", {
+        callbackUrl,
+        searchParams: url.search,
+        hash: url.hash,
+        queryParams: Object.fromEntries(params.entries()),
+        fragmentParams: Object.fromEntries(fragmentParams.entries())
+      });
+      
+      throw new Error(errorMessage);
     }
 
     if (state !== this.state) {
+      console.warn("🔗 State mismatch:", { expected: this.state, received: state });
       throw new Error("Invalid state parameter");
     }
 

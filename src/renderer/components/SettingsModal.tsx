@@ -85,6 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     updateSettings("security", tempSettings.security);
     updateSettings("appearance", tempSettings.appearance);
     updateSettings("advanced", tempSettings.advanced);
+    updateSettings("serverStorage", tempSettings.serverStorage);
     setTheme(tempTheme);
     setHasChanges(false);
   };
@@ -151,6 +152,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const tabs = [
     { id: "general", label: "General", icon: CogIcon },
     { id: "appearance", label: "Appearance", icon: PaintBrushIcon },
+    { id: "storage", label: "Server Storage", icon: FolderIcon },
     { id: "notifications", label: "Notifications", icon: BellIcon },
     { id: "security", label: "Security", icon: ShieldCheckIcon },
     { id: "servers", label: "Servers", icon: ServerIcon },
@@ -302,6 +304,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <p className="text-slate-400 mt-1">
                 {activeTab === "general" &&
                   "Configure general application settings"}
+                {activeTab === "storage" &&
+                  "Manage where generated server files are stored"}
                 {activeTab === "servers" &&
                   "Manage your MCP server configurations"}
                 {activeTab === "security" && "Security and privacy settings"}
@@ -755,6 +759,164 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Server Storage Tab */}
+              {activeTab === "storage" && (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-lg font-medium text-slate-200">
+                          Use Custom Storage Path
+                        </h4>
+                        <p className="text-sm text-slate-400">
+                          Choose where to store generated MCP server files
+                        </p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            tempSettings.serverStorage?.useCustomPath ?? false
+                          }
+                          onChange={(e) => {
+                            setTempSettings((prev) => ({
+                              ...prev,
+                              serverStorage: {
+                                ...prev.serverStorage,
+                                useCustomPath: e.target.checked,
+                              },
+                            }));
+                            setHasChanges(true);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </label>
+                    </div>
+
+                    {tempSettings.serverStorage?.useCustomPath && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Custom Storage Directory
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={
+                                tempSettings.serverStorage?.customPath ?? ""
+                              }
+                              onChange={(e) => {
+                                setTempSettings((prev) => ({
+                                  ...prev,
+                                  serverStorage: {
+                                    ...prev.serverStorage,
+                                    customPath: e.target.value,
+                                  },
+                                }));
+                                setHasChanges(true);
+                              }}
+                              placeholder="Select a directory..."
+                              className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              readOnly
+                            />
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const selectedPath =
+                                    await window.electronAPI.selectDirectory();
+                                  if (selectedPath) {
+                                    setTempSettings((prev) => ({
+                                      ...prev,
+                                      serverStorage: {
+                                        ...prev.serverStorage,
+                                        customPath: selectedPath,
+                                      },
+                                    }));
+                                    setHasChanges(true);
+                                  }
+                                } catch (error) {
+                                  console.error(
+                                    "Failed to select directory:",
+                                    error
+                                  );
+                                }
+                              }}
+                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200"
+                            >
+                              Browse
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">
+                            Default: Documents/MCP-Studio/generated-servers
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-lg font-medium text-slate-200">
+                          Auto Cleanup Old Servers
+                        </h4>
+                        <p className="text-sm text-slate-400">
+                          Automatically remove unused server files older than 30
+                          days
+                        </p>
+                      </div>
+                      <label className="relative inline-flex cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            tempSettings.serverStorage?.autoCleanup ?? false
+                          }
+                          onChange={(e) => {
+                            setTempSettings((prev) => ({
+                              ...prev,
+                              serverStorage: {
+                                ...prev.serverStorage,
+                                autoCleanup: e.target.checked,
+                              },
+                            }));
+                            setHasChanges(true);
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Maximum Storage Size (MB)
+                      </label>
+                      <input
+                        type="number"
+                        min="100"
+                        max="10000"
+                        value={
+                          tempSettings.serverStorage?.maxStorageSize ?? 500
+                        }
+                        onChange={(e) => {
+                          setTempSettings((prev) => ({
+                            ...prev,
+                            serverStorage: {
+                              ...prev.serverStorage,
+                              maxStorageSize: parseInt(e.target.value) || 500,
+                            },
+                          }));
+                          setHasChanges(true);
+                        }}
+                        className="w-32 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Alert when storage exceeds this limit
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1669,6 +1831,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             enableTelemetry: false,
                             customCSSPath: "",
                             enableExperimentalFeatures: false,
+                          },
+                          serverStorage: {
+                            useCustomPath: false,
+                            customPath: "",
+                            autoCleanup: false,
+                            maxStorageSize: 500,
                           },
                         });
                         setTempTheme("dark");

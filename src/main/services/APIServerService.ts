@@ -5,6 +5,7 @@ import { spawn, ChildProcess } from "child_process";
 import { APIServerConfig, APIServerStatus } from "../../shared/apiServerTypes";
 import { MCPManager } from "../mcp/MCPManager";
 import { RobustCodeGenerator } from "./RobustCodeGenerator";
+import { ServerStorageService } from "./ServerStorageService";
 
 class APIServerService {
   private apiServers: Map<string, APIServerConfig> = new Map();
@@ -15,11 +16,13 @@ class APIServerService {
   private configPath: string;
   private mcpManager: MCPManager | null = null;
   private codeGenerator: RobustCodeGenerator;
+  private storageService: ServerStorageService;
 
   constructor(mcpManager?: MCPManager) {
     this.configPath = path.join(process.cwd(), "api-servers.json");
     this.mcpManager = mcpManager || null;
     this.codeGenerator = new RobustCodeGenerator();
+    this.storageService = ServerStorageService.getInstance();
     this.setupIpcHandlers();
     this.setupDocumentationHandler();
     this.loadSavedServers();
@@ -171,7 +174,7 @@ class APIServerService {
       this.apiServers.delete(serverId);
 
       // Remove generated files
-      const serverDir = path.join(process.cwd(), "generated-servers", serverId);
+      const serverDir = this.storageService.getServerPath(serverId);
       try {
         await fs.rm(serverDir, { recursive: true, force: true });
       } catch (error) {
@@ -194,15 +197,14 @@ class APIServerService {
 
   private async generateMCPServer(config: APIServerConfig): Promise<void> {
     try {
+      // Ensure storage directory exists
+      await this.storageService.ensureStorageDirectory();
+
       // Generate the MCP server TypeScript file using robust code generator
       const serverCode = await this.codeGenerator.generateMCPServerCode(config);
 
-      // Create directory if it doesn't exist
-      const serverDir = path.join(
-        process.cwd(),
-        "generated-servers",
-        config.id
-      );
+      // Create server directory
+      const serverDir = this.storageService.getServerPath(config.id);
       await fs.mkdir(serverDir, { recursive: true });
 
       // Handle OAuth2 token transfer from browser to file system
@@ -214,7 +216,7 @@ class APIServerService {
       const serverPath = path.join(serverDir, "server.ts");
       await fs.writeFile(serverPath, serverCode);
 
-      // Write package.json
+      // Enhanced package.json with more robust dependencies
       const packageJson = {
         name: `mcp-api-server-${config.id}`,
         version: "1.0.0",
@@ -224,14 +226,27 @@ class APIServerService {
           build:
             "tsc server.ts --outDir . --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports",
           start: "node server.js",
+          dev: "ts-node server.ts",
         },
         dependencies: {
           "@modelcontextprotocol/sdk": "^0.5.0",
           "node-fetch": "^3.0.0",
+          // Add axios as backup for HTTP requests
+          axios: "^1.6.0",
+          // Add dotenv for environment variable support
+          dotenv: "^16.0.0",
         },
         devDependencies: {
-          "@types/node": "^18.0.0",
+          "@types/node": "^20.0.0",
           typescript: "^5.0.0",
+          // Add ts-node for development
+          "ts-node": "^10.9.0",
+          // Add nodemon for development
+          nodemon: "^3.0.0",
+        },
+        engines: {
+          node: ">=18.0.0",
+          npm: ">=8.0.0",
         },
       };
 
@@ -247,15 +262,109 @@ class APIServerService {
     }
   }
 
+  private async installDependencies(serverId: string): Promise<void> {
+    const serverDir = this.storageService.getServerPath(serverId);
+
+    console.log(`📦 Installing dependencies for ${serverId}...`);
+
+    // Check if npm is available
+    const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+
+    return new Promise((resolve, reject) => {
+      const installProcess = spawn(npmCommand, ["install"], {
+        cwd: serverDir,
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: true, // Use shell to help find npm on all platforms
+        env: {
+          ...process.env,
+          // Ensure npm can find node
+          PATH: process.env.PATH,
+        },
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      installProcess.stdout?.on("data", (data) => {
+        const output = data.toString();
+        stdout += output;
+        console.log(`📦 [${serverId}] npm install:`, output.trim());
+      });
+
+      installProcess.stderr?.on("data", (data) => {
+        const output = data.toString();
+        stderr += output;
+        // npm often outputs progress to stderr, so don't always treat as error
+        console.log(`📦 [${serverId}] npm install (stderr):`, output.trim());
+      });
+
+      installProcess.on("exit", (code: number | null) => {
+        if (code === 0) {
+          console.log(`✅ Dependencies installed for ${serverId}`);
+          resolve();
+        } else {
+          console.error(
+            `❌ Failed to install dependencies for ${serverId}:`,
+            stderr || stdout
+          );
+          reject(
+            new Error(
+              `npm install failed with code ${code}: ${stderr || stdout}`
+            )
+          );
+        }
+      });
+
+      installProcess.on("error", (error: Error) => {
+        console.error(`❌ npm install process error for ${serverId}:`, error);
+        // Provide helpful error message if npm is not found
+        if (error.message.includes("ENOENT")) {
+          reject(
+            new Error(
+              `npm command not found. Please ensure Node.js and npm are installed and available in PATH. Original error: ${error.message}`
+            )
+          );
+        } else {
+          reject(error);
+        }
+      });
+    });
+  }
+
   private async buildServer(serverId: string): Promise<void> {
-    const serverDir = path.join(process.cwd(), "generated-servers", serverId);
+    const serverDir = this.storageService.getServerPath(serverId);
     const serverPath = path.join(serverDir, "server.ts");
 
+    console.log(`🔨 Building MCP server for ${serverId}...`);
+
     try {
-      return new Promise((resolve, reject) => {
-        const buildProcess = spawn(
-          "npx",
-          [
+      // First, ensure dependencies are installed
+      await this.installDependencies(serverId);
+
+      // Try to use local TypeScript first, then fallback to npx
+      const useLocalTsc = await fs
+        .access(path.join(serverDir, "node_modules", ".bin", "tsc"))
+        .then(() => true)
+        .catch(() => false);
+
+      const tscCommand = useLocalTsc
+        ? path.join("node_modules", ".bin", "tsc")
+        : "npx";
+      const tscArgs = useLocalTsc
+        ? [
+            "server.ts",
+            "--outDir",
+            ".",
+            "--target",
+            "es2020",
+            "--module",
+            "commonjs",
+            "--moduleResolution",
+            "node",
+            "--esModuleInterop",
+            "--allowSyntheticDefaultImports",
+          ]
+        : [
             "tsc",
             "server.ts",
             "--outDir",
@@ -268,12 +377,14 @@ class APIServerService {
             "node",
             "--esModuleInterop",
             "--allowSyntheticDefaultImports",
-          ],
-          {
-            cwd: serverDir,
-            stdio: ["pipe", "pipe", "pipe"],
-          }
-        );
+          ];
+
+      return new Promise((resolve, reject) => {
+        const buildProcess = spawn(tscCommand, tscArgs, {
+          cwd: serverDir,
+          stdio: ["pipe", "pipe", "pipe"],
+          shell: process.platform === "win32", // Use shell on Windows for better compatibility
+        });
 
         let stdout = "";
         let stderr = "";
@@ -288,23 +399,80 @@ class APIServerService {
 
         buildProcess.on("exit", (code: number | null) => {
           if (code === 0) {
-            console.log(`Built MCP server for ${serverId}`);
+            console.log(`✅ Built MCP server for ${serverId}`);
             resolve();
           } else {
-            console.error(`Build failed for ${serverId}:`, stderr);
-            reject(new Error(`Build failed with code ${code}: ${stderr}`));
+            console.error(`❌ Build failed for ${serverId}:`, stderr || stdout);
+            reject(
+              new Error(`Build failed with code ${code}: ${stderr || stdout}`)
+            );
           }
         });
 
         buildProcess.on("error", (error: Error) => {
-          console.error(`Build process error for ${serverId}:`, error);
+          console.error(`❌ Build process error for ${serverId}:`, error);
           reject(error);
         });
       });
     } catch (error) {
-      console.error(`Failed to build server ${serverId}:`, error);
+      console.error(`❌ Failed to build server ${serverId}:`, error);
       throw error;
     }
+  }
+
+  private async checkNodeEnvironment(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Check Node.js version
+      const nodeProcess = spawn("node", ["--version"], {
+        stdio: ["pipe", "pipe", "pipe"],
+        shell: true,
+      });
+
+      nodeProcess.on("exit", (code) => {
+        if (code === 0) {
+          // Check npm version
+          const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+          const npmProcess = spawn(npmCommand, ["--version"], {
+            stdio: ["pipe", "pipe", "pipe"],
+            shell: true,
+          });
+
+          npmProcess.on("exit", (npmCode) => {
+            if (npmCode === 0) {
+              resolve();
+            } else {
+              reject(
+                new Error(
+                  "npm is not available. Please install Node.js which includes npm."
+                )
+              );
+            }
+          });
+
+          npmProcess.on("error", () => {
+            reject(
+              new Error(
+                "npm is not available. Please install Node.js which includes npm."
+              )
+            );
+          });
+        } else {
+          reject(
+            new Error(
+              "Node.js is not available. Please install Node.js to use generated MCP servers."
+            )
+          );
+        }
+      });
+
+      nodeProcess.on("error", () => {
+        reject(
+          new Error(
+            "Node.js is not available. Please install Node.js to use generated MCP servers."
+          )
+        );
+      });
+    });
   }
 
   async startServer(serverId: string): Promise<void> {
@@ -314,15 +482,62 @@ class APIServerService {
         throw new Error("Server not found");
       }
 
-      // Build server first
+      console.log(`🚀 Starting MCP server: ${server.name} (${serverId})`);
+
+      // Check if Node.js environment is available
+      try {
+        await this.checkNodeEnvironment();
+        console.log(`✅ Node.js environment verified`);
+      } catch (error) {
+        console.error(`❌ Environment check failed:`, error);
+        throw error;
+      }
+
+      // Build server first (includes dependency installation)
       await this.buildServer(serverId);
 
-      const serverDir = path.join(process.cwd(), "generated-servers", serverId);
+      const serverDir = this.storageService.getServerPath(serverId);
       const serverPath = path.join(serverDir, "server.js");
+
+      // Verify the built file exists
+      try {
+        await fs.access(serverPath);
+      } catch (error) {
+        throw new Error(`Built server file not found: ${serverPath}`);
+      }
+
+      console.log(`📂 Starting server from: ${serverPath}`);
 
       const childProcess = spawn("node", [serverPath], {
         cwd: serverDir,
         stdio: ["pipe", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          // Add any additional environment variables here
+          NODE_ENV: "production",
+        },
+      });
+
+      // Enhanced error handling for the child process
+      childProcess.on("error", (error) => {
+        console.error(`❌ Failed to start server process ${serverId}:`, error);
+        this.runningServers.delete(serverId);
+      });
+
+      childProcess.on("exit", (code, signal) => {
+        console.log(
+          `🔄 Server ${serverId} exited with code ${code}, signal ${signal}`
+        );
+        this.runningServers.delete(serverId);
+      });
+
+      // Capture stdout and stderr for debugging
+      childProcess.stdout?.on("data", (data) => {
+        console.log(`📤 [${serverId}] STDOUT:`, data.toString().trim());
+      });
+
+      childProcess.stderr?.on("data", (data) => {
+        console.error(`📥 [${serverId}] STDERR:`, data.toString().trim());
       });
 
       this.runningServers.set(serverId, {
@@ -337,11 +552,12 @@ class APIServerService {
       });
 
       console.log(
-        `Started MCP server: ${server.name} (PID: ${childProcess.pid})`
+        `✅ Started MCP server: ${server.name} (PID: ${childProcess.pid})`
       );
 
       // Register with MCPManager if available
       if (this.mcpManager) {
+        console.log(`🔗 Registering server ${serverId} with MCP Manager...`);
         const mcpServerConfig = {
           id: serverId,
           name: server.name,
@@ -410,11 +626,11 @@ class APIServerService {
       const mcpServer = mcpServers.find((server) => server.id === serverId);
 
       if (mcpServer) {
-        console.log(`📊 Getting MCP status for ${serverId}:`, {
-          connected: mcpServer.connected,
-          error: mcpServer.error,
-          toolsCount: mcpServer.tools?.length || 0,
-        });
+        // console.log(`📊 Getting MCP status for ${serverId}:`, {
+        //   connected: mcpServer.connected,
+        //   error: mcpServer.error,
+        //   toolsCount: mcpServer.tools?.length || 0,
+        // });
 
         return {
           id: serverId,
@@ -446,6 +662,12 @@ class APIServerService {
 
   async testAPICall(url: string, options: any): Promise<any> {
     const fetch = (await import("node-fetch")).default;
+    const https = await import("https");
+
+    // Create HTTPS agent that ignores SSL certificate errors for development
+    const httpsAgent = new https.Agent({
+      rejectUnauthorized: false,
+    });
 
     try {
       const response = await fetch(url, {
@@ -453,6 +675,8 @@ class APIServerService {
         headers: options.headers || {},
         body: options.body ? JSON.stringify(options.body) : undefined,
         timeout: options.timeout || 10000,
+        // Add HTTPS agent to ignore SSL certificate errors for development
+        agent: url.startsWith("https:") ? httpsAgent : undefined,
       });
 
       const data = await response.text();
@@ -625,7 +849,7 @@ ${
 `;
 
     // Save documentation to file
-    const serverDir = path.join(process.cwd(), "generated-servers", serverId);
+    const serverDir = this.storageService.getServerPath(serverId);
     const docPath = path.join(serverDir, "README.md");
     await fs.writeFile(docPath, doc);
 

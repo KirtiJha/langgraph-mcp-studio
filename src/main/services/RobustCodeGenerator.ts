@@ -24,6 +24,12 @@ import { createHash } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import https from "https";
+
+// Custom HTTPS agent that ignores SSL certificate errors (for development)
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false // WARNING: Only use this for development/testing
+});
 
 // Server configuration
 const SERVER_CONFIG: any = __SERVER_CONFIG__;
@@ -429,7 +435,9 @@ server.run().catch(console.error);`;
     const requestOptions: any = {
       method: endpoint.method,
       headers: headers,
-      timeout: endpoint.timeout || 30000
+      timeout: endpoint.timeout || 30000,
+      // Add HTTPS agent to ignore SSL certificate errors for development
+      agent: url.startsWith('https:') ? httpsAgent : undefined
     };
 
     // Add body for POST/PUT/PATCH requests

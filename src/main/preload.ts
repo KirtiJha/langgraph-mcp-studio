@@ -12,6 +12,7 @@ const IpcChannels = {
   LIST_TOOLS: "list-tools",
   EXECUTE_TOOL: "execute-tool",
   SEND_MESSAGE: "send-message",
+  CLEAR_CHAT: "clear-chat",
   LIST_RESOURCES: "list-resources",
   READ_RESOURCE: "read-resource",
   LIST_PROMPTS: "list-prompts",
@@ -21,6 +22,12 @@ const IpcChannels = {
   CLEAR_LOGS: "clear-logs",
   LOG_EVENT: "log-event",
   TEST_PUBLIC_API: "test-public-api",
+  SELECT_DIRECTORY: "select-directory",
+  READ_SERVER_CODE: "read-server-code",
+  WRITE_SERVER_CODE: "write-server-code",
+  GET_SERVER_FILES: "get-server-files",
+  OPEN_SERVER_FOLDER: "open-server-folder",
+  FETCH_USER_INFO: "fetch-user-info",
 } as const;
 
 const api = {
@@ -46,8 +53,10 @@ const api = {
     ipcRenderer.invoke(IpcChannels.EXECUTE_TOOL, { serverId, toolName, args }),
 
   // Agent operations
-  sendMessage: (message: string, model?: string) =>
+  // Agent operations
+  sendMessage: ({ message, model }: { message: string; model?: string }) =>
     ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, { message, model }),
+  clearChat: () => ipcRenderer.invoke(IpcChannels.CLEAR_CHAT),
 
   // Resource operations
   listResources: (serverId: string) =>
@@ -79,13 +88,27 @@ const api = {
 
   // OAuth2 operations
   openOAuth2Url: (url: string) => ipcRenderer.invoke("oauth2-open-url", url),
-  exchangeOAuth2Token: (config: any, callbackUrl: string) => 
+  exchangeOAuth2Token: (config: any, callbackUrl: string) =>
     ipcRenderer.invoke("oauth2-exchange-token", { config, callbackUrl }),
   onOAuth2Callback: (callback: Function) => {
     const subscription = (_: any, url: string) => callback(url);
     ipcRenderer.on("oauth2-callback", subscription);
     return () => {
       ipcRenderer.removeListener("oauth2-callback", subscription);
+    };
+  },
+
+  // Authentication operations
+  getAuthConfig: () => ipcRenderer.invoke("get-auth-config"),
+  openAuthWindow: (url: string) => ipcRenderer.invoke("auth-open-window", url),
+  closeAuthWindow: () => ipcRenderer.invoke("auth-close-window"),
+  fetchUserInfo: (url: string, accessToken: string) =>
+    ipcRenderer.invoke(IpcChannels.FETCH_USER_INFO, { url, accessToken }),
+  onAuthCallback: (callback: Function) => {
+    const subscription = (_: any, data: any) => callback(data);
+    ipcRenderer.on("auth-callback", subscription);
+    return () => {
+      ipcRenderer.removeListener("auth-callback", subscription);
     };
   },
 
@@ -114,6 +137,22 @@ const api = {
     ),
   "api-server:generate-docs": (serverId: string) =>
     ipcRenderer.invoke("api-server:generate-docs", serverId),
+
+  // Server code management
+  selectDirectory: () => ipcRenderer.invoke(IpcChannels.SELECT_DIRECTORY),
+  readServerCode: (serverId: string, fileName?: string) =>
+    ipcRenderer.invoke(IpcChannels.READ_SERVER_CODE, serverId, fileName),
+  writeServerCode: (serverId: string, fileName: string, content: string) =>
+    ipcRenderer.invoke(
+      IpcChannels.WRITE_SERVER_CODE,
+      serverId,
+      fileName,
+      content
+    ),
+  getServerFiles: (serverId: string) =>
+    ipcRenderer.invoke(IpcChannels.GET_SERVER_FILES, serverId),
+  openServerFolder: (serverId: string) =>
+    ipcRenderer.invoke(IpcChannels.OPEN_SERVER_FOLDER, serverId),
 
   // Generic invoke method for API servers
   invoke: (channel: string, ...args: any[]) =>

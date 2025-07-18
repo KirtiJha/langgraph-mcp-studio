@@ -193,6 +193,57 @@ export const OAUTH2_TEMPLATES: Record<string, OAuth2Template> = {
     redirectUriNote:
       "Use http://127.0.0.1:3000/oauth_callback.html (underscore, NOT hyphen) - Spotify requires explicit IPv4/IPv6 addresses and specific callback format as of April 2025",
   },
+
+  ibmSsoOidc: {
+    name: "IBM SSO OIDC",
+    description:
+      "IBM Single Sign-On with OpenID Connect for enterprise authentication",
+    authUrl: "https://login.ibm.com/oidc/endpoint/default/authorize",
+    tokenUrl: "https://login.ibm.com/oidc/endpoint/default/token",
+    scopes: ["openid", "profile", "email"],
+    flow: "authorization_code",
+    requiresClientSecret: true,
+    documentation:
+      "https://www.ibm.com/docs/en/sva/10.0.0?topic=authentication-openid-connect-oidc-overview",
+    testEndpoints: [
+      "https://login.ibm.com/oidc/endpoint/default/userinfo",
+      "https://login.ibm.com/oidc/endpoint/default/introspect",
+    ],
+    redirectUriNote:
+      "Configure your redirect URI in IBM SSO OIDC provider settings. The redirect URI must match exactly what you register in your IBM enterprise application.",
+  },
+
+  ibmSsoOidcCustom: {
+    name: "IBM SSO OIDC (Custom Domain)",
+    description: "IBM SSO OIDC with custom enterprise domain",
+    authUrl: "https://your-domain.ibm.com/oidc/endpoint/default/authorize",
+    tokenUrl: "https://your-domain.ibm.com/oidc/endpoint/default/token",
+    scopes: ["openid", "profile", "email"],
+    flow: "authorization_code",
+    requiresClientSecret: true,
+    documentation:
+      "https://www.ibm.com/docs/en/sva/10.0.0?topic=authentication-openid-connect-oidc-overview",
+    testEndpoints: [
+      "https://your-domain.ibm.com/oidc/endpoint/default/userinfo",
+    ],
+    redirectUriNote:
+      "Replace 'your-domain.ibm.com' with your actual IBM enterprise domain. Configure the redirect URI in your IBM SSO OIDC provider settings.",
+  },
+
+  ibmSsoOidcW3id: {
+    name: "IBM SSO OIDC (w3id)",
+    description: "IBM SSO OIDC using w3id.sso.ibm.com endpoint",
+    authUrl: "https://w3id.sso.ibm.com/oidc/endpoint/default/authorize",
+    tokenUrl: "https://w3id.sso.ibm.com/oidc/endpoint/default/token",
+    scopes: ["openid", "profile", "email"],
+    flow: "authorization_code",
+    requiresClientSecret: true,
+    documentation:
+      "https://www.ibm.com/docs/en/sva/10.0.0?topic=authentication-openid-connect-oidc-overview",
+    testEndpoints: ["https://w3id.sso.ibm.com/oidc/endpoint/default/userinfo"],
+    redirectUriNote:
+      "Configure your redirect URI in IBM w3id SSO provider settings. This endpoint is commonly used for internal IBM applications.",
+  },
 };
 
 // Helper function to apply template to OAuth2 configuration

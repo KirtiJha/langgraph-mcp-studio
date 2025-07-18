@@ -24,6 +24,9 @@ The OAuth2 provider templates are now **completely integrated** into the MCP cli
 - ✅ **GitHub API** (GitHub resources)
 - ✅ **Slack API** (Slack workspace)
 - ✅ **Discord API** (Discord bot/app)
+- ✅ **IBM SSO OIDC** (IBM Single Sign-On with OpenID Connect)
+- ✅ **IBM SSO OIDC (Custom Domain)** (IBM SSO OIDC with custom enterprise domain)
+- ✅ **IBM SSO OIDC (w3id)** (IBM SSO OIDC using w3id.sso.ibm.com endpoint)
 
 #### 3. **Auto-Configuration Features**:
 

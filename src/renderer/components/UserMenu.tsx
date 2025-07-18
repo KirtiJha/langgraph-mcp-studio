@@ -5,15 +5,39 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   CogIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
+import { AuthUser } from "../../shared/types";
 
 interface UserMenuProps {
+  user?: AuthUser;
   onLogout: () => void;
   onSettings: () => void;
+  onSignIn?: () => void;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onSettings }) => {
+const UserMenu: React.FC<UserMenuProps> = ({
+  user,
+  onLogout,
+  onSettings,
+  onSignIn,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  // If no user, show sign in button
+  if (!user) {
+    return (
+      <motion.button
+        onClick={onSignIn}
+        className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 font-medium"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <KeyIcon className="w-4 h-4" />
+        <span className="hidden sm:block">Sign In</span>
+      </motion.button>
+    );
+  }
 
   return (
     <div className="relative">
@@ -23,11 +47,19 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onSettings }) => {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-          <UserIcon className="w-4 h-4 text-white" />
+        <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center overflow-hidden">
+          {user.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <UserIcon className="w-4 h-4 text-white" />
+          )}
         </div>
-        <span className="text-sm font-medium text-slate-300 hidden sm:block">
-          IBM User
+        <span className="text-sm font-medium text-slate-300 hidden sm:block max-w-32 truncate">
+          {user.name}
         </span>
         <ChevronDownIcon
           className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
@@ -55,14 +87,22 @@ const UserMenu: React.FC<UserMenuProps> = ({ onLogout, onSettings }) => {
             >
               <div className="p-3 border-b border-slate-700/50">
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center">
-                    <UserIcon className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center overflow-hidden">
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="w-5 h-5 text-white" />
+                    )}
                   </div>
                   <div>
                     <div className="text-sm font-medium text-white">
-                      IBM User
+                      {user.name}
                     </div>
-                    <div className="text-xs text-slate-400">user@ibm.com</div>
+                    <div className="text-xs text-slate-400">{user.email}</div>
                   </div>
                 </div>
               </div>

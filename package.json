@@ -15,7 +15,8 @@
     "build:prod": "NODE_ENV=production npm run build",
     "dist": "npm run build:prod && electron-builder",
     "dist:mac": "npm run build:prod && electron-builder --mac",
-    "dist:win": "npm run build:prod && electron-builder --win"
+    "dist:win": "npm run build:prod && electron-builder --win",
+    "serve:product-page": "node product-page-server.js"
   },
   "build": {
     "appId": "com.mcpstudio.app",
@@ -44,6 +45,7 @@
     "@langchain/core": "^0.3.58",
     "@langchain/langgraph": "^0.3.3",
     "@modelcontextprotocol/sdk": "^1.12.3",
+    "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
@@ -54,6 +56,7 @@
     "framer-motion": "^12.18.1",
     "langchain": "^0.3.28",
     "lucide-react": "^0.515.0",
+    "monaco-editor": "^0.52.2",
     "nodemon": "^3.1.10",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^15.6.1",

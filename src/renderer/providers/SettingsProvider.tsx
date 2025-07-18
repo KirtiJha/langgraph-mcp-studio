@@ -11,6 +11,12 @@ export interface AppSettings {
     showWelcomeScreen: boolean;
     confirmExit: boolean;
   };
+  serverStorage: {
+    customPath: string;
+    useCustomPath: boolean;
+    autoCleanup: boolean;
+    maxStorageSize: number; // in MB
+  };
   notifications: {
     serverStatus: boolean;
     toolExecution: boolean;
@@ -61,6 +67,12 @@ const defaultSettings: AppSettings = {
     language: "en",
     showWelcomeScreen: true,
     confirmExit: true,
+  },
+  serverStorage: {
+    customPath: "",
+    useCustomPath: false,
+    autoCleanup: false,
+    maxStorageSize: 500, // 500MB default
   },
   notifications: {
     serverStatus: true,

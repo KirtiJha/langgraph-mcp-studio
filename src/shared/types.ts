@@ -14,6 +14,7 @@ export enum IpcChannels {
 
   // Agent operations
   SEND_MESSAGE = "send-message",
+  CLEAR_CHAT = "clear-chat",
 
   // Resource operations
   LIST_RESOURCES = "list-resources",
@@ -33,6 +34,16 @@ export enum IpcChannels {
 
   // Public API testing
   TEST_PUBLIC_API = "test-public-api",
+
+  // File operations for server code management
+  SELECT_DIRECTORY = "select-directory",
+  READ_SERVER_CODE = "read-server-code",
+  WRITE_SERVER_CODE = "write-server-code",
+  GET_SERVER_FILES = "get-server-files",
+  OPEN_SERVER_FOLDER = "open-server-folder",
+
+  // Authentication
+  FETCH_USER_INFO = "fetch-user-info",
 }
 
 export interface ServerConfig {
@@ -131,4 +142,66 @@ export interface AgentState {
   currentThought?: string;
   isProcessing: boolean;
   toolCalls: ToolCall[];
+}
+
+// Authentication types
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  avatar?: string;
+  provider: AuthProvider;
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  createdAt: number;
+}
+
+export type AuthProvider = "google" | "github" | "microsoft" | "ibm" | "sso";
+
+export interface AuthConfig {
+  providers: {
+    google?: {
+      clientId: string;
+      clientSecret?: string;
+      scopes: string[];
+    };
+    github?: {
+      clientId: string;
+      clientSecret?: string;
+      scopes: string[];
+    };
+    microsoft?: {
+      clientId: string;
+      clientSecret?: string;
+      tenantId?: string;
+      scopes: string[];
+    };
+    ibm?: {
+      clientId: string;
+      clientSecret?: string;
+      scopes: string[];
+      authUrl?: string;
+      tokenUrl?: string;
+      userInfoUrl?: string;
+    };
+    sso?: {
+      authUrl: string;
+      tokenUrl: string;
+      clientId: string;
+      clientSecret?: string;
+      scopes: string[];
+      organizationName: string;
+      userInfoUrl?: string;
+    };
+  };
+  redirectUri: string;
+}
+
+export interface SSOConfig {
+  provider: string;
+  clientId: string;
+  clientSecret: string;
+  discoveryUrl: string;
+  scopes: string[];
 }

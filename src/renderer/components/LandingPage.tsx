@@ -11,18 +11,26 @@ import {
   UserIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import Logo from "./Logo";
+import AuthDialog from "./AuthDialog";
+import { AuthService } from "../services/AuthService";
+import { AuthUser } from "../../shared/types";
 
 interface LandingPageProps {
-  onLogin: () => void;
+  onLogin: (user: AuthUser) => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
-  console.log("🏠 LandingPage: Component rendering...");
+  // console.log("🏠 LandingPage: Component rendering...");
 
   const [currentFeature, setCurrentFeature] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const authService = AuthService.getInstance();
 
   // Development mode detection - consistent with DevModeIndicator
   const isDevelopment = (() => {
@@ -76,7 +84,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     {
       icon: ChatBubbleLeftRightIcon,
       title: "AI Chat Interface",
-      description: "Interact with AI agents through a modern, responsive chat interface",
+      description:
+        "Interact with AI agents through a modern, responsive chat interface",
       color: "from-orange-500 to-red-500",
     },
   ];
@@ -90,10 +99,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   const handleLogin = async () => {
     setIsLoading(true);
-    // Simulate loading time for login process
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setIsAuthDialogOpen(true);
+  };
+
+  const handleAuthSuccess = (user: AuthUser) => {
     setIsLoading(false);
-    onLogin();
+    setIsAuthDialogOpen(false);
+    setAuthError(null);
+    onLogin(user);
+  };
+
+  const handleAuthError = (error: string) => {
+    setIsLoading(false);
+    setAuthError(error);
+    // Keep dialog open to show error
+  };
+
+  const handleAuthDialogClose = () => {
+    setIsAuthDialogOpen(false);
+    setIsLoading(false);
+    setAuthError(null);
   };
 
   return (
@@ -196,7 +221,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <div className="text-sm text-slate-400">MCP Tools</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">1-Click</div>
+                <div className="text-2xl font-bold text-white mb-1">
+                  1-Click
+                </div>
                 <div className="text-sm text-slate-400">Conversion</div>
               </div>
             </motion.div>
@@ -240,12 +267,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     {isLoading ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        <span>Signing In...</span>
+                        <span>Opening Authentication...</span>
                       </>
                     ) : (
                       <>
-                        <ShieldCheckIcon className="w-5 h-5" />
-                        <span>Sign in with IBM SSO</span>
+                        <KeyIcon className="w-5 h-5" />
+                        <span>Sign in to MCP Studio</span>
                         <ArrowRightIcon className="w-4 h-4 ml-auto" />
                       </>
                     )}
@@ -267,15 +294,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 text-sm text-slate-400">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>Enterprise-grade security</span>
+                      <span>OAuth 2.0 with PKCE security</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm text-slate-400">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>Multi-factor authentication</span>
+                      <span>Google, GitHub, Microsoft support</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm text-slate-400">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>Single sign-on integration</span>
+                      <span>Enterprise SSO integration</span>
                     </div>
                   </div>
                 </div>
@@ -362,6 +389,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </motion.footer>
       </div>
+
+      {/* Authentication Dialog */}
+      <AuthDialog
+        isOpen={isAuthDialogOpen}
+        onClose={handleAuthDialogClose}
+        onAuthSuccess={handleAuthSuccess}
+        onAuthError={handleAuthError}
+      />
     </div>
   );
 };

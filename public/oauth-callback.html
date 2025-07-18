@@ -80,6 +80,15 @@
           const error = urlParams.get("error");
           const errorDescription = urlParams.get("error_description");
 
+          console.log("OAuth callback received:", {
+            code: code ? "present" : "missing",
+            state,
+            error,
+            url: window.location.href,
+            isElectron:
+              typeof window !== "undefined" && window.electronAPI !== undefined,
+          });
+
           if (error) {
             updateStatus(
               "Authentication Failed",
@@ -173,19 +182,31 @@
               }
 
               // Method 2: Try to make a direct HTTP request to the local OAuth server
-              fetch("http://127.0.0.1:3000/oauth-callback.html?" + window.location.search, {
-                method: "GET",
-                mode: "no-cors"
-              }).catch(() => {
-                // If fetch fails, try other ports
-                fetch("http://127.0.0.1:3001/oauth-callback.html?" + window.location.search, {
+              fetch(
+                "http://127.0.0.1:3000/oauth-callback.html?" +
+                  window.location.search,
+                {
                   method: "GET",
-                  mode: "no-cors"
-                }).catch(() => {
-                  fetch("http://127.0.0.1:3002/oauth-callback.html?" + window.location.search, {
+                  mode: "no-cors",
+                }
+              ).catch(() => {
+                // If fetch fails, try other ports
+                fetch(
+                  "http://127.0.0.1:3001/oauth-callback.html?" +
+                    window.location.search,
+                  {
                     method: "GET",
-                    mode: "no-cors"
-                  }).catch(() => {
+                    mode: "no-cors",
+                  }
+                ).catch(() => {
+                  fetch(
+                    "http://127.0.0.1:3002/oauth-callback.html?" +
+                      window.location.search,
+                    {
+                      method: "GET",
+                      mode: "no-cors",
+                    }
+                  ).catch(() => {
                     console.log("Could not reach local OAuth server");
                   });
                 });
@@ -193,8 +214,9 @@
 
               // Method 3: Show manual instructions
               setTimeout(() => {
-                document.getElementById("status").textContent = "Return to MCP Studio";
-                document.getElementById("message").textContent = 
+                document.getElementById("status").textContent =
+                  "Return to MCP Studio";
+                document.getElementById("message").textContent =
                   "Authentication complete! Please return to the MCP Studio desktop application and try the OAuth flow again if needed.";
                 document.getElementById("spinner").style.display = "none";
               }, 3000);
@@ -204,7 +226,8 @@
           console.error("OAuth callback error:", err);
           updateStatus(
             "Authentication Failed",
-            "An error occurred while processing the authentication callback",
+            "An error occurred while processing the authentication callback: " +
+              err.message,
             true
           );
         }

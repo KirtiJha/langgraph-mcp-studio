@@ -17,6 +17,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   DocumentTextIcon,
+  CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 import {
   GlobeAltIcon as GlobeAltIconSolid,
@@ -26,6 +27,7 @@ import {
 import { APIServerConfig, APIServerStatus } from "../../shared/apiServerTypes";
 import APIServerBuilder from "./APIServerBuilder";
 import APIServerService from "../services/APIServerService";
+import { ServerCodeEditor } from "./ServerCodeEditor";
 
 // Modern animated spinner component
 const ModernSpinner: React.FC<{ className?: string; size?: number }> = ({
@@ -93,86 +95,121 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
   const [expandedServers, setExpandedServers] = useState<Set<string>>(
     new Set()
   );
+  const [showCodeEditor, setShowCodeEditor] = useState(false);
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
 
   useEffect(() => {
     loadServers();
 
-    // Set up real-time event listeners for MCP server status updates
-    const unsubscribeConnected = window.electronAPI.on(
-      "server-connected",
-      async (serverId: string) => {
-        console.log("📡 API Server Manager: Server connected event:", serverId);
-        // Update status for this specific server
-        const status = await APIServerService.getServerStatus(serverId);
-        if (status) {
-          setServerStatuses((prev) => ({
-            ...prev,
-            [serverId]: status,
-          }));
-        }
-      }
-    );
-
-    const unsubscribeDisconnected = window.electronAPI.on(
-      "server-disconnected",
-      async (serverId: string) => {
-        console.log(
-          "📡 API Server Manager: Server disconnected event:",
-          serverId
-        );
-        // Update status for this specific server
-        const status = await APIServerService.getServerStatus(serverId);
-        if (status) {
-          setServerStatuses((prev) => ({
-            ...prev,
-            [serverId]: status,
-          }));
-        }
-      }
-    );
-
-    const unsubscribeError = window.electronAPI.on(
-      "server-error",
-      async ({ serverId }: { serverId: string }) => {
-        console.log("📡 API Server Manager: Server error event:", serverId);
-        // Update status for this specific server
-        const status = await APIServerService.getServerStatus(serverId);
-        if (status) {
-          setServerStatuses((prev) => ({
-            ...prev,
-            [serverId]: status,
-          }));
-        }
-      }
-    );
-
-    // Set up polling for server status as fallback
-    const interval = setInterval(async () => {
-      if (servers.length > 0) {
-        const statuses: Record<string, APIServerStatus> = {};
-        for (const server of servers) {
-          try {
-            const status = await APIServerService.getServerStatus(server.id);
-            if (status) {
-              statuses[server.id] = status;
-            }
-          } catch (error) {
-            console.error(
-              `Failed to get status for server ${server.id}:`,
-              error
-            );
+    // Only set up event listeners if electronAPI is available
+    if (window.electronAPI) {
+      // Set up real-time event listeners for MCP server status updates
+      const unsubscribeConnected = window.electronAPI.on(
+        "server-connected",
+        async (serverId: string) => {
+          console.log(
+            "📡 API Server Manager: Server connected event:",
+            serverId
+          );
+          // Update status for this specific server
+          const status = await APIServerService.getServerStatus(serverId);
+          if (status) {
+            setServerStatuses((prev) => ({
+              ...prev,
+              [serverId]: status,
+            }));
           }
         }
-        setServerStatuses(statuses);
-      }
-    }, 10000); // Poll every 10 seconds as fallback
+      );
 
-    return () => {
-      clearInterval(interval);
-      unsubscribeConnected();
-      unsubscribeDisconnected();
-      unsubscribeError();
-    };
+      const unsubscribeDisconnected = window.electronAPI.on(
+        "server-disconnected",
+        async (serverId: string) => {
+          console.log(
+            "📡 API Server Manager: Server disconnected event:",
+            serverId
+          );
+          // Update status for this specific server
+          const status = await APIServerService.getServerStatus(serverId);
+          if (status) {
+            setServerStatuses((prev) => ({
+              ...prev,
+              [serverId]: status,
+            }));
+          }
+        }
+      );
+
+      const unsubscribeError = window.electronAPI.on(
+        "server-error",
+        async ({ serverId }: { serverId: string }) => {
+          console.log("📡 API Server Manager: Server error event:", serverId);
+          // Update status for this specific server
+          const status = await APIServerService.getServerStatus(serverId);
+          if (status) {
+            setServerStatuses((prev) => ({
+              ...prev,
+              [serverId]: status,
+            }));
+          }
+        }
+      );
+
+      // Set up polling for server status as fallback
+      const interval = setInterval(async () => {
+        if (servers.length > 0) {
+          const statuses: Record<string, APIServerStatus> = {};
+          for (const server of servers) {
+            try {
+              const status = await APIServerService.getServerStatus(server.id);
+              if (status) {
+                statuses[server.id] = status;
+              }
+            } catch (error) {
+              console.error(
+                `Failed to get status for server ${server.id}:`,
+                error
+              );
+            }
+          }
+          setServerStatuses(statuses);
+        }
+      }, 10000); // Poll every 10 seconds as fallback
+
+      return () => {
+        clearInterval(interval);
+        if (window.electronAPI) {
+          unsubscribeConnected();
+          unsubscribeDisconnected();
+          unsubscribeError();
+        }
+      };
+    } else {
+      // If no electronAPI, still set up polling for server status
+      const interval = setInterval(async () => {
+        if (servers.length > 0) {
+          const statuses: Record<string, APIServerStatus> = {};
+          for (const server of servers) {
+            try {
+              const status = await APIServerService.getServerStatus(server.id);
+              if (status) {
+                statuses[server.id] = status;
+              }
+            } catch (error) {
+              console.error(
+                `Failed to get status for server ${server.id}:`,
+                error
+              );
+            }
+          }
+          setServerStatuses(statuses);
+        }
+      }, 10000); // Poll every 10 seconds
+
+      return () => {
+        clearInterval(interval);
+      };
+    }
   }, [servers.length]);
 
   const loadServers = async () => {
@@ -263,8 +300,34 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
       if (onServerStatusChange) {
         await onServerStatusChange();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to start server:", error);
+
+      // Provide user-friendly error messages
+      let errorMessage = "Failed to start server. ";
+
+      if (error.message && error.message.includes("Node.js is not available")) {
+        errorMessage +=
+          "Node.js is required to run generated MCP servers. Please install Node.js from https://nodejs.org and restart the application.";
+      } else if (error.message && error.message.includes("npm")) {
+        errorMessage +=
+          "npm is required to build the server. Please ensure Node.js (which includes npm) is installed and available in your system PATH.";
+      } else if (error.message && error.message.includes("Build failed")) {
+        errorMessage +=
+          "The server code could not be compiled. This might be due to missing dependencies or syntax errors. Check the logs for more details.";
+      } else if (
+        error.message &&
+        error.message.includes("npm install failed")
+      ) {
+        errorMessage +=
+          "Failed to install required dependencies. Please check your internet connection and ensure npm is working correctly.";
+      } else if (error.message) {
+        errorMessage += error.message;
+      } else {
+        errorMessage += "An unexpected error occurred. Please try again.";
+      }
+
+      alert(errorMessage);
     } finally {
       setLoadingServers((prev) => {
         const newSet = new Set(prev);
@@ -326,6 +389,11 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
     } catch (error) {
       console.error("Failed to generate documentation:", error);
     }
+  };
+
+  const handleViewServerCode = (serverId: string) => {
+    setSelectedServerId(serverId);
+    setShowCodeEditor(true);
   };
 
   const toggleServerExpansion = (serverId: string) => {
@@ -482,6 +550,16 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
                 title="Edit Server"
               >
                 <PencilIcon className="w-4 h-4" />
+              </motion.button>
+
+              <motion.button
+                onClick={() => handleViewServerCode(server.id)}
+                className="p-2 rounded-md text-green-400 hover:text-green-300 hover:bg-green-500/10 transition-colors duration-200"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="View/Edit Server Code"
+              >
+                <CodeBracketIcon className="w-4 h-4" />
               </motion.button>
 
               <motion.button
@@ -780,6 +858,21 @@ const APIServerManager: React.FC<APIServerManagerProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Server Code Editor */}
+      {showCodeEditor && selectedServerId && (
+        <ServerCodeEditor
+          serverId={selectedServerId}
+          serverName={
+            servers.find((s) => s.id === selectedServerId)?.name || ""
+          }
+          isOpen={showCodeEditor}
+          onClose={() => {
+            setShowCodeEditor(false);
+            setSelectedServerId(null);
+          }}
+        />
+      )}
     </div>
   );
 };

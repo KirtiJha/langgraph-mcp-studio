@@ -30,12 +30,17 @@ import ServerConfigModal from "./components/ServerConfigModal";
 import ServerCard from "./components/ServerCard";
 import ConfirmDialog from "./components/ConfirmDialog";
 import APIServerManager from "./components/APIServerManager";
+import { ServerCodeEditor } from "./components/ServerCodeEditor";
 import PublicAPIExplorer from "./components/PublicAPIExplorer";
 import LandingPage from "./components/LandingPage";
 import LoadingScreen from "./components/LoadingScreen";
 import UserMenu from "./components/UserMenu";
+import AuthenticatedUserMenu from "./components/AuthenticatedUserMenu";
+import { AuthService } from "./services/AuthService";
+import { AuthUser } from "../shared/types";
 import Logo from "./components/Logo";
 import DevModeIndicator from "./components/DevModeIndicator";
+import ErrorBoundary from "./components/ErrorBoundary";
 import APIServerService from "./services/APIServerService";
 import PublicAPIToMCPService from "./services/PublicAPIToMCPService";
 import { LogsProvider } from "./stores/logsStore";
@@ -107,21 +112,11 @@ function App() {
     return !window.electronAPI;
   });
 
-  // Authentication state with persistence
+  // Authentication state with new service
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // In development mode, optionally reset auth state
-    const resetAuth =
-      process.env.NODE_ENV === "development" &&
-      window.location.search.includes("reset-auth");
-
-    if (resetAuth) {
-      localStorage.removeItem("mcp_studio_authenticated");
-      return false;
-    }
-
-    const authState =
-      localStorage.getItem("mcp_studio_authenticated") === "true";
-    return authState;
+    const authService = AuthService.getInstance();
+    return authService.isAuthenticated();
   });
 
   // Existing states
@@ -155,10 +150,40 @@ function App() {
     id: string;
     name: string;
   } | null>(null);
+  const [showCodeEditor, setShowCodeEditor] = useState(false);
+  const [codeEditorServerId, setCodeEditorServerId] = useState<string | null>(
+    null
+  );
 
+  // Initialize authentication service
   useEffect(() => {
+    const authService = AuthService.getInstance();
+    
+    // Check if user is already authenticated
+    const user = authService.getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+    }
+
+    // Listen for authentication changes
+    const unsubscribe = authService.addAuthListener((user) => {
+      setCurrentUser(user);
+      setIsAuthenticated(user !== null);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Load data when authenticated
+  useEffect(() => {
+    console.log("🔐 Authentication state changed:", { isAuthenticated, hasElectronAPI: !!window.electronAPI });
+    
     // Only load data if authenticated and electronAPI is available
     if (isAuthenticated && window.electronAPI) {
+      console.log("🔐 User authenticated, loading initial data...");
+      
+      // Load initial data
       loadData();
 
       // Set up event listeners for real-time server status updates
@@ -180,21 +205,23 @@ function App() {
             )
           );
           // Refresh tools list to get the latest tools from the connected server
-          window.electronAPI
-            .listTools()
-            .then((toolList) => {
-              console.log(
-                "🔧 Updated tools after server connection:",
-                toolList
-              );
-              setTools(toolList);
-            })
-            .catch((error) => {
-              console.error(
-                "Error refreshing tools after server connection:",
-                error
-              );
-            });
+          if (window.electronAPI) {
+            window.electronAPI
+              .listTools()
+              .then((toolList) => {
+                console.log(
+                  "🔧 Updated tools after server connection:",
+                  toolList
+                );
+                setTools(toolList);
+              })
+              .catch((error) => {
+                console.error(
+                  "Error refreshing tools after server connection:",
+                  error
+                );
+              });
+          }
         }
       );
 
@@ -239,13 +266,17 @@ function App() {
 
       // Cleanup event listeners when component unmounts or auth changes
       return () => {
-        unsubscribeConnected();
-        unsubscribeDisconnected();
-        unsubscribeError();
+        if (window.electronAPI) {
+          unsubscribeConnected();
+          unsubscribeDisconnected();
+          unsubscribeError();
+        }
       };
     } else if (isAuthenticated && !window.electronAPI) {
       // Handle browser mode - show message that Electron is required
-      console.warn("🌐 App is running in browser mode - Electron features unavailable");
+      console.warn(
+        "🌐 App is running in browser mode - Electron features unavailable"
+      );
       setIsLoading(false);
     }
   }, [isAuthenticated]);
@@ -279,12 +310,16 @@ function App() {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
-  const handleLogin = () => {
+  const handleLogin = (user: AuthUser) => {
+    setCurrentUser(user);
     setIsAuthenticated(true);
     localStorage.setItem("mcp_studio_authenticated", "true");
   };
 
   const handleLogout = () => {
+    const authService = AuthService.getInstance();
+    authService.signOut();
+    setCurrentUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem("mcp_studio_authenticated");
     // Clear any cached data
@@ -385,13 +420,39 @@ function App() {
 
   const handleViewServerConfig = async (serverId: string) => {
     try {
-      const config = await window.electronAPI.getServerConfig(serverId);
-      setSelectedServerConfig(config);
-      setSelectedServerId(serverId);
-      setServerConfigMode("view");
-      setIsServerConfigOpen(true);
+      console.log("🔍 handleViewServerConfig called with serverId:", serverId);
+      console.log("📋 Current apiServers:", apiServers);
+      console.log("📋 Current servers:", servers);
+
+      // Check if this is a generated API-to-MCP server
+      const isGeneratedServer = apiServers.some((apiServer) => {
+        const matches =
+          apiServer.id === serverId ||
+          apiServer.name === servers.find((s) => s.id === serverId)?.name;
+        console.log(
+          `🔍 Checking apiServer ${apiServer.id} (${apiServer.name}) against serverId ${serverId}: ${matches}`
+        );
+        return matches;
+      });
+
+      console.log("🎯 isGeneratedServer:", isGeneratedServer);
+
+      if (isGeneratedServer) {
+        // Open the code editor for generated servers
+        console.log("📝 Opening code editor for server:", serverId);
+        setCodeEditorServerId(serverId);
+        setShowCodeEditor(true);
+      } else {
+        // Open the config modal for regular MCP servers
+        console.log("⚙️ Opening config modal for server:", serverId);
+        const config = await window.electronAPI.getServerConfig(serverId);
+        setSelectedServerConfig(config);
+        setSelectedServerId(serverId);
+        setServerConfigMode("view");
+        setIsServerConfigOpen(true);
+      }
     } catch (error) {
-      console.error("Error fetching server config:", error);
+      console.error("Error handling server view:", error);
     }
   };
 
@@ -493,7 +554,7 @@ function App() {
     setIsSending(true);
 
     try {
-      const response = await window.electronAPI.sendMessage(message, model);
+      const response = await window.electronAPI.sendMessage({ message, model });
 
       // Extract the thought section from the response content (if it starts with 💭)
       let thoughtContent = "";
@@ -569,8 +630,14 @@ function App() {
     }
   };
 
-  const clearChat = () => {
+  const clearChat = async () => {
     setChatMessages([]);
+    // Also clear the agent's conversation state
+    try {
+      await window.electronAPI.clearChat();
+    } catch (error) {
+      console.error("Error clearing agent chat state:", error);
+    }
   };
 
   const handleKeyboardAction = (action: string) => {
@@ -702,12 +769,13 @@ function App() {
   // Handle OAuth2 callback and browser mode
   useEffect(() => {
     // Check if this is an OAuth2 callback
-    if (isBrowserMode && window.location.search.includes('code=')) {
+    if (isBrowserMode && window.location.search.includes("code=")) {
       console.log("🔐 OAuth2 callback detected in browser mode");
-      
+
       // Show a message to the user about the OAuth2 callback
-      const message = "OAuth2 authentication completed! Please return to the main application.";
-      
+      const message =
+        "OAuth2 authentication completed! Please return to the main application.";
+
       // Try to close the window if it was opened as a popup
       if (window.opener) {
         window.close();
@@ -719,7 +787,7 @@ function App() {
     }
 
     // Check if there's a stored OAuth2 callback to process
-    const storedCallback = localStorage.getItem('oauth2_callback');
+    const storedCallback = localStorage.getItem("oauth2_callback");
     if (storedCallback) {
       try {
         const callbackData = JSON.parse(storedCallback);
@@ -727,19 +795,21 @@ function App() {
         if (Date.now() - callbackData.timestamp < 5 * 60 * 1000) {
           console.log("🔐 Processing stored OAuth2 callback");
           // Clear the stored callback
-          localStorage.removeItem('oauth2_callback');
-          
+          localStorage.removeItem("oauth2_callback");
+
           // If we have electronAPI, send the callback data
           if (window.electronAPI) {
             // Send the callback to the OAuth2 flow component
-            window.dispatchEvent(new CustomEvent('oauth2-callback-processed', {
-              detail: callbackData
-            }));
+            window.dispatchEvent(
+              new CustomEvent("oauth2-callback-processed", {
+                detail: callbackData,
+              })
+            );
           }
         }
       } catch (error) {
         console.error("Error processing stored OAuth2 callback:", error);
-        localStorage.removeItem('oauth2_callback');
+        localStorage.removeItem("oauth2_callback");
       }
     }
   }, [isBrowserMode]);
@@ -750,25 +820,28 @@ function App() {
         <SettingsProvider>
           <LogsProvider>
             {/* Handle OAuth2 callback in browser mode */}
-            {isBrowserMode && window.location.search.includes('code=') ? (
+            {isBrowserMode && window.location.search.includes("code=") ? (
               <div className="h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-                  <h2 className="text-xl font-semibold mb-2">OAuth2 Authentication Complete</h2>
+                  <h2 className="text-xl font-semibold mb-2">
+                    OAuth2 Authentication Complete
+                  </h2>
                   <p className="text-slate-400 mb-4">
-                    Authentication successful! Please return to the main MCP Studio application.
+                    Authentication successful! Please return to the main MCP
+                    Studio application.
                   </p>
                   <button
                     onClick={() => {
                       if (window.opener) {
                         window.close();
                       } else {
-                        window.location.href = '/';
+                        window.location.href = "/";
                       }
                     }}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg"
                   >
-                    {window.opener ? 'Close Window' : 'Return to App'}
+                    {window.opener ? "Close Window" : "Return to App"}
                   </button>
                 </div>
               </div>
@@ -777,15 +850,18 @@ function App() {
               <div className="h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
                 <div className="text-center max-w-md">
                   <div className="text-6xl mb-4">🖥️</div>
-                  <h2 className="text-2xl font-bold mb-4">Electron App Required</h2>
+                  <h2 className="text-2xl font-bold mb-4">
+                    Electron App Required
+                  </h2>
                   <p className="text-slate-400 mb-6">
-                    MCP Studio is designed to run as an Electron application. 
-                    Please download and install the desktop version to access all features.
+                    MCP Studio is designed to run as an Electron application.
+                    Please download and install the desktop version to access
+                    all features.
                   </p>
                   <div className="space-y-2">
                     <p className="text-sm text-slate-500">
-                      If you're seeing this after OAuth2 authentication, 
-                      please return to the main application.
+                      If you're seeing this after OAuth2 authentication, please
+                      return to the main application.
                     </p>
                   </div>
                 </div>
@@ -840,6 +916,24 @@ function App() {
                   onCancel={cancelDeleteServer}
                   destructive={true}
                 />
+
+                {/* Server Code Editor */}
+                {showCodeEditor && codeEditorServerId && (
+                  <ServerCodeEditor
+                    serverId={codeEditorServerId}
+                    serverName={
+                      servers.find((s) => s.id === codeEditorServerId)?.name ||
+                      apiServers.find((s) => s.id === codeEditorServerId)
+                        ?.name ||
+                      "Unknown Server"
+                    }
+                    isOpen={showCodeEditor}
+                    onClose={() => {
+                      setShowCodeEditor(false);
+                      setCodeEditorServerId(null);
+                    }}
+                  />
+                )}
                 {/* Modern Header with Glass Effect */}
                 <motion.header
                   initial={{ opacity: 0, y: -20 }}
@@ -887,8 +981,13 @@ function App() {
                       </button>
 
                       <UserMenu
+                        user={currentUser || undefined}
                         onLogout={handleLogout}
                         onSettings={() => setIsSettingsOpen(true)}
+                        onSignIn={() => {
+                          // This shouldn't happen if user is authenticated, but just in case
+                          console.log("Sign in button clicked from authenticated state");
+                        }}
                       />
                     </div>
                   </div>
@@ -1372,47 +1471,6 @@ function App() {
       </ThemeProvider>
     </ErrorBoundary>
   );
-}
-
-// Error Boundary Component
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    console.error("🚨 Error Boundary caught error:", error);
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("🚨 Error Boundary details:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-red-900 text-white flex items-center justify-center p-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
-            <p className="mb-4">Error: {this.state.error?.message}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
-            >
-              Reload App
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
 }
 
 export default App;
