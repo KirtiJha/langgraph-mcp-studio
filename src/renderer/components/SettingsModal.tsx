@@ -23,9 +23,11 @@ import {
   EyeIcon,
   EyeSlashIcon,
   AdjustmentsHorizontalIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { useSettings } from "../providers/SettingsProvider";
 import { useTheme } from "../providers/ThemeProvider";
+import { ModelManagement } from "./ModelManagement";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -59,6 +61,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [tempSettings, setTempSettings] = useState(settings);
   const [tempTheme, setTempTheme] = useState(theme);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Server management state
+  const [servers, setServers] = useState<ServerConfig[]>([]);
+  const [newServer, setNewServer] = useState({
+    name: "",
+    command: "",
+    args: [] as string[],
+    env: {} as Record<string, string>,
+    cwd: "",
+  });
+
+  // Security settings state
+  const [newAllowedDir, setNewAllowedDir] = useState("");
+  const [newBlockedCommand, setNewBlockedCommand] = useState("");
 
   // Sync temp settings when modal opens or settings change
   useEffect(() => {
@@ -122,35 +138,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const updateTempSettings = (updates: Partial<typeof settings>) => {
     setTempSettings((prev) => ({ ...prev, ...updates }));
   };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [servers, setServers] = useState<ServerConfig[]>([
-    {
-      id: "1",
-      name: "Filesystem Server",
-      command: "npx",
-      args: [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/path/to/allowed/files",
-      ],
-      env: { NODE_ENV: "production" },
-      cwd: "/Users/user/projects",
-    },
-  ]);
-
-  const [newServer, setNewServer] = useState<Partial<ServerConfig>>({
-    name: "",
-    command: "",
-    args: [],
-    env: {},
-  });
-
-  const [newAllowedDir, setNewAllowedDir] = useState("");
-  const [newBlockedCommand, setNewBlockedCommand] = useState("");
 
   const tabs = [
     { id: "general", label: "General", icon: CogIcon },
+    { id: "models", label: "AI Models", icon: SparklesIcon },
     { id: "appearance", label: "Appearance", icon: PaintBrushIcon },
     { id: "storage", label: "Server Storage", icon: FolderIcon },
     { id: "notifications", label: "Notifications", icon: BellIcon },
@@ -171,7 +164,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         cwd: newServer.cwd,
       };
       setServers([...servers, server]);
-      setNewServer({ name: "", command: "", args: [], env: {} });
+      setNewServer({ name: "", command: "", args: [], env: {}, cwd: "" });
     }
   };
 
@@ -271,6 +264,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <h2 className="text-xl font-bold text-slate-100">Settings</h2>
               <button
                 onClick={handleClose}
+                title="Close settings"
                 className="p-2 text-slate-400 hover:text-slate-200 transition-colors duration-200"
               >
                 <XMarkIcon className="w-5 h-5" />
@@ -304,6 +298,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <p className="text-slate-400 mt-1">
                 {activeTab === "general" &&
                   "Configure general application settings"}
+                {activeTab === "models" &&
+                  "Configure and manage AI models for chat"}
                 {activeTab === "storage" &&
                   "Manage where generated server files are stored"}
                 {activeTab === "servers" &&
@@ -332,6 +328,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="relative inline-flex cursor-pointer">
                         <input
                           type="checkbox"
+                          title="Auto Start"
                           checked={tempSettings.general.autoStart}
                           onChange={(e) =>
                             updateTempSettings({
@@ -359,6 +356,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="relative inline-flex cursor-pointer">
                         <input
                           type="checkbox"
+                          title="Minimize to Tray"
                           checked={tempSettings.general.minimizeToTray}
                           onChange={(e) =>
                             updateTempSettings({
@@ -386,6 +384,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="relative inline-flex cursor-pointer">
                         <input
                           type="checkbox"
+                          title="Close to Tray"
                           checked={tempSettings.general.closeToTray}
                           onChange={(e) =>
                             updateTempSettings({
@@ -413,12 +412,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="relative inline-flex cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={tempSettings.general.checkUpdates}
+                          title="Check for Updates"
+                          checked={tempSettings.general.confirmExit}
                           onChange={(e) =>
                             updateTempSettings({
                               general: {
                                 ...tempSettings.general,
-                                checkUpdates: e.target.checked,
+                                confirmExit: e.target.checked,
                               },
                             })
                           }
@@ -440,6 +440,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="relative inline-flex cursor-pointer">
                         <input
                           type="checkbox"
+                          title="Confirm on Exit"
                           checked={tempSettings.general.confirmExit}
                           onChange={(e) =>
                             updateTempSettings({
@@ -520,6 +521,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             },
                           })
                         }
+                        title="Select application language"
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="en">English</option>
@@ -532,6 +534,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* AI Models Tab */}
+              {activeTab === "models" && (
+                <ModelManagement className="space-y-6" />
               )}
 
               {/* Appearance Tab */}
@@ -561,6 +568,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        aria-label="Font size selection"
                       >
                         <option value="small">Small</option>
                         <option value="medium">Medium</option>
@@ -591,6 +599,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        aria-label="Font family selection"
                       >
                         <option value="system">System Default</option>
                         <option value="mono">Monospace</option>
@@ -617,6 +626,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="w-10 h-10 rounded-lg border border-slate-600 bg-slate-700 cursor-pointer"
+                          aria-label="Accent color picker"
                         />
                         <input
                           type="text"
@@ -627,6 +637,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-24"
+                          aria-label="Accent color hex value"
                         />
                       </div>
                     </div>
@@ -653,6 +664,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="w-32"
+                          aria-label="Window opacity percentage"
                         />
                         <span className="text-slate-300 text-sm w-12">
                           {settings.appearance.windowOpacity}%
@@ -682,6 +694,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="w-32"
+                          aria-label="Sidebar width in pixels"
                         />
                         <span className="text-slate-300 text-sm w-16">
                           {settings.appearance.sidebarWidth}px
@@ -708,6 +721,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable compact mode"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -732,6 +746,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Show line numbers in code blocks"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -756,6 +771,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable smooth transitions and animations"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -794,6 +810,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             setHasChanges(true);
                           }}
                           className="sr-only peer"
+                          aria-label="Use custom storage path for MCP server files"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -886,6 +903,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             setHasChanges(true);
                           }}
                           className="sr-only peer"
+                          aria-label="Automatically cleanup old server files"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -913,6 +931,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setHasChanges(true);
                         }}
                         className="w-32 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        aria-label="Maximum storage size in megabytes"
                       />
                       <p className="text-xs text-slate-500 mt-1">
                         Alert when storage exceeds this limit
@@ -945,6 +964,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Notify about server status changes"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -969,6 +989,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Notify about tool execution status"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -993,6 +1014,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable error notifications"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1017,6 +1039,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable update notifications"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1041,6 +1064,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable connection issue notifications"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1067,6 +1091,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable system notifications"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1093,6 +1118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable sound for  notifications"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1124,6 +1150,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable confirmation for tool execution"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1148,6 +1175,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Allow tools to access local files"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1172,6 +1200,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Allow tools to make network requests"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1196,6 +1225,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable sandbox mode for tools"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1222,6 +1252,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        aria-label="Log level selection"
                       >
                         <option value="debug">Debug</option>
                         <option value="info">Info</option>
@@ -1250,6 +1281,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-20"
+                        aria-label="Maximum log size in megabytes"
                       />
                     </div>
                   </div>
@@ -1291,6 +1323,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <button
                                 onClick={() => removeAllowedDirectory(index)}
                                 className="text-red-400 hover:text-red-300 transition-colors duration-200"
+                                title="Remove allowed directory"
+                                aria-label="Remove allowed directory"
                               >
                                 <TrashIcon className="w-4 h-4" />
                               </button>
@@ -1342,6 +1376,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <button
                               onClick={() => removeBlockedCommand(index)}
                               className="text-red-400 hover:text-red-300 transition-colors duration-200"
+                              title="Remove blocked command"
+                              aria-label="Remove blocked command"
                             >
                               <TrashIcon className="w-4 h-4" />
                             </button>
@@ -1370,6 +1406,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             setNewServer({ ...newServer, name: e.target.value })
                           }
                           className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          aria-label="Server Name"
                         />
                         <input
                           type="text"
@@ -1382,6 +1419,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          aria-label="Command"
                         />
                       </div>
                       <input
@@ -1397,6 +1435,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        aria-label="Arguments (comma-separated)"
                       />
                       <input
                         type="text"
@@ -1406,6 +1445,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           setNewServer({ ...newServer, cwd: e.target.value })
                         }
                         className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        aria-label="Working Directory (optional)"
                       />
                       <button
                         onClick={addServer}
@@ -1446,6 +1486,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           <button
                             onClick={() => removeServer(server.id)}
                             className="text-red-400 hover:text-red-300 transition-colors duration-200"
+                            title="Remove server"
+                            aria-label="Remove server"
                           >
                             <XMarkIcon className="w-5 h-5" />
                           </button>
@@ -1479,6 +1521,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable debug mode"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1503,6 +1546,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable experimental features"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1528,6 +1572,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             })
                           }
                           className="sr-only peer"
+                          aria-label="Enable telemetry"
                         />
                         <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       </label>
@@ -1554,6 +1599,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-20"
+                        aria-label="Maximum number of concurrent connections"
                       />
                     </div>
 
@@ -1579,6 +1625,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-24"
+                        aria-label="Connection timeout in milliseconds"
                       />
                     </div>
 
@@ -1602,6 +1649,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           })
                         }
                         className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-20"
+                        aria-label="Number of retry attempts"
                       />
                     </div>
 
@@ -1670,6 +1718,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       accept=".json"
                       onChange={handleImportSettings}
                       className="hidden"
+                      aria-label="Import settings file"
                     />
                   </div>
                 </div>

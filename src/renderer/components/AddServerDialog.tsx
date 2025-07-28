@@ -16,7 +16,7 @@ import {
   CogIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { ServerConfig, Tool } from "../../shared/types";
+import { ServerConfig, Tool, ModelConfig } from "../../shared/types";
 
 interface AddServerDialogProps {
   open: boolean;
@@ -58,6 +58,10 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
   const [args, setArgs] = useState("");
   const [cwd, setCwd] = useState("");
   const [env, setEnv] = useState("");
+  const [preferredModelId, setPreferredModelId] = useState<string>("");
+
+  // Available models state
+  const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
 
   // Import JSON state
   const [importJson, setImportJson] = useState("");
@@ -139,6 +143,7 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
               .join("\n")
           );
         }
+        setPreferredModelId(parsed.preferredModelId || "");
         setImportError("");
         setActiveTab("manual"); // Switch to manual tab to show populated fields
       }
@@ -310,6 +315,22 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
     }));
   };
 
+  // Load available models when dialog opens
+  useEffect(() => {
+    if (open) {
+      const loadModels = async () => {
+        try {
+          const models = await (window as any).electronAPI.getModelConfigs();
+          setAvailableModels(models || []);
+        } catch (error) {
+          console.error('Failed to load models:', error);
+          setAvailableModels([]);
+        }
+      };
+      loadModels();
+    }
+  }, [open]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -357,6 +378,7 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
       args: parsedArgs,
       ...(cwd.trim() && { cwd: cwd.trim() }),
       ...(Object.keys(parsedEnv).length > 0 && { env: parsedEnv }),
+      ...(preferredModelId && { preferredModelId: preferredModelId }),
       // Include tool-specific context parameters if any were set up
       ...(Object.keys(toolConfigs).length > 0 && {
         toolConfigs: Object.fromEntries(
@@ -378,6 +400,7 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
     setArgs("");
     setCwd("");
     setEnv("");
+    setPreferredModelId("");
     setImportJson("");
     setParsedConfig(null);
     setImportError("");
@@ -438,6 +461,8 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                 <button
                   onClick={handleClose}
                   className="p-2 hover:bg-zinc-800 rounded-lg transition-colors duration-200"
+                  title="Close dialog"
+                  aria-label="Close dialog"
                 >
                   <XMarkIcon className="w-5 h-5 text-zinc-400" />
                 </button>
@@ -591,6 +616,39 @@ const AddServerDialog: React.FC<AddServerDialogProps> = ({
                         />
                         <p className="mt-1 text-xs text-zinc-500">
                           One variable per line in KEY=value format
+                        </p>
+                      </div>
+
+                      {/* Preferred AI Model */}
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Preferred AI Model
+                        </label>
+                        <div className="relative">
+                          <CogIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-400" />
+                          <select
+                            value={preferredModelId}
+                            onChange={(e) => setPreferredModelId(e.target.value)}
+                            className={`pl-10 ${inputClasses} appearance-none cursor-pointer`}
+                            aria-label="Preferred AI Model"
+                            title="Select which AI model this server should use for tool execution"
+                          >
+                            <option value="">Use default model</option>
+                            {availableModels.filter(model => model.enabled).map((model) => (
+                              <option key={model.id} value={model.id}>
+                                {model.modelId}
+                              </option>
+                            ))}
+                          </select>
+                          {/* Custom dropdown arrow */}
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          Choose which AI model this server should use for tool execution (optional)
                         </p>
                       </div>
                     </div>

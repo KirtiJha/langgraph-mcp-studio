@@ -237,7 +237,9 @@ class PublicAPIToMCPService {
       description:
         publicEndpoint.description ||
         publicEndpoint.summary ||
-        `${publicEndpoint.method} ${publicEndpoint.path}`,
+        `${publicEndpoint.method.toUpperCase()} request to ${
+          publicEndpoint.path
+        } endpoint` + (publicAPI.name ? ` for ${publicAPI.name} API` : ""),
       parameters: this.convertParameters(publicEndpoint),
       headers: {},
       body: this.convertRequestBody(publicEndpoint),

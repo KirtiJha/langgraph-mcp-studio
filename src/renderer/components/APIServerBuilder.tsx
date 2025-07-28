@@ -28,6 +28,7 @@ import { API_TEMPLATES } from "../../shared/apiTemplates";
 import { PublicAPISpec } from "../../shared/publicApiTypes";
 import PrivateAPIService from "../services/PrivateAPIService";
 import APIDiscoveryService from "../services/APIDiscoveryService";
+import PostmanCollectionService from "../services/PostmanCollectionService";
 import { OAuth2FlowComponent } from "./OAuth2FlowComponent";
 
 interface APIServerBuilderProps {
@@ -64,6 +65,15 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
   const [importMethod, setImportMethod] = useState<"url" | "json">("url");
   const [jsonSpec, setJsonSpec] = useState("");
 
+  // Postman Collection import state
+  const [postmanCollectionJson, setPostmanCollectionJson] = useState("");
+  const [postmanImporting, setPostmanImporting] = useState(false);
+  const [postmanImportError, setPostmanImportError] = useState("");
+  const [postmanImportMethod, setPostmanImportMethod] = useState<
+    "url" | "json" | "file"
+  >("json");
+  const [postmanUrl, setPostmanUrl] = useState("");
+
   // Testing state
   const [testResults, setTestResults] = useState<Record<string, any>>({});
   const [testParameters, setTestParameters] = useState<
@@ -89,13 +99,14 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
     { id: 0, name: "Templates", icon: DocumentTextIcon },
     { id: 1, name: "Basic Info", icon: CogIcon },
     { id: 2, name: "Import OpenAPI", icon: CloudArrowUpIcon },
-    { id: 3, name: "Discover API", icon: MagnifyingGlassIcon },
-    { id: 4, name: "Auto-Config", icon: BoltIcon },
-    { id: 5, name: "Endpoints", icon: PlusIcon },
-    { id: 6, name: "Authentication", icon: LockClosedIcon },
-    { id: 7, name: "Advanced", icon: WrenchScrewdriverIcon },
-    { id: 8, name: "Monitoring", icon: ChartBarIcon },
-    { id: 9, name: "Testing", icon: BeakerIcon },
+    { id: 3, name: "Import Postman", icon: ServerIcon },
+    { id: 4, name: "Discover API", icon: MagnifyingGlassIcon },
+    { id: 5, name: "Auto-Config", icon: BoltIcon },
+    { id: 6, name: "Endpoints", icon: PlusIcon },
+    { id: 7, name: "Authentication", icon: LockClosedIcon },
+    { id: 8, name: "Advanced", icon: WrenchScrewdriverIcon },
+    { id: 9, name: "Monitoring", icon: ChartBarIcon },
+    { id: 10, name: "Testing", icon: BeakerIcon },
   ];
 
   useEffect(() => {
@@ -175,8 +186,11 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
       // Extract basic info
       const newConfig = { ...serverConfig };
       if (spec.info?.title) {
-        newConfig.name = spec.info.title;
-        newConfig.description = spec.info.description || "";
+        newConfig.name = spec.info.title.includes("API")
+          ? spec.info.title
+          : `${spec.info.title} API Server`;
+        newConfig.description =
+          spec.info.description || `MCP server for ${spec.info.title} API`;
       }
 
       // Extract base URL
@@ -251,8 +265,11 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
       // Extract basic info
       const newConfig = { ...serverConfig };
       if (spec.info?.title) {
-        newConfig.name = spec.info.title;
-        newConfig.description = spec.info.description || "";
+        newConfig.name = spec.info.title.includes("API")
+          ? spec.info.title
+          : `${spec.info.title} API Server`;
+        newConfig.description =
+          spec.info.description || `MCP server for ${spec.info.title} API`;
       }
 
       // Extract base URL
@@ -316,6 +333,108 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
     } finally {
       setImporting(false);
     }
+  };
+
+  // Postman Collection Import Handlers
+  const handleImportFromPostmanJson = async () => {
+    if (!postmanCollectionJson.trim()) return;
+
+    setPostmanImporting(true);
+    setPostmanImportError("");
+    try {
+      const postmanService = PostmanCollectionService.getInstance();
+
+      // Validate the collection first
+      const parsed = JSON.parse(postmanCollectionJson);
+      const validation = postmanService.validateCollection(parsed);
+
+      if (!validation.isValid) {
+        throw new Error(
+          `Invalid Postman collection: ${validation.errors.join(", ")}`
+        );
+      }
+
+      // Show warnings if any
+      if (validation.warnings.length > 0) {
+        console.warn("Postman import warnings:", validation.warnings);
+      }
+
+      // Parse the collection
+      const newConfig = postmanService.parsePostmanCollection(
+        postmanCollectionJson
+      );
+
+      // Merge with existing config, preserving user changes
+      setServerConfig((prev) => ({
+        ...newConfig,
+        id: prev.id || newConfig.id,
+        created: prev.created || newConfig.created,
+      }));
+
+      setPostmanImportError("");
+      setActiveTab(1); // Switch to Basic Info tab to show imported data
+    } catch (error) {
+      setPostmanImportError(
+        error instanceof Error
+          ? error.message
+          : "Failed to parse Postman collection"
+      );
+    } finally {
+      setPostmanImporting(false);
+    }
+  };
+
+  const handleImportFromPostmanUrl = async () => {
+    if (!postmanUrl.trim()) return;
+
+    setPostmanImporting(true);
+    setPostmanImportError("");
+    try {
+      const response = await fetch(postmanUrl);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch Postman collection: ${response.status}`
+        );
+      }
+
+      const collectionJson = await response.text();
+      setPostmanCollectionJson(collectionJson);
+
+      // Auto-import after fetching
+      const postmanService = PostmanCollectionService.getInstance();
+      const newConfig = postmanService.parsePostmanCollection(collectionJson);
+
+      setServerConfig((prev) => ({
+        ...newConfig,
+        id: prev.id || newConfig.id,
+        created: prev.created || newConfig.created,
+      }));
+
+      setActiveTab(1); // Switch to Basic Info tab
+    } catch (error) {
+      setPostmanImportError(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch or parse Postman collection"
+      );
+    } finally {
+      setPostmanImporting(false);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setPostmanCollectionJson(content);
+    };
+    reader.onerror = () => {
+      setPostmanImportError("Failed to read file");
+    };
+    reader.readAsText(file);
   };
 
   const handleSave = () => {
@@ -933,19 +1052,235 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
               </div>
             )}
 
-            {/* Discover API Tab */}
+            {/* Import Postman Collection Tab */}
             {activeTab === 3 && (
+              <div className="space-y-6">
+                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-indigo-300 mb-2">
+                    Import from Postman Collection
+                  </h4>
+                  <p className="text-xs text-indigo-200/80">
+                    Import your Postman Collection v2.1 JSON from a URL, file
+                    upload, or paste JSON directly to automatically generate
+                    endpoints with authentication, parameters, and request body
+                    schemas.
+                  </p>
+                </div>
+
+                {/* Import Method Selector */}
+                <div className="flex gap-2 p-1 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                  <button
+                    onClick={() => setPostmanImportMethod("json")}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      postmanImportMethod === "json"
+                        ? "bg-indigo-600 text-white shadow-lg"
+                        : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                    }`}
+                  >
+                    <DocumentTextIcon className="w-4 h-4" />
+                    Paste JSON
+                  </button>
+                  <button
+                    onClick={() => setPostmanImportMethod("url")}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      postmanImportMethod === "url"
+                        ? "bg-indigo-600 text-white shadow-lg"
+                        : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                    }`}
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                    From URL
+                  </button>
+                  <button
+                    onClick={() => setPostmanImportMethod("file")}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      postmanImportMethod === "file"
+                        ? "bg-indigo-600 text-white shadow-lg"
+                        : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                    }`}
+                  >
+                    <CloudArrowUpIcon className="w-4 h-4" />
+                    Upload File
+                  </button>
+                </div>
+
+                {/* JSON Import */}
+                {postmanImportMethod === "json" && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Postman Collection JSON
+                    </label>
+                    <div className="space-y-3">
+                      <textarea
+                        value={postmanCollectionJson}
+                        onChange={(e) =>
+                          setPostmanCollectionJson(e.target.value)
+                        }
+                        className="w-full h-64 bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                        placeholder={`{
+  "info": {
+    "name": "My API Collection",
+    "description": "A collection of API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Users",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/users",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "users"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.example.com"
+    }
+  ]
+}`}
+                      />
+                      <button
+                        onClick={handleImportFromPostmanJson}
+                        disabled={
+                          !postmanCollectionJson.trim() || postmanImporting
+                        }
+                        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                      >
+                        {postmanImporting ? (
+                          <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <DocumentTextIcon className="w-4 h-4" />
+                        )}
+                        Import Collection
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* URL Import */}
+                {postmanImportMethod === "url" && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Postman Collection URL
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={postmanUrl}
+                        onChange={(e) => setPostmanUrl(e.target.value)}
+                        className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="https://api.postman.com/collections/your-collection-id"
+                      />
+                      <button
+                        onClick={handleImportFromPostmanUrl}
+                        disabled={!postmanUrl.trim() || postmanImporting}
+                        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                      >
+                        {postmanImporting ? (
+                          <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <LinkIcon className="w-4 h-4" />
+                        )}
+                        Import
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* File Upload */}
+                {postmanImportMethod === "file" && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Upload Postman Collection File
+                    </label>
+                    <div className="space-y-3">
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleFileUpload}
+                        className="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                      />
+                      {postmanCollectionJson && (
+                        <button
+                          onClick={handleImportFromPostmanJson}
+                          disabled={postmanImporting}
+                          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                          {postmanImporting ? (
+                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <CloudArrowUpIcon className="w-4 h-4" />
+                          )}
+                          Import Collection
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {postmanImportError && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <p className="text-sm text-red-300">{postmanImportError}</p>
+                  </div>
+                )}
+
+                {/* Tips for Postman Collections */}
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-blue-300 mb-2">
+                    Tips for importing Postman Collections
+                  </h4>
+                  <ul className="text-xs text-blue-200/80 space-y-1">
+                    <li>
+                      • Ensure your collection uses Postman Collection v2.1
+                      format
+                    </li>
+                    <li>
+                      • Set up collection variables (like baseUrl) for easier
+                      configuration
+                    </li>
+                    <li>
+                      • Add authentication at the collection level for automatic
+                      setup
+                    </li>
+                    <li>
+                      • Use descriptive names for requests - they become tool
+                      names
+                    </li>
+                    <li>• Organize requests in folders for better structure</li>
+                    <li>
+                      • Include request descriptions for better documentation
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Discover API Tab */}
+            {activeTab === 4 && (
               <div className="space-y-6">
                 <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-purple-300 mb-2">
                     <MagnifyingGlassIcon className="w-4 h-4 inline mr-2" />
-                    Private API Discovery
+                    Advanced API Discovery
                   </h4>
-                  <p className="text-xs text-purple-200/80">
-                    Analyze and discover endpoints from private or internal
-                    APIs. This will inspect the API and attempt to identify
-                    available endpoints and authentication methods.
+                  <p className="text-xs text-purple-200/80 mb-3">
+                    Discover and analyze API endpoints without automatic
+                    configuration. Perfect for exploring APIs before setting up
+                    MCP servers.
                   </p>
+                  <ul className="text-xs text-purple-200/60 space-y-1">
+                    <li>• Comprehensive endpoint scanning and detection</li>
+                    <li>• Response analysis for additional endpoint hints</li>
+                    <li>• Domain-specific pattern recognition</li>
+                    <li>• Multiple HTTP method discovery</li>
+                    <li>• Authentication method detection</li>
+                    <li>• Documentation and spec analysis</li>
+                  </ul>
                 </div>
 
                 <div>
@@ -957,7 +1292,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                     value={discoveryUrl}
                     onChange={(e) => setDiscoveryUrl(e.target.value)}
                     className="w-full bg-slate-800/50 border border-slate-700/50 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="https://api.example.com"
+                    placeholder="https://official-joke-api.appspot.com"
                   />
                 </div>
 
@@ -967,12 +1302,49 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                   className="w-full bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 hover:border-purple-500/50 text-purple-300 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {discovering ? (
-                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      Analyzing & Discovering...
+                    </>
                   ) : (
-                    <MagnifyingGlassIcon className="w-4 h-4" />
+                    <>
+                      <MagnifyingGlassIcon className="w-4 h-4" />
+                      Discover API Endpoints
+                    </>
                   )}
-                  {discovering ? "Discovering..." : "Discover API"}
                 </button>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-blue-300 mb-2">
+                    Difference from Auto-Config:
+                  </h4>
+                  <div className="space-y-2 text-xs text-blue-200/80">
+                    <div>
+                      • <strong>Discover API:</strong> Only finds and lists
+                      endpoints without creating MCP configuration
+                    </div>
+                    <div>
+                      • <strong>Auto-Config:</strong> Discovers endpoints AND
+                      automatically creates a complete MCP server configuration
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-200/60 mt-2">
+                    Use "Discover API" when you want to explore what's available
+                    before configuring.
+                  </p>
+                </div>
+
+                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-green-300 mb-2">
+                    💡 Pro Tip:
+                  </h4>
+                  <p className="text-xs text-green-200/80">
+                    After discovery, you can review the found endpoints and then
+                    click "Apply to Configuration" to add them to your MCP
+                    server setup, or switch to the "Auto-Config" tab for a
+                    complete automated setup.
+                  </p>
+                </div>
 
                 {discoveryError && (
                   <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
@@ -990,42 +1362,89 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                         onClick={applyDiscoveredConfig}
                         className="bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-300 px-3 py-1 rounded text-xs font-medium transition-colors"
                       >
-                        Apply Configuration
+                        Apply to Configuration
                       </button>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="text-slate-400">Name:</span>{" "}
-                        <span className="text-white">
-                          {discoveryResults.name}
-                        </span>
+
+                    <div className="space-y-3 text-sm">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-slate-400">API Name:</span>{" "}
+                          <span className="text-white">
+                            {discoveryResults.name || "Unknown API"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Base URL:</span>{" "}
+                          <span className="text-white">
+                            {discoveryResults.baseUrl}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">
+                            Endpoints Found:
+                          </span>{" "}
+                          <span className="text-green-300">
+                            {discoveryResults.endpoints?.length || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">
+                            Authentication:
+                          </span>{" "}
+                          <span className="text-blue-300">
+                            {discoveryResults.authentication?.type ||
+                              "None detected"}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-slate-400">Base URL:</span>{" "}
-                        <span className="text-white">
-                          {discoveryResults.baseUrl}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400">Endpoints:</span>{" "}
-                        <span className="text-white">
-                          {discoveryResults.endpoints?.length || 0} found
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400">Authentication:</span>{" "}
-                        <span className="text-white">
-                          {discoveryResults.authentication?.type === "apiKey"
-                            ? "API Key"
-                            : discoveryResults.authentication?.type === "oauth2"
-                            ? "OAuth 2.0"
-                            : discoveryResults.authentication?.type === "bearer"
-                            ? "Bearer Token"
-                            : discoveryResults.authentication?.type === "basic"
-                            ? "Basic Auth"
-                            : discoveryResults.authentication?.type || "none"}
-                        </span>
-                      </div>
+
+                      {discoveryResults.description && (
+                        <div>
+                          <span className="text-slate-400">Description:</span>{" "}
+                          <span className="text-slate-300">
+                            {discoveryResults.description}
+                          </span>
+                        </div>
+                      )}
+
+                      {discoveryResults.endpoints &&
+                        discoveryResults.endpoints.length > 0 && (
+                          <div>
+                            <span className="text-slate-400 block mb-2">
+                              Discovered Endpoints:
+                            </span>
+                            <div className="max-h-40 overflow-y-auto space-y-1">
+                              {discoveryResults.endpoints
+                                .slice(0, 10)
+                                .map((endpoint, index) => (
+                                  <div
+                                    key={index}
+                                    className="bg-slate-700/30 rounded px-2 py-1 text-xs"
+                                  >
+                                    <span className="text-blue-300 font-mono">
+                                      {endpoint.method}
+                                    </span>{" "}
+                                    <span className="text-slate-200">
+                                      {endpoint.path}
+                                    </span>
+                                    {endpoint.summary && (
+                                      <span className="text-slate-400 ml-2">
+                                        - {endpoint.summary}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              {discoveryResults.endpoints.length > 10 && (
+                                <div className="text-xs text-slate-400 italic">
+                                  ... and{" "}
+                                  {discoveryResults.endpoints.length - 10} more
+                                  endpoints
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                     </div>
                   </div>
                 )}
@@ -1033,18 +1452,28 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Auto-Config Tab */}
-            {activeTab === 4 && (
+            {activeTab === 5 && (
               <div className="space-y-6">
                 <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-orange-300 mb-2">
                     <BoltIcon className="w-4 h-4 inline mr-2" />
                     Intelligent Auto-Configuration
                   </h4>
-                  <p className="text-xs text-orange-200/80">
-                    Automatically analyze and configure your API server based on
-                    the base URL. This will attempt to detect OpenAPI specs,
-                    introspect GraphQL schemas, and discover endpoints.
+                  <p className="text-xs text-orange-200/80 mb-3">
+                    Automatically analyze and configure your API server using
+                    advanced discovery techniques:
                   </p>
+                  <ul className="text-xs text-orange-200/60 space-y-1">
+                    <li>• OpenAPI/Swagger specification detection</li>
+                    <li>• Robots.txt and sitemap analysis</li>
+                    <li>• Response content analysis for endpoint hints</li>
+                    <li>
+                      • Domain-specific pattern matching (jokes, weather, news
+                      APIs)
+                    </li>
+                    <li>• HTTP method discovery via OPTIONS requests</li>
+                    <li>• Documentation parsing for API structure</li>
+                  </ul>
                 </div>
 
                 <div>
@@ -1075,12 +1504,34 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
                   className="w-full bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/30 hover:border-orange-500/50 text-orange-300 px-4 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {autoConfiguring ? (
-                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      Discovering & Configuring...
+                    </>
                   ) : (
-                    <BoltIcon className="w-4 h-4" />
+                    <>
+                      <BoltIcon className="w-4 h-4" />
+                      Auto-Discover & Configure
+                    </>
                   )}
-                  {autoConfiguring ? "Auto-Configuring..." : "Auto-Configure"}
                 </button>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-blue-300 mb-2">
+                    Perfect for APIs like:
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-200/80">
+                    <div>• https://official-joke-api.appspot.com</div>
+                    <div>• https://api.weather.com</div>
+                    <div>• https://newsapi.org</div>
+                    <div>• https://jsonplaceholder.typicode.com</div>
+                  </div>
+                  <p className="text-xs text-blue-200/60 mt-2">
+                    The system will automatically detect endpoints like
+                    /jokes/programming/random, /jokes/programming/ten, and many
+                    more using advanced discovery techniques!
+                  </p>
+                </div>
 
                 {autoConfigResults.suggested && (
                   <div className="bg-slate-800/30 border border-slate-700/30 rounded-lg p-4">
@@ -1151,7 +1602,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Endpoints Tab */}
-            {activeTab === 5 && (
+            {activeTab === 6 && (
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-white">
@@ -1383,7 +1834,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
 
             {/* Authentication Tab */}
             {/* Authentication Tab */}
-            {activeTab === 6 && (
+            {activeTab === 7 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">
                   Authentication
@@ -1732,7 +2183,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Advanced Tab */}
-            {activeTab === 7 && (
+            {activeTab === 8 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">
                   Advanced Configuration
@@ -1914,7 +2365,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Monitoring Tab */}
-            {activeTab === 8 && (
+            {activeTab === 9 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">
                   Monitoring & Logging
@@ -2129,7 +2580,7 @@ const APIServerBuilder: React.FC<APIServerBuilderProps> = ({
             )}
 
             {/* Testing Tab */}
-            {activeTab === 9 && (
+            {activeTab === 10 && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <BeakerIcon className="w-5 h-5" />

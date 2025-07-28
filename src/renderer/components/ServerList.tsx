@@ -16,6 +16,7 @@ import {
   Tooltip,
   Stack,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import {
   PlayArrow as PlayIcon,
@@ -39,6 +40,7 @@ interface ServerListProps {
   onEdit: (serverId: string) => void;
   onSelect: (serverId: string) => void;
   selectedServerId: string | null;
+  connectingServers?: Set<string>;
 }
 
 const ServerList: React.FC<ServerListProps> = ({
@@ -49,6 +51,7 @@ const ServerList: React.FC<ServerListProps> = ({
   onEdit,
   onSelect,
   selectedServerId,
+  connectingServers = new Set(),
 }) => {
   const renderStatusIcon = (server: ServerStatus) => {
     if (server.error) {
@@ -160,27 +163,45 @@ const ServerList: React.FC<ServerListProps> = ({
                 {server.connected ? (
                   <Tooltip title="Disconnect">
                     <Button
-                      startIcon={<StopIcon />}
+                      startIcon={
+                        connectingServers.has(server.id) ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <StopIcon />
+                        )
+                      }
                       color="warning"
+                      disabled={connectingServers.has(server.id)}
                       onClick={(e) => {
                         e.stopPropagation();
                         onDisconnect(server.id);
                       }}
                     >
-                      Disconnect
+                      {connectingServers.has(server.id)
+                        ? "Disconnecting..."
+                        : "Disconnect"}
                     </Button>
                   </Tooltip>
                 ) : (
                   <Tooltip title="Connect">
                     <Button
-                      startIcon={<PlayIcon />}
+                      startIcon={
+                        connectingServers.has(server.id) ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <PlayIcon />
+                        )
+                      }
                       color="primary"
+                      disabled={connectingServers.has(server.id)}
                       onClick={(e) => {
                         e.stopPropagation();
                         onConnect(server.id);
                       }}
                     >
-                      Connect
+                      {connectingServers.has(server.id)
+                        ? "Connecting..."
+                        : "Connect"}
                     </Button>
                   </Tooltip>
                 )}

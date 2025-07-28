@@ -304,11 +304,18 @@ export class MCPManager extends EventEmitter {
           `MCPManager: Server ${id} resources:`,
           status.resources.length
         );
-      } catch (resourceError) {
-        console.log(
-          `MCPManager: Error listing resources for ${id}:`,
-          resourceError
-        );
+      } catch (resourceError: any) {
+        // Check if this is a "Method not found" error - this is expected for servers that don't implement resources
+        if (resourceError?.code === -32601) {
+          console.log(
+            `MCPManager: Server ${id} does not implement resources (this is optional)`
+          );
+        } else {
+          console.log(
+            `MCPManager: Error listing resources for ${id}:`,
+            resourceError
+          );
+        }
         status.resources = [];
       }
 
@@ -317,11 +324,18 @@ export class MCPManager extends EventEmitter {
         const promptsResponse = await client.listPrompts();
         status.prompts = promptsResponse.prompts || [];
         console.log(`MCPManager: Server ${id} prompts:`, status.prompts.length);
-      } catch (promptError) {
-        console.log(
-          `MCPManager: Error listing prompts for ${id}:`,
-          promptError
-        );
+      } catch (promptError: any) {
+        // Check if this is a "Method not found" error - this is expected for servers that don't implement prompts
+        if (promptError?.code === -32601) {
+          console.log(
+            `MCPManager: Server ${id} does not implement prompts (this is optional)`
+          );
+        } else {
+          console.log(
+            `MCPManager: Error listing prompts for ${id}:`,
+            promptError
+          );
+        }
         status.prompts = [];
       }
 
@@ -421,11 +435,14 @@ export class MCPManager extends EventEmitter {
     return tools;
   }
 
-  // Method for UI - filters out sequential thinking tools
+  // Method for UI - shows all tools including sequential thinking (marked as system tool)
   async listToolsForUI(serverId?: string): Promise<Tool[]> {
     const allTools = await this.listTools(serverId);
-    // Filter out sequential thinking tools from UI display
-    return allTools.filter((tool) => tool.name !== "sequentialthinking");
+    // Mark sequential thinking tool as a system tool but still show it in UI
+    return allTools.map((tool) => ({
+      ...tool,
+      isSystemTool: tool.name === "sequentialthinking",
+    }));
   }
 
   // Method for agent - includes all tools including sequential thinking
@@ -453,8 +470,11 @@ export class MCPManager extends EventEmitter {
             }))
           );
         }
-      } catch (error) {
-        console.error("Error listing resources:", error);
+      } catch (error: any) {
+        // Only log as error if it's not a "Method not found" (resources are optional)
+        if (error?.code !== -32601) {
+          console.error("Error listing resources:", error);
+        }
       }
     }
 
@@ -480,8 +500,11 @@ export class MCPManager extends EventEmitter {
             }))
           );
         }
-      } catch (error) {
-        console.error("Error listing prompts:", error);
+      } catch (error: any) {
+        // Only log as error if it's not a "Method not found" (prompts are optional)
+        if (error?.code !== -32601) {
+          console.error("Error listing prompts:", error);
+        }
       }
     }
 

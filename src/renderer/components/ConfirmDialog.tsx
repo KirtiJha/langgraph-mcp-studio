@@ -72,6 +72,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 <button
                   onClick={onCancel}
                   className="p-2 hover:bg-zinc-800 rounded-lg transition-colors duration-200"
+                  aria-label="Close dialog"
                 >
                   <XMarkIcon className="w-5 h-5 text-zinc-400" />
                 </button>

@@ -13,11 +13,15 @@ import {
   StopIcon,
   ChatBubbleLeftRightIcon,
   ChevronDownIcon,
+  PlusIcon,
+  CogIcon,
 } from "@heroicons/react/24/outline";
 import {
   CpuChipIcon as CpuChipIconSolid,
   SparklesIcon as SparklesIconSolid,
 } from "@heroicons/react/24/solid";
+import { ModelConfig } from "../../shared/types";
+import { ModelConfigModal } from "./ModelConfigModal";
 
 interface BaseChatMessage {
   id: string;
@@ -53,6 +57,7 @@ interface ToolExecutionMessage extends BaseChatMessage {
     result?: any;
     duration?: number;
     startTime?: Date;
+    modelId?: string; // ID of the model used for this tool
   }>;
 }
 
@@ -74,10 +79,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   connectedServers,
 }) => {
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState(
-    "ibm/granite-3-3-8b-instruct"
-  );
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [configuredModels, setConfiguredModels] = useState<ModelConfig[]>([]);
+  const [showModelConfigModal, setShowModelConfigModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>(
@@ -87,26 +92,41 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     Record<string, boolean>
   >({});
 
-  const availableModels = [
-    {
-      id: "ibm/granite-3-3-8b-instruct",
-      name: "Granite 3.3 8B",
-      description: "Latest IBM Granite model - balanced performance",
-      isDefault: true,
-    },
-    {
-      id: "ibm/granite-3-2-8b-instruct",
-      name: "Granite 3.2 8B",
-      description: "Previous IBM Granite model - reliable",
-      isDefault: false,
-    },
-    {
-      id: "meta-llama/llama-3-3-70b-instruct",
-      name: "Llama 3.3 70B",
-      description: "Large Meta Llama model - highest capability",
-      isDefault: false,
-    },
-  ];
+  // Load configured models on component mount
+  useEffect(() => {
+    loadConfiguredModels();
+  }, []);
+
+  // Load configured models from electronAPI
+  const loadConfiguredModels = async () => {
+    try {
+      const models: ModelConfig[] = await window.electronAPI.getModelConfigs();
+      setConfiguredModels(models);
+      
+      // Set the first enabled model as default, or the default model if found
+      const defaultModel = models.find((m: ModelConfig) => m.isDefault && m.enabled);
+      const firstEnabledModel = models.find((m: ModelConfig) => m.enabled);
+      
+      if (defaultModel) {
+        setSelectedModel(defaultModel.id);
+      } else if (firstEnabledModel) {
+        setSelectedModel(firstEnabledModel.id);
+      }
+    } catch (error) {
+      console.error("Failed to load configured models:", error);
+    }
+  };
+
+  // Handle saving a new model configuration
+  const handleSaveModel = async (config: ModelConfig) => {
+    try {
+      await window.electronAPI.saveModelConfig(config);
+      await loadConfiguredModels(); // Reload models
+      setShowModelConfigModal(false);
+    } catch (error) {
+      console.error("Failed to save model config:", error);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -115,8 +135,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-
-    onSendMessage(input.trim(), selectedModel);
+    
+    // Check if a model is selected
+    if (!selectedModel || configuredModels.length === 0) {
+      // If no model is configured, still send the message but let the backend handle it
+      onSendMessage(input.trim());
+    } else {
+      onSendMessage(input.trim(), selectedModel);
+    }
+    
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -208,6 +235,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       ? `AI is executing ${message.tools[0].name}`
                       : `AI is executing tools (${message.tools.length})`}
                   </span>
+                  {/* Show model information if available */}
+                  {message.tools.length > 0 && message.tools[0].modelId && (
+                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded border border-blue-500/30">
+                      via {message.tools[0].modelId}
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   {message.tools.map((tool, idx) => (
@@ -276,6 +309,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             <span className="font-medium text-white text-sm">
                               {tool.name}
                             </span>
+                            {tool.modelId && (
+                              <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded border border-blue-500/30">
+                                {tool.modelId}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-xs">
                             {tool.status === "queued" && (
@@ -823,11 +861,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder={
-                connectedServers > 0
+                configuredModels.length === 0
+                  ? "Configure an AI model to start chatting..."
+                  : connectedServers > 0
                   ? "Ask me anything about your MCP servers..."
                   : "Ask me anything... (no MCP tools available)"
               }
-              disabled={isLoading}
+              disabled={isLoading || configuredModels.length === 0}
               className="w-full bg-slate-800/90 backdrop-blur-sm border border-slate-700/50 rounded-xl px-5 py-4 pr-32 pb-12 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500/50 resize-none min-h-[60px] max-h-[120px] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg group-hover:shadow-emerald-500/10 focus:shadow-emerald-500/20"
               rows={1}
             />
@@ -842,8 +882,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 >
                   <CpuChipIcon className="w-3.5 h-3.5" />
                   <span>
-                    {availableModels.find((m) => m.id === selectedModel)
-                      ?.name || "Model"}
+                    {configuredModels.find((m) => m.id === selectedModel)
+                      ?.modelId || "No Model"}
                   </span>
                   <ChevronDownIcon
                     className={`w-3 h-3 transition-transform duration-200 ${
@@ -873,40 +913,74 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           <div className="text-xs font-medium text-slate-400 px-3 py-2">
                             Choose AI Model
                           </div>
-                          {availableModels.map((model) => (
-                            <button
-                              key={model.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedModel(model.id);
-                                setIsModelDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 ${
-                                selectedModel === model.id
-                                  ? "bg-indigo-500/20 border border-indigo-500/30 text-white"
-                                  : "text-slate-300 hover:text-white hover:bg-slate-700/50"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <div className="font-medium text-sm">
-                                    {model.name}
-                                    {model.isDefault && (
-                                      <span className="ml-2 text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-                                        Default
-                                      </span>
+                          
+                          {/* Add Model Option */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowModelConfigModal(true);
+                              setIsModelDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/50 transition-all duration-200 border-b border-slate-700/50 mb-2"
+                          >
+                            <div className="flex items-center gap-3">
+                              <PlusIcon className="w-4 h-4 text-blue-400" />
+                              <div>
+                                <div className="font-medium text-sm text-blue-400">
+                                  Add New Model
+                                </div>
+                                <div className="text-xs text-slate-400 mt-1">
+                                  Configure a new AI model
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Configured Models */}
+                          {configuredModels.length === 0 ? (
+                            <div className="px-3 py-6 text-center">
+                              <CogIcon className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                              <div className="text-sm text-slate-400 mb-1">No models configured</div>
+                              <div className="text-xs text-slate-500">Add your first model to get started</div>
+                            </div>
+                          ) : (
+                            configuredModels
+                              .filter(model => model.enabled)
+                              .map((model) => (
+                                <button
+                                  key={model.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedModel(model.id);
+                                    setIsModelDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 ${
+                                    selectedModel === model.id
+                                      ? "bg-indigo-500/20 border border-indigo-500/30 text-white"
+                                      : "text-slate-300 hover:text-white hover:bg-slate-700/50"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <div className="font-medium text-sm">
+                                        {model.modelId}
+                                        {model.isDefault && (
+                                          <span className="ml-2 text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
+                                            Default
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-slate-400 mt-1">
+                                        {model.name} • {model.provider}
+                                      </div>
+                                    </div>
+                                    {selectedModel === model.id && (
+                                      <CheckCircleIcon className="w-4 h-4 text-indigo-400" />
                                     )}
                                   </div>
-                                  <div className="text-xs text-slate-400 mt-1">
-                                    {model.description}
-                                  </div>
-                                </div>
-                                {selectedModel === model.id && (
-                                  <CheckCircleIcon className="w-4 h-4 text-indigo-400" />
-                                )}
-                              </div>
-                            </button>
-                          ))}
+                                </button>
+                              ))
+                          )}
                         </div>
                       </motion.div>
                     </>
@@ -956,6 +1030,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </motion.button>
         </form>
       </motion.div>
+
+      {/* Model Configuration Modal */}
+      <ModelConfigModal
+        isOpen={showModelConfigModal}
+        onClose={() => setShowModelConfigModal(false)}
+        onSave={handleSaveModel}
+      />
     </div>
   );
 };

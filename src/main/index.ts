@@ -17,6 +17,7 @@ import http from "http";
 import url from "url";
 import { MCPManager } from "./mcp/MCPManager";
 import { LangGraphAgent } from "./agent/LangGraphAgent";
+import { ModelService } from "./services/ModelService";
 import Store from "electron-store";
 import { IpcChannels } from "../shared/types";
 import { loggingService } from "./services/LoggingService";
@@ -24,6 +25,7 @@ import APIServerService from "./services/APIServerService";
 
 let mainWindow: BrowserWindow | null = null;
 let mcpManager: MCPManager;
+let modelService: ModelService;
 let agent: LangGraphAgent;
 let apiServerService: APIServerService;
 let oauth2Server: http.Server | null = null;
@@ -323,14 +325,20 @@ app.whenReady().then(async () => {
     timestamp: new Date(),
   });
 
+  // Initialize Model Service
+  modelService = new ModelService(store, loggingService);
+  loggingService.log("Model Service initialized", {
+    timestamp: new Date(),
+  });
+
   // Initialize Agent with error handling
   try {
-    agent = new LangGraphAgent(mcpManager);
+    agent = new LangGraphAgent(mcpManager, modelService);
     console.log("LangGraph Agent initialized successfully");
   } catch (error) {
     console.warn("Failed to initialize LangGraph Agent:", error);
     console.warn(
-      "Chat functionality will be limited. Please configure Watsonx credentials."
+      "Chat functionality will be limited. Please configure a model in settings."
     );
     // Continue without agent - the app can still manage MCP servers
   }
@@ -437,7 +445,7 @@ function setupIpcHandlers() {
   ipcMain.handle(IpcChannels.SEND_MESSAGE, async (_, { message, model }) => {
     if (!agent) {
       throw new Error(
-        "Chat agent is not available. Please configure Watsonx credentials in your environment variables."
+        "Chat agent is not available. Please configure a model in settings."
       );
     }
     return await agent.processMessage(message, model);
@@ -448,6 +456,38 @@ function setupIpcHandlers() {
       agent.startNewConversation();
     }
     return { success: true };
+  });
+
+  // Model management operations
+  ipcMain.handle(IpcChannels.GET_MODEL_CONFIGS, async () => {
+    return modelService.getModelConfigs();
+  });
+
+  ipcMain.handle(IpcChannels.SAVE_MODEL_CONFIG, async (_, config) => {
+    modelService.saveModelConfig(config);
+    return { success: true };
+  });
+
+  ipcMain.handle(IpcChannels.DELETE_MODEL_CONFIG, async (_, configId) => {
+    modelService.deleteModelConfig(configId);
+    return { success: true };
+  });
+
+  ipcMain.handle(IpcChannels.SET_DEFAULT_MODEL, async (_, configId) => {
+    modelService.setDefaultModel(configId);
+    return { success: true };
+  });
+
+  ipcMain.handle(IpcChannels.TEST_MODEL_CONNECTION, async (_, config) => {
+    return await modelService.testModelConnection(config);
+  });
+
+  ipcMain.handle(IpcChannels.GET_AVAILABLE_MODELS, async () => {
+    return modelService.getAvailableModels();
+  });
+
+  ipcMain.handle(IpcChannels.GET_OLLAMA_MODELS, async (_, baseURL) => {
+    return await modelService.getOllamaModels(baseURL);
   });
 
   // Resource operations

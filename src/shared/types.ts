@@ -16,6 +16,15 @@ export enum IpcChannels {
   SEND_MESSAGE = "send-message",
   CLEAR_CHAT = "clear-chat",
 
+  // Model management
+  GET_MODEL_CONFIGS = "get-model-configs",
+  SAVE_MODEL_CONFIG = "save-model-config",
+  DELETE_MODEL_CONFIG = "delete-model-config",
+  TEST_MODEL_CONNECTION = "test-model-connection",
+  GET_AVAILABLE_MODELS = "get-available-models",
+  SET_DEFAULT_MODEL = "set-default-model",
+  GET_OLLAMA_MODELS = "get-ollama-models",
+
   // Resource operations
   LIST_RESOURCES = "list-resources",
   READ_RESOURCE = "read-resource",
@@ -59,6 +68,8 @@ export interface ServerConfig {
   contextParams?: Record<string, any>;
   // Store tool-specific parameter configurations
   toolConfigs?: Record<string, Record<string, any>>;
+  // Preferred AI model for this server's tools
+  preferredModelId?: string;
 }
 
 export interface Tool {
@@ -135,6 +146,8 @@ export interface ToolCall {
   result?: any;
   error?: string;
   serverId: string;
+  modelId?: string; // ID of the model used for this tool call
+  duration?: number; // Execution duration in milliseconds
 }
 
 export interface AgentState {
@@ -196,6 +209,88 @@ export interface AuthConfig {
     };
   };
   redirectUri: string;
+}
+
+// LLM Model Configuration Types
+export type LLMProvider = "watsonx" | "openai" | "anthropic" | "ollama" | "azure" | "cohere" | "groq";
+
+export interface ModelConfig {
+  id: string;
+  name: string;
+  provider: LLMProvider;
+  modelId: string;
+  enabled: boolean;
+  isDefault?: boolean;
+  // Provider-specific configuration
+  config: WatsonxConfig | OpenAIConfig | AnthropicConfig | OllamaConfig | AzureConfig | CohereConfig | GroqConfig;
+  // Common model parameters
+  parameters?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    topK?: number;
+    repetitionPenalty?: number;
+    streaming?: boolean;
+    [key: string]: any;
+  };
+}
+
+export interface WatsonxConfig {
+  apiKey: string;
+  projectId: string;
+  serviceUrl?: string;
+  version?: string;
+}
+
+export interface OpenAIConfig {
+  apiKey: string;
+  organizationId?: string;
+  baseURL?: string;
+}
+
+export interface AnthropicConfig {
+  apiKey: string;
+  baseURL?: string;
+}
+
+export interface OllamaConfig {
+  baseURL: string;
+  keepAlive?: string;
+}
+
+export interface AzureConfig {
+  apiKey: string;
+  endpoint: string;
+  apiVersion?: string;
+  deploymentName?: string;
+}
+
+export interface CohereConfig {
+  apiKey: string;
+  baseURL?: string;
+}
+
+export interface GroqConfig {
+  apiKey: string;
+  baseURL?: string;
+}
+
+export interface ModelCapabilities {
+  supportsTools: boolean;
+  supportsStreaming: boolean;
+  supportsVision: boolean;
+  contextWindow: number;
+  maxOutputTokens?: number;
+}
+
+export interface AvailableModel {
+  id: string;
+  name: string;
+  provider: LLMProvider;
+  description?: string;
+  capabilities: ModelCapabilities;
+  isLocal?: boolean;
+  isConfigured?: boolean;
 }
 
 export interface SSOConfig {

@@ -52,6 +52,7 @@ import {
   ServerConfig,
   ServerStatus as SharedServerStatus,
   Tool,
+  ModelConfig,
 } from "../shared/types";
 import { APIServerConfig } from "../shared/apiServerTypes";
 import { PublicAPISpec } from "../shared/publicApiTypes";
@@ -101,6 +102,7 @@ interface ToolExecutionMessage extends BaseChatMessage {
     result?: any;
     duration?: number;
     startTime?: Date;
+    modelId?: string; // ID of the model used for this tool
   }>;
 }
 
@@ -123,6 +125,7 @@ function App() {
   const [servers, setServers] = useState<ServerStatus[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
+  const [models, setModels] = useState<ModelConfig[]>([]);
   const [apiServers, setApiServers] = useState<APIServerConfig[]>([]);
   const [selectedTab, _setSelectedTab] = useState("servers");
 
@@ -131,6 +134,9 @@ function App() {
     _setSelectedTab(tab);
   };
   const [isLoading, setIsLoading] = useState(true);
+  const [connectingServers, setConnectingServers] = useState<Set<string>>(
+    new Set()
+  );
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -158,7 +164,7 @@ function App() {
   // Initialize authentication service
   useEffect(() => {
     const authService = AuthService.getInstance();
-    
+
     // Check if user is already authenticated
     const user = authService.getCurrentUser();
     if (user) {
@@ -177,12 +183,15 @@ function App() {
 
   // Load data when authenticated
   useEffect(() => {
-    console.log("🔐 Authentication state changed:", { isAuthenticated, hasElectronAPI: !!window.electronAPI });
-    
+    console.log("🔐 Authentication state changed:", {
+      isAuthenticated,
+      hasElectronAPI: !!window.electronAPI,
+    });
+
     // Only load data if authenticated and electronAPI is available
     if (isAuthenticated && window.electronAPI) {
       console.log("🔐 User authenticated, loading initial data...");
-      
+
       // Load initial data
       loadData();
 
@@ -347,6 +356,14 @@ function App() {
         APIServerService.getAllServers(),
       ]);
 
+      // Load models
+      let modelList: ModelConfig[] = [];
+      try {
+        modelList = await window.electronAPI.getModelConfigs();
+      } catch (error) {
+        console.warn("Failed to load models:", error);
+      }
+
       // Convert date strings back to Date objects for servers
       const processedServers = serverList.map((server: any) => ({
         ...server,
@@ -360,6 +377,7 @@ function App() {
 
       setServers(processedServers);
       setTools(toolList);
+      setModels(modelList);
       setApiServers(apiServerList);
 
       // Load configurations for all servers
@@ -388,23 +406,51 @@ function App() {
     }
   };
 
+  // Helper function to get model name by ID
+  const getModelNameById = (modelId: string | undefined): string | undefined => {
+    if (!modelId) return undefined;
+    const model = models.find(m => m.id === modelId);
+    return model ? `${model.name} (${model.provider})` : undefined;
+  };
+
+  // Helper function to get model name from model ID
+  const getModelName = (modelId: string | undefined): string => {
+    if (!modelId) return "Default";
+    const model = models.find(m => m.id === modelId);
+    return model ? model.modelId : "Unknown Model";
+  };
+
   const handleConnect = async (serverId: string) => {
     try {
+      setConnectingServers((prev) => new Set(prev).add(serverId));
       await window.electronAPI.connectServer(serverId);
       // No need to reload data - real-time events will update the UI
     } catch (error) {
       console.error("Error connecting server:", error);
       // Optionally show an error message to the user
+    } finally {
+      setConnectingServers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(serverId);
+        return newSet;
+      });
     }
   };
 
   const handleDisconnect = async (serverId: string) => {
     try {
+      setConnectingServers((prev) => new Set(prev).add(serverId));
       await window.electronAPI.disconnectServer(serverId);
       // No need to reload data - real-time events will update the UI
     } catch (error) {
       console.error("Error disconnecting server:", error);
       // Optionally show an error message to the user
+    } finally {
+      setConnectingServers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(serverId);
+        return newSet;
+      });
     }
   };
 
@@ -496,6 +542,26 @@ function App() {
     if (!serverToDelete) return;
 
     try {
+      // First, check if this server also exists as an API server and remove it
+      const serverName = serverToDelete.name;
+      const matchingApiServer = apiServers.find(
+        (apiServer) =>
+          apiServer.name === serverName || apiServer.id === serverToDelete.id
+      );
+
+      if (matchingApiServer) {
+        console.log(
+          `Deleting matching API server: ${matchingApiServer.name} (${matchingApiServer.id})`
+        );
+        try {
+          await APIServerService.deleteServer(matchingApiServer.id);
+        } catch (apiError) {
+          console.warn("Failed to delete matching API server:", apiError);
+          // Continue with MCP server deletion even if API server deletion fails
+        }
+      }
+
+      // Then remove the MCP server
       await window.electronAPI.removeServer(serverToDelete.id);
       await loadData();
       setIsDeleteDialogOpen(false);
@@ -597,6 +663,7 @@ function App() {
                 result: tool.result,
                 status: "completed" as const,
                 duration: tool.duration,
+                modelId: tool.modelId, // Include model information
               },
             ],
           }));
@@ -986,7 +1053,9 @@ function App() {
                         onSettings={() => setIsSettingsOpen(true)}
                         onSignIn={() => {
                           // This shouldn't happen if user is authenticated, but just in case
-                          console.log("Sign in button clicked from authenticated state");
+                          console.log(
+                            "Sign in button clicked from authenticated state"
+                          );
                         }}
                       />
                     </div>
@@ -1294,22 +1363,26 @@ function App() {
                             </div>
                           ) : (
                             <div className="grid gap-4">
-                              {servers.map((server) => (
-                                <ServerCard
-                                  key={server.id}
-                                  server={server}
-                                  toolCount={getToolCountForServer(server.id)}
-                                  contextParamsCount={getContextParamsCountForServer(
-                                    server.id
-                                  )}
-                                  onConnect={handleConnect}
-                                  onDisconnect={handleDisconnect}
-                                  onView={handleViewServerConfig}
-                                  onEdit={handleEditServerConfig}
-                                  onDelete={handleDeleteServer}
-                                  isLoading={isLoading}
-                                />
-                              ))}
+                              {servers.map((server) => {
+                                const serverConfig = serverConfigs.find(config => config.id === server.id);
+                                return (
+                                  <ServerCard
+                                    key={server.id}
+                                    server={server}
+                                    toolCount={getToolCountForServer(server.id)}
+                                    contextParamsCount={getContextParamsCountForServer(
+                                      server.id
+                                    )}
+                                    preferredModelName={getModelName(serverConfig?.preferredModelId)}
+                                    onConnect={handleConnect}
+                                    onDisconnect={handleDisconnect}
+                                    onView={handleViewServerConfig}
+                                    onEdit={handleEditServerConfig}
+                                    onDelete={handleDeleteServer}
+                                    isLoading={connectingServers.has(server.id)}
+                                  />
+                                );
+                              })}
 
                               {servers.length === 0 && (
                                 <div className="text-center py-12">

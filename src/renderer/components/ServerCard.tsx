@@ -12,6 +12,22 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
+// Spinner component
+const ModernSpinner: React.FC<{ className?: string; size?: number }> = ({
+  className = "",
+  size = 16,
+}) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <div
+      className="animate-spin rounded-full border-2 border-transparent border-t-current border-r-current"
+      style={{
+        width: size,
+        height: size,
+      }}
+    />
+  </div>
+);
+
 interface ServerCardProps {
   server: {
     id: string;
@@ -23,6 +39,7 @@ interface ServerCardProps {
   };
   toolCount?: number;
   contextParamsCount?: number;
+  preferredModelName?: string; // Display name of the preferred model
   onConnect: (id: string) => void;
   onDisconnect: (id: string) => void;
   onView?: (id: string) => void;
@@ -35,6 +52,7 @@ const ServerCard: React.FC<ServerCardProps> = ({
   server,
   toolCount = 0,
   contextParamsCount = 0,
+  preferredModelName,
   onConnect,
   onDisconnect,
   onView,
@@ -152,8 +170,12 @@ const ServerCard: React.FC<ServerCardProps> = ({
                 disabled={isLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-300 border border-red-500/30 rounded-md hover:bg-red-500/30 transition-all duration-200 disabled:opacity-50 text-sm"
               >
-                <StopIcon className="w-3.5 h-3.5" />
-                Disconnect
+                {isLoading ? (
+                  <ModernSpinner className="text-red-300" size={14} />
+                ) : (
+                  <StopIcon className="w-3.5 h-3.5" />
+                )}
+                {isLoading ? "Disconnecting..." : "Disconnect"}
               </button>
             ) : (
               <button
@@ -161,8 +183,12 @@ const ServerCard: React.FC<ServerCardProps> = ({
                 disabled={isLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-md hover:bg-indigo-500/30 transition-all duration-200 disabled:opacity-50 text-sm"
               >
-                <PlayIcon className="w-3.5 h-3.5" />
-                Connect
+                {isLoading ? (
+                  <ModernSpinner className="text-indigo-300" size={14} />
+                ) : (
+                  <PlayIcon className="w-3.5 h-3.5" />
+                )}
+                {isLoading ? "Connecting..." : "Connect"}
               </button>
             )}
           </div>
@@ -170,7 +196,7 @@ const ServerCard: React.FC<ServerCardProps> = ({
 
         {/* Quick Stats */}
         {server.connected && (
-          <div className="grid grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-4 gap-3 text-xs">
             <div className="text-center p-2.5 bg-slate-700/30 rounded-md">
               <div className="text-indigo-400 font-semibold">{toolCount}</div>
               <div className="text-slate-400">Tools</div>
@@ -186,6 +212,12 @@ const ServerCard: React.FC<ServerCardProps> = ({
                 {formatLastActivity(server.lastActivity)}
               </div>
               <div className="text-slate-400">Last Activity</div>
+            </div>
+            <div className="text-center p-2.5 bg-slate-700/30 rounded-md">
+              <div className="text-amber-400 font-semibold truncate" title={preferredModelName || "Default"}>
+                {preferredModelName || "Default"}
+              </div>
+              <div className="text-slate-400">AI Model</div>
             </div>
           </div>
         )}

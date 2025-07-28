@@ -338,4 +338,52 @@ export const API_TEMPLATES = [
       },
     ],
   },
+  {
+    id: "postman-collection",
+    name: "Postman Collection Import",
+    description:
+      "Import API endpoints from a Postman Collection v2.1 JSON file",
+    category: "import" as const,
+    tags: ["postman", "import", "collection"],
+    config: {
+      name: "Postman API Collection",
+      description: "API server generated from Postman collection import",
+      baseUrl: "https://api.example.com",
+      timeout: 30000,
+      retries: 3,
+      authentication: { type: "apikey" as const, credentials: {} },
+      globalHeaders: {
+        "Content-Type": "application/json",
+        "User-Agent": "MCP-Studio/1.0.0",
+      } as Record<string, string>,
+      monitoring: {
+        enabled: true,
+        healthCheck: { endpoint: "/health", interval: 30 },
+        metrics: { enabled: true, retention: 7 },
+      },
+      logging: {
+        level: "info" as const,
+        requests: true,
+        responses: true,
+        errors: true,
+      },
+    },
+    endpoints: [
+      {
+        path: "/api/example",
+        method: "GET" as const,
+        toolName: "example_request",
+        description: "Example endpoint from Postman collection",
+        parameters: [
+          {
+            name: "id",
+            type: "string" as const,
+            required: false,
+            description: "Example parameter",
+          },
+        ],
+        enabled: true,
+      },
+    ],
+  },
 ];

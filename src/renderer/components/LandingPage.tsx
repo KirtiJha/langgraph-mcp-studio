@@ -12,6 +12,10 @@ import {
   ShieldCheckIcon,
   ArrowRightIcon,
   KeyIcon,
+  CodeBracketIcon,
+  DocumentTextIcon,
+  CogIcon,
+  CommandLineIcon,
 } from "@heroicons/react/24/outline";
 import Logo from "./Logo";
 import AuthDialog from "./AuthDialog";
@@ -55,9 +59,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const features = [
     {
       icon: ServerIcon,
-      title: "MCP Server Management",
+      title: "Advanced Server Configuration",
       description:
-        "Connect and manage multiple Model Context Protocol servers with ease",
+        "Model-specific AI routing, Postman collection import, and visual server code editor with export capabilities",
       color: "from-blue-500 to-cyan-500",
     },
     {
@@ -69,23 +73,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     },
     {
       icon: CpuChipIcon,
-      title: "API to MCP Conversion",
+      title: "Smart Code Generation",
       description:
-        "Transform any REST API into intelligent MCP servers with advanced configuration",
+        "Generate production-ready TypeScript MCP servers with full source code visibility and editing",
       color: "from-purple-500 to-pink-500",
     },
     {
       icon: WrenchScrewdriverIcon,
-      title: "Tool Execution",
+      title: "Multi-Format Import",
       description:
-        "Execute tools and functions with intelligent parameter handling and validation",
+        "Import from Postman collections, JSON configs, or OpenAPI specs with intelligent parsing",
       color: "from-green-500 to-emerald-500",
     },
     {
       icon: ChatBubbleLeftRightIcon,
-      title: "AI Chat Interface",
+      title: "AI Model Selection",
       description:
-        "Interact with AI agents through a modern, responsive chat interface",
+        "Choose specific AI models per server for optimized tool execution and performance",
       color: "from-orange-500 to-red-500",
     },
   ];
@@ -159,15 +163,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-xl lg:text-2xl text-slate-300 mb-8 leading-relaxed"
             >
-              Discover, test, and convert{" "}
+              Professional MCP server management with{" "}
               <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent font-semibold">
-                thousands of public APIs
+                AI model selection
+              </span>,{" "}
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent font-semibold">
+                Postman collection import
+              </span>, and{" "}
+              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold">
+                visual code editing
               </span>{" "}
-              into intelligent AI systems with{" "}
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
-                Model Context Protocol
-              </span>{" "}
-              integration
+              for enterprise-grade API integration
             </motion.p>
 
             {/* Feature showcase */}
@@ -213,18 +219,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               className="grid grid-cols-3 gap-6 mb-10"
             >
               <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">3000+</div>
-                <div className="text-sm text-slate-400">Public APIs</div>
+                <div className="text-2xl font-bold text-white mb-1">5+</div>
+                <div className="text-sm text-slate-400">AI Models</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-1">∞</div>
-                <div className="text-sm text-slate-400">MCP Tools</div>
+                <div className="text-sm text-slate-400">Code Export</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-1">
-                  1-Click
+                  v2.1
                 </div>
-                <div className="text-sm text-slate-400">Conversion</div>
+                <div className="text-sm text-slate-400">Postman Import</div>
               </div>
             </motion.div>
           </motion.div>
@@ -358,6 +364,107 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </p>
             </motion.div>
           ))}
+        </motion.div>
+
+        {/* Key Features Highlight */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.0 }}
+          className="mt-16 bg-gradient-to-r from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-3xl border border-slate-600/30 p-8"
+        >
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              🚀 New Enterprise Features
+            </h2>
+            <p className="text-lg text-slate-300">
+              Enhanced capabilities for professional development workflows
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Model Selection */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
+            >
+              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 mb-4">
+                <CogIcon className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                AI Model Selection
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Choose specific AI models (GPT-4, Claude, Llama) for each MCP server for optimized performance
+              </p>
+            </motion.div>
+
+            {/* Postman Import */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
+            >
+              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 mb-4">
+                <DocumentTextIcon className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Postman Collections
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Import Postman Collection v2.1 files with automatic endpoint and authentication detection
+              </p>
+            </motion.div>
+
+            {/* Code Editor */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
+            >
+              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-green-500 to-cyan-500 mb-4">
+                <CodeBracketIcon className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Visual Code Editor
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                View and edit generated TypeScript MCP server code with syntax highlighting and live preview
+              </p>
+            </motion.div>
+
+            {/* Config Export */}
+            <motion.div
+              whileHover={{ y: -5 }}
+              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
+            >
+              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 mb-4">
+                <CommandLineIcon className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Universal Export
+              </h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Export server configurations for Claude Desktop, Copilot, or any MCP-compatible client
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Additional Benefits */}
+          <div className="mt-12 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                <span className="text-slate-300">Production-Ready Code</span>
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-slate-300">Enterprise Authentication</span>
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span className="text-slate-300">Multi-Client Compatibility</span>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Footer */}

@@ -1,17 +1,19 @@
 import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import { tool } from "@langchain/core/tools";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
-import { ChatWatsonx } from "@langchain/community/chat_models/ibm";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { StateGraph, MessagesAnnotation } from "@langchain/langgraph";
 import { MCPManager } from "../mcp/MCPManager";
-import { ChatMessage, ToolCall, Tool } from "../../shared/types";
+import { ModelService } from "../services/ModelService";
+import { ChatMessage, ToolCall, Tool, ModelConfig } from "../../shared/types";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 
 export class LangGraphAgent {
   private mcpManager: MCPManager;
-  private model: ChatWatsonx;
+  private modelService: ModelService;
+  private model: BaseChatModel | null = null;
   private modelWithTools: any = null; // Model bound with tools
   private app: any = null; // LangGraph compiled app
   private checkpointer: MemorySaver;
@@ -19,50 +21,17 @@ export class LangGraphAgent {
   private toolNode: ToolNode | null = null;
   private isInitialized: boolean = false;
   private currentThreadId: string | null = null;
+  private currentModelConfig: ModelConfig | null = null;
   // Cache for recent tool executions to avoid duplicates
   private recentToolExecutions: Map<
     string,
     { result: string; timestamp: number }
   > = new Map();
 
-  constructor(mcpManager: MCPManager) {
+  constructor(mcpManager: MCPManager, modelService: ModelService) {
     this.mcpManager = mcpManager;
+    this.modelService = modelService;
     this.checkpointer = new MemorySaver(); // Initialize memory for conversations
-
-    // Check for required credentials
-    const apiKey = process.env.WATSONX_API_KEY;
-    const projectId = process.env.WATSONX_PROJECT_ID;
-
-    if (
-      !apiKey ||
-      !projectId ||
-      apiKey.includes("your_") ||
-      projectId.includes("your_")
-    ) {
-      throw new Error(
-        "IBM Watsonx credentials not configured. Please set WATSONX_API_KEY and WATSONX_PROJECT_ID in your .env file."
-      );
-    }
-
-    const props = {
-      version: "2023-05-29",
-      serviceUrl:
-        process.env.WATSONX_URL || "https://us-south.ml.cloud.ibm.com",
-      projectId: projectId,
-      watsonxAIAuthType: "iam",
-      watsonxAIApikey: apiKey,
-      maxTokens: 8000, // Increased for better responses
-      temperature: 0.1, // Lower temperature for more consistent tool calling
-      topP: 0.9, // Add top_p for better control
-      repetitionPenalty: 1.1, // Reduce repetition
-    };
-
-    // Initialize IBM Watsonx model
-    this.model = new ChatWatsonx({
-      model: process.env.WATSONX_MODEL_ID || "ibm/granite-3-3-8b-instruct",
-      streaming: false,
-      ...props,
-    });
 
     // Initialize agent asynchronously
     this.initializeAgent();
@@ -70,6 +39,8 @@ export class LangGraphAgent {
 
   private async initializeAgent() {
     try {
+      // Get default model or try to create from environment variables
+      await this.initializeDefaultModel();
       await this.setupAgent();
       this.isInitialized = true;
     } catch (error) {
@@ -77,9 +48,60 @@ export class LangGraphAgent {
     }
   }
 
-  private async setupAgent(model?: ChatWatsonx) {
-    // Use provided model or default model
+  private async initializeDefaultModel() {
+    // Try to get default model from ModelService
+    const defaultModel = this.modelService.getDefaultModel();
+    
+    if (defaultModel && defaultModel.enabled) {
+      try {
+        this.model = this.modelService.createModelInstance(defaultModel);
+        this.currentModelConfig = defaultModel;
+        console.log(`Initialized with configured model: ${defaultModel.name}`);
+        return;
+      } catch (error) {
+        console.warn(`Failed to initialize configured model ${defaultModel.name}:`, error);
+      }
+    }
+
+    // Fallback: try to create Watsonx model from environment variables
+    const apiKey = process.env.WATSONX_API_KEY;
+    const projectId = process.env.WATSONX_PROJECT_ID;
+
+    if (apiKey && projectId && !apiKey.includes("your_") && !projectId.includes("your_")) {
+      try {
+        const { ChatWatsonx } = await import("@langchain/community/chat_models/ibm");
+        
+        this.model = new ChatWatsonx({
+          model: process.env.WATSONX_MODEL_ID || "ibm/granite-3-3-8b-instruct",
+          version: "2023-05-29",
+          serviceUrl: process.env.WATSONX_URL || "https://us-south.ml.cloud.ibm.com",
+          projectId: projectId,
+          watsonxAIAuthType: "iam",
+          watsonxAIApikey: apiKey,
+          maxTokens: 8000,
+          temperature: 0.1,
+          topP: 0.9,
+          streaming: false,
+        });
+        
+        console.log("Initialized with environment Watsonx model");
+        return;
+      } catch (error) {
+        console.warn("Failed to initialize Watsonx model from environment:", error);
+      }
+    }
+
+    console.warn("No model configuration found. Please configure a model in settings.");
+  }
+
+  private async setupAgent(model?: BaseChatModel) {
+    // Use provided model or current model
     const agentModel = model || this.model;
+    
+    if (!agentModel) {
+      console.warn("No model available for agent setup");
+      return;
+    }
 
     // Get available tools as LangChain tools
     this.tools = await this.getAvailableTools();
@@ -100,9 +122,14 @@ export class LangGraphAgent {
       this.toolNode = new ToolNode(this.tools);
 
       // Bind tools to model for native tool calling
-      this.modelWithTools = agentModel.bindTools(this.tools, {
-        tool_choice: "auto",
-      });
+      if ('bindTools' in agentModel && typeof agentModel.bindTools === 'function') {
+        this.modelWithTools = agentModel.bindTools(this.tools, {
+          tool_choice: "auto",
+        });
+      } else {
+        console.warn("Model does not support tool binding");
+        this.modelWithTools = agentModel;
+      }
 
       // Create the StateGraph workflow
       const workflow = new StateGraph(MessagesAnnotation)
@@ -128,6 +155,10 @@ export class LangGraphAgent {
 
       // Use the model with tools if available, otherwise use the base model
       const modelToUse = this.modelWithTools || this.model;
+      
+      if (!modelToUse) {
+        throw new Error("No model available");
+      }
 
       const messages = state.messages;
       let messagesToSend = messages;
@@ -202,6 +233,10 @@ Do not provide answers based on general knowledge when tools can give specific, 
   private async respondWithToolResults(state: typeof MessagesAnnotation.State) {
     try {
       console.log("Generating response with tool results...");
+
+      if (!this.model) {
+        throw new Error("No model available");
+      }
 
       // Find the user query and tool results
       const messages = state.messages;
@@ -340,12 +375,41 @@ Be natural and helpful. Explain what information you found and how it answers th
                   throw new Error(`No serverId found for tool ${mcpTool.name}`);
                 }
 
+                // Check if this server has a preferred model and switch to it
+                const serverConfig = this.mcpManager.getServerConfig(serverId);
+                let modelSwitched = false;
+                let previousModel = null;
+                let actualModelUsed = this.currentModelConfig?.modelId;
+                
+                if (serverConfig?.preferredModelId && 
+                    serverConfig.preferredModelId !== this.currentModelConfig?.id) {
+                  try {
+                    console.log(`Switching to preferred model for server ${serverId}: ${serverConfig.preferredModelId}`);
+                    previousModel = this.currentModelConfig;
+                    await this.switchToModel(serverConfig.preferredModelId);
+                    modelSwitched = true;
+                    actualModelUsed = this.currentModelConfig?.modelId;
+                  } catch (error) {
+                    console.warn(`Failed to switch to preferred model ${serverConfig.preferredModelId} for server ${serverId}, using current model:`, error);
+                  }
+                }
+
                 // Call the MCP tool with the correct parameter order
                 const result = await this.mcpManager.callTool(
                   mcpTool.name,
                   args,
                   serverId
                 );
+
+                // Switch back to previous model if we switched
+                if (modelSwitched && previousModel) {
+                  try {
+                    console.log(`Switching back to previous model: ${previousModel.id}`);
+                    await this.switchToModel(previousModel.id);
+                  } catch (error) {
+                    console.warn(`Failed to switch back to previous model ${previousModel.id}:`, error);
+                  }
+                }
 
                 console.log(`Tool ${mcpTool.name} result:`, result);
 
@@ -355,7 +419,11 @@ Be natural and helpful. Explain what information you found and how it answers th
                     ? result
                     : JSON.stringify(result, null, 2);
 
-                // Cache the result
+                // Store model information for this tool execution
+                // We'll append it to the result so we can extract it later
+                const resultWithModelInfo = `${stringResult}|||MODEL_USED:${actualModelUsed || 'unknown'}|||`;
+
+                // Cache the result (without model info)
                 this.recentToolExecutions.set(cacheKey, {
                   result: stringResult,
                   timestamp: now,
@@ -373,7 +441,7 @@ Be natural and helpful. Explain what information you found and how it answers th
                   });
                 }
 
-                return stringResult;
+                return resultWithModelInfo;
               } catch (error: any) {
                 console.error(`Error executing tool ${mcpTool.name}:`, error);
                 return `Error executing ${mcpTool.name}: ${error.message}`;
@@ -403,32 +471,8 @@ Be natural and helpful. Explain what information you found and how it answers th
     return tools;
   }
 
-  private createModel(modelId: string): ChatWatsonx {
-    const apiKey = process.env.WATSONX_API_KEY;
-    const projectId = process.env.WATSONX_PROJECT_ID;
-
-    const props = {
-      version: "2023-05-29",
-      serviceUrl:
-        process.env.WATSONX_URL || "https://us-south.ml.cloud.ibm.com",
-      projectId: projectId,
-      watsonxAIAuthType: "iam",
-      watsonxAIApikey: apiKey,
-      maxTokens: 8000,
-      temperature: 0.1,
-      topP: 0.9,
-      repetitionPenalty: 1.1,
-    };
-
-    return new ChatWatsonx({
-      model: modelId,
-      streaming: false,
-      ...props,
-    });
-  }
-
   public isReady(): boolean {
-    return this.isInitialized && !!this.app;
+    return this.isInitialized && !!this.app && !!this.model;
   }
 
   async processMessage(
@@ -441,20 +485,22 @@ Be natural and helpful. Explain what information you found and how it answers th
         await this.initializeAgent();
       }
 
-      // Use specified model or default model
-      const currentModel = modelId ? this.createModel(modelId) : this.model;
+      // Switch model if requested
+      if (modelId) {
+        await this.switchToModel(modelId);
+      }
 
-      // If model changed, we need to recreate the workflow with the new model
-      if (
-        modelId &&
-        modelId !==
-          (process.env.WATSONX_MODEL_ID || "ibm/granite-3-3-8b-instruct")
-      ) {
-        console.log(`LangGraphAgent: Switching to model: ${modelId}`);
-        await this.setupAgent(currentModel);
-      } else {
-        // Refresh tools in case new servers were connected
-        await this.setupAgent();
+      // Refresh tools in case new servers were connected
+      await this.setupAgent();
+
+      // If no model is available, return an error
+      if (!this.model) {
+        return {
+          id: uuidv4(),
+          role: "assistant",
+          content: "No model is configured. Please configure a model in settings.",
+          timestamp: new Date(),
+        };
       }
 
       console.log("Processing message with StateGraph workflow:", message);
@@ -551,12 +597,28 @@ User query: ${message}`,
                   (msg as any).tool_call_id === toolCall.id
               );
 
+              // Extract model information from tool result if available
+              let toolResult = toolMessage ? (toolMessage as any).content : undefined;
+              let modelUsedForTool = this.currentModelConfig?.modelId || modelId;
+
+              if (toolResult && typeof toolResult === 'string' && toolResult.includes('|||MODEL_USED:')) {
+                const parts = toolResult.split('|||MODEL_USED:');
+                if (parts.length === 2) {
+                  toolResult = parts[0]; // Clean result without model info
+                  const modelPart = parts[1].split('|||')[0]; // Extract model info
+                  if (modelPart && modelPart !== 'unknown') {
+                    modelUsedForTool = modelPart;
+                  }
+                }
+              }
+
               toolCalls.push({
                 id: toolCall.id || uuidv4(),
                 name: toolCall.name,
                 args: toolCall.args,
                 serverId: "mcp", // StateGraph handles this automatically
-                result: toolMessage ? (toolMessage as any).content : undefined,
+                result: toolResult,
+                modelId: modelUsedForTool, // Use the actual model that executed this tool
               });
             }
           }
@@ -581,26 +643,28 @@ User query: ${message}`,
     }
   }
 
-  private async findServerForTool(toolName: string): Promise<string | null> {
-    try {
-      // Get all available tools from all servers
-      const mcpTools = await this.mcpManager.listToolsForAgent();
-
-      // Find the tool and return its serverId
-      const tool = mcpTools.find((t) => t.name === toolName);
-      if (tool && tool.serverId) {
-        console.log(`Found tool '${toolName}' on server '${tool.serverId}'`);
-        return typeof tool.serverId === "string"
-          ? tool.serverId
-          : String(tool.serverId);
-      }
-
-      console.warn(`Tool '${toolName}' not found on any server`);
-      return null;
-    } catch (error) {
-      console.error(`Error finding server for tool '${toolName}':`, error);
-      return null;
+  // Method to switch to a specific model configuration
+  async switchToModel(modelConfigId: string): Promise<void> {
+    const configs = this.modelService.getModelConfigs();
+    const targetConfig = configs.find(c => c.id === modelConfigId);
+    
+    if (!targetConfig || !targetConfig.enabled) {
+      throw new Error(`Model configuration '${modelConfigId}' not found or disabled`);
     }
+
+    try {
+      this.model = this.modelService.createModelInstance(targetConfig);
+      this.currentModelConfig = targetConfig;
+      console.log(`Switched to model: ${targetConfig.name}`);
+    } catch (error) {
+      console.error(`Failed to switch to model ${targetConfig.name}:`, error);
+      throw error;
+    }
+  }
+
+  // Method to get current model configuration
+  getCurrentModelConfig(): ModelConfig | null {
+    return this.currentModelConfig;
   }
 
   // Method to refresh the agent when tools change

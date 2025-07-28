@@ -27,11 +27,18 @@ declare global {
       ) => Promise<any>;
 
       // Agent operations
-      sendMessage: (params: {
-        message: string;
-        model?: string;
-      }) => Promise<any>;
+      sendMessage: ({ message, model }: { message: string; model?: string }) =>
+        Promise<any>;
       clearChat: () => Promise<{ success: boolean }>;
+
+      // Model management
+      getModelConfigs: () => Promise<any[]>;
+      saveModelConfig: (config: any) => Promise<{ success: boolean }>;
+      deleteModelConfig: (configId: string) => Promise<{ success: boolean }>;
+      setDefaultModel: (configId: string) => Promise<{ success: boolean }>;
+      testModelConnection: (config: any) => Promise<{ success: boolean; error?: string }>;
+      getAvailableModels: () => Promise<any[]>;
+      getOllamaModels: (baseURL?: string) => Promise<any[]>;
 
       // Resource operations
       listResources: (serverId: string) => Promise<any[]>;

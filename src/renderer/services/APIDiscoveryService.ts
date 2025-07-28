@@ -53,6 +53,7 @@ class APIDiscoveryService {
         () => this.trySwaggerDiscovery(normalizedUrl),
         () => this.tryWellKnownEndpoints(normalizedUrl),
         () => this.trySchemaDiscovery(normalizedUrl),
+        () => this.tryAdvancedDiscovery(normalizedUrl), // New advanced method
         () => this.tryHeuristicDiscovery(normalizedUrl),
       ];
 
@@ -302,11 +303,16 @@ class APIDiscoveryService {
   }
 
   /**
-   * Use heuristic discovery based on common patterns
+   * Use enhanced heuristic discovery with multiple strategies
    */
   private async tryHeuristicDiscovery(
     baseUrl: string
   ): Promise<APIDiscoveryResult> {
+    const discoveredEndpoints: PublicAPIEndpoint[] = [];
+    let workingEndpoints = 0;
+    const suggestions: string[] = [];
+
+    // Strategy 1: Common API patterns
     const commonEndpoints = [
       "/api",
       "/api/v1",
@@ -314,19 +320,74 @@ class APIDiscoveryService {
       "/v1",
       "/v2",
       "/rest",
+      "/graphql",
+    ];
+
+    // Strategy 2: Common resource endpoints
+    const resourceEndpoints = [
       "/users",
       "/items",
       "/data",
+      "/products",
+      "/posts",
+      "/comments",
+      "/categories",
+      "/tags",
+      "/files",
+      "/media",
+      "/auth",
+      "/login",
+      "/register",
+      "/profile",
+      "/settings",
+      "/search",
+      "/admin",
     ];
 
-    const discoveredEndpoints: PublicAPIEndpoint[] = [];
-    let workingEndpoints = 0;
+    // Strategy 3: Domain-specific patterns based on URL
+    const domainSpecificEndpoints =
+      this.generateDomainSpecificEndpoints(baseUrl);
 
-    for (const endpoint of commonEndpoints) {
+    // Strategy 4: Try to find API listing or directory endpoints
+    const apiDirectoryEndpoints = [
+      "/",
+      "/api",
+      "/docs",
+      "/documentation",
+      "/endpoints",
+      "/routes",
+      "/help",
+      "/info",
+      "/status",
+      "/health",
+      "/ping",
+      "/version",
+    ];
+
+    // Test all endpoint categories
+    const allEndpoints = [
+      ...commonEndpoints,
+      ...resourceEndpoints,
+      ...domainSpecificEndpoints,
+      ...apiDirectoryEndpoints,
+    ];
+
+    // Remove duplicates
+    const uniqueEndpoints = [...new Set(allEndpoints)];
+
+    for (const endpoint of uniqueEndpoints) {
       try {
         const response = await this.testEndpoint(`${baseUrl}${endpoint}`);
         if (response.ok) {
           workingEndpoints++;
+
+          // Try to analyze the response to infer more endpoints
+          const additionalEndpoints = await this.analyzeResponseForEndpoints(
+            `${baseUrl}${endpoint}`,
+            endpoint,
+            baseUrl
+          );
+
           discoveredEndpoints.push({
             id: `heuristic-${endpoint.replace(/[^a-zA-Z0-9]/g, "-")}`,
             path: endpoint,
@@ -337,11 +398,18 @@ class APIDiscoveryService {
               "200": { description: "Success" },
             },
           });
+
+          // Add any additional endpoints found through response analysis
+          discoveredEndpoints.push(...additionalEndpoints);
+          workingEndpoints += additionalEndpoints.length;
         }
       } catch (error) {
         // Endpoint not available
       }
     }
+
+    // Strategy 5: Try HTTP methods other than GET for discovered endpoints
+    await this.discoverHttpMethods(baseUrl, discoveredEndpoints);
 
     if (workingEndpoints > 0) {
       const api = this.createAPIFromEndpoints(baseUrl, discoveredEndpoints);
@@ -349,11 +417,12 @@ class APIDiscoveryService {
         success: true,
         api,
         endpoints: discoveredEndpoints,
-        confidence: 40 + workingEndpoints * 3,
+        confidence: 40 + Math.min(workingEndpoints * 3, 60),
         suggestions: [
           `Found ${workingEndpoints} potential API endpoints`,
-          "These endpoints were discovered heuristically",
-          "Verify functionality and add proper parameters",
+          "Endpoints discovered through enhanced heuristic analysis",
+          "Response content was analyzed for additional endpoint hints",
+          ...suggestions,
         ],
       };
     }
@@ -362,8 +431,624 @@ class APIDiscoveryService {
   }
 
   /**
-   * Auto-configure API server from discovered API
+   * Generate domain-specific endpoints based on the URL
    */
+  private generateDomainSpecificEndpoints(baseUrl: string): string[] {
+    const endpoints: string[] = [];
+
+    try {
+      const url = new URL(baseUrl);
+      const hostname = url.hostname.toLowerCase();
+
+      // Joke API specific
+      if (hostname.includes("joke")) {
+        endpoints.push(
+          "/jokes",
+          "/jokes/random",
+          "/jokes/programming",
+          "/jokes/programming/random",
+          "/jokes/programming/ten",
+          "/jokes/dad",
+          "/jokes/dad/random",
+          "/jokes/categories",
+          "/random_joke",
+          "/random_ten"
+        );
+      }
+
+      // Weather API specific
+      if (hostname.includes("weather")) {
+        endpoints.push(
+          "/weather",
+          "/current",
+          "/forecast",
+          "/history",
+          "/alerts",
+          "/locations"
+        );
+      }
+
+      // News API specific
+      if (hostname.includes("news")) {
+        endpoints.push(
+          "/news",
+          "/articles",
+          "/headlines",
+          "/sources",
+          "/categories"
+        );
+      }
+
+      // Finance/Stock API specific
+      if (hostname.includes("stock") || hostname.includes("finance")) {
+        endpoints.push(
+          "/stocks",
+          "/quotes",
+          "/prices",
+          "/historical",
+          "/symbols",
+          "/markets"
+        );
+      }
+
+      // Social media API specific
+      if (
+        hostname.includes("social") ||
+        hostname.includes("twitter") ||
+        hostname.includes("facebook")
+      ) {
+        endpoints.push(
+          "/posts",
+          "/users",
+          "/timeline",
+          "/followers",
+          "/friends",
+          "/messages"
+        );
+      }
+    } catch (error) {
+      // Invalid URL, skip domain-specific generation
+    }
+
+    return endpoints;
+  }
+
+  /**
+   * Analyze response content to find hints about other endpoints
+   */
+  private async analyzeResponseForEndpoints(
+    fullUrl: string,
+    endpoint: string,
+    baseUrl: string
+  ): Promise<PublicAPIEndpoint[]> {
+    const discoveredEndpoints: PublicAPIEndpoint[] = [];
+
+    try {
+      const response = await fetch(fullUrl);
+      if (!response.ok) return discoveredEndpoints;
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+
+        // Look for endpoint hints in JSON response
+        const endpointHints = this.extractEndpointHintsFromJson(data);
+
+        for (const hint of endpointHints) {
+          discoveredEndpoints.push({
+            id: `analyzed-${hint.replace(/[^a-zA-Z0-9]/g, "-")}`,
+            path: hint,
+            method: "GET",
+            summary: `Inferred from response: ${hint}`,
+            description: `Endpoint inferred from analyzing ${endpoint} response`,
+            responses: {
+              "200": { description: "Success" },
+            },
+          });
+        }
+      } else if (contentType.includes("text/html")) {
+        const html = await response.text();
+
+        // Look for API links in HTML
+        const linkHints = this.extractEndpointHintsFromHtml(html);
+
+        for (const hint of linkHints) {
+          discoveredEndpoints.push({
+            id: `html-${hint.replace(/[^a-zA-Z0-9]/g, "-")}`,
+            path: hint,
+            method: "GET",
+            summary: `Found in HTML: ${hint}`,
+            description: `Endpoint found in HTML content from ${endpoint}`,
+            responses: {
+              "200": { description: "Success" },
+            },
+          });
+        }
+      } else if (
+        contentType.includes("text/plain") ||
+        contentType.includes("text/")
+      ) {
+        // Handle plain text responses that might contain endpoint hints
+        const text = await response.text();
+
+        // Look for endpoint hints in plain text
+        const textHints = this.extractEndpointHintsFromPlainText(text);
+
+        for (const hint of textHints) {
+          discoveredEndpoints.push({
+            id: `text-${hint.replace(/[^a-zA-Z0-9]/g, "-")}`,
+            path: hint,
+            method: "GET",
+            summary: `Found in text: ${hint}`,
+            description: `Endpoint found in plain text response from ${endpoint}`,
+            responses: {
+              "200": { description: "Success" },
+            },
+          });
+        }
+      }
+    } catch (error) {
+      // Failed to analyze response, skip
+    }
+
+    return discoveredEndpoints;
+  }
+
+  /**
+   * Extract endpoint hints from plain text content
+   */
+  private extractEndpointHintsFromPlainText(text: string): string[] {
+    const hints: string[] = [];
+
+    // Look for paths that start with / in plain text
+    // This pattern matches the joke API response: "Try /random_joke, /random_ten, /jokes/random, or /jokes/ten"
+    const pathRegex = /\/[a-zA-Z0-9_\/\-<>{}]+/g;
+    let match;
+
+    while ((match = pathRegex.exec(text)) !== null) {
+      const path = match[0];
+
+      // Clean up the path (remove trailing punctuation, etc.)
+      const cleanPath = path.replace(/[,\.;:\s]*$/, "");
+
+      if (
+        cleanPath.length > 1 &&
+        cleanPath.length < 100 &&
+        !cleanPath.includes(".html") &&
+        !cleanPath.includes(".css") &&
+        !cleanPath.includes(".js")
+      ) {
+        hints.push(cleanPath);
+      }
+    }
+
+    // Also look for patterns like "endpoint_name" or 'endpoint_name' in text
+    const quotedEndpointRegex = /["'](\/?[a-zA-Z0-9_\/\-]+)["']/g;
+    while ((match = quotedEndpointRegex.exec(text)) !== null) {
+      const path = match[1];
+      if (path.startsWith("/") && path.length > 1) {
+        hints.push(path);
+      } else if (path.length > 1) {
+        // Add leading slash if missing
+        hints.push("/" + path);
+      }
+    }
+
+    return [...new Set(hints)]; // Remove duplicates
+  }
+
+  /**
+   * Extract endpoint hints from JSON response
+   */
+  private extractEndpointHintsFromJson(data: any): string[] {
+    const hints: string[] = [];
+
+    // Look for common patterns in JSON that might indicate endpoints
+    const searchForEndpoints = (obj: any, path: string = "") => {
+      if (typeof obj === "string") {
+        // Look for URL-like strings
+        if (obj.startsWith("/") && obj.length > 1 && obj.length < 100) {
+          hints.push(obj);
+        }
+      } else if (Array.isArray(obj)) {
+        obj.forEach((item, index) =>
+          searchForEndpoints(item, `${path}[${index}]`)
+        );
+      } else if (obj && typeof obj === "object") {
+        Object.keys(obj).forEach((key) => {
+          // Keys that might indicate endpoints
+          if (
+            key.toLowerCase().includes("url") ||
+            key.toLowerCase().includes("endpoint") ||
+            key.toLowerCase().includes("path") ||
+            key.toLowerCase().includes("route")
+          ) {
+            const value = obj[key];
+            if (typeof value === "string" && value.startsWith("/")) {
+              hints.push(value);
+            }
+          }
+          searchForEndpoints(obj[key], path ? `${path}.${key}` : key);
+        });
+      }
+    };
+
+    searchForEndpoints(data);
+
+    // Remove duplicates and invalid hints
+    return [...new Set(hints)].filter(
+      (hint) =>
+        hint.length > 1 &&
+        hint.length < 100 &&
+        !hint.includes("http") &&
+        !hint.includes(" ")
+    );
+  }
+
+  /**
+   * Extract endpoint hints from HTML content
+   */
+  private extractEndpointHintsFromHtml(html: string): string[] {
+    const hints: string[] = [];
+
+    // Look for href attributes that might be API endpoints
+    const hrefRegex = /href=["']([^"']*?)["']/gi;
+    let match;
+
+    while ((match = hrefRegex.exec(html)) !== null) {
+      const href = match[1];
+      if (
+        href.startsWith("/") &&
+        !href.includes(".html") &&
+        !href.includes(".css") &&
+        !href.includes(".js") &&
+        !href.includes("#") &&
+        href.length > 1 &&
+        href.length < 100
+      ) {
+        hints.push(href);
+      }
+    }
+
+    // Look for API documentation links
+    const apiRegex = /\/api\/[^"'\s<>]*/gi;
+    while ((match = apiRegex.exec(html)) !== null) {
+      hints.push(match[0]);
+    }
+
+    return [...new Set(hints)];
+  }
+
+  /**
+   * Test different HTTP methods for discovered endpoints
+   */
+  private async discoverHttpMethods(
+    baseUrl: string,
+    endpoints: PublicAPIEndpoint[]
+  ): Promise<void> {
+    const methods = ["POST", "PUT", "DELETE", "PATCH"];
+
+    for (const endpoint of endpoints.slice(0, 5)) {
+      // Limit to first 5 to avoid too many requests
+      for (const method of methods) {
+        try {
+          const response = await fetch(`${baseUrl}${endpoint.path}`, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+          });
+
+          // Even if it fails, a 405 (Method Not Allowed) or 400 (Bad Request)
+          // indicates the endpoint exists but might need different parameters
+          if (
+            response.status === 405 ||
+            response.status === 400 ||
+            response.ok
+          ) {
+            endpoints.push({
+              id: `method-${method.toLowerCase()}-${endpoint.path.replace(
+                /[^a-zA-Z0-9]/g,
+                "-"
+              )}`,
+              path: endpoint.path,
+              method: method as any,
+              summary: `${method} ${endpoint.path}`,
+              description: `Discovered ${method} method for ${endpoint.path}`,
+              responses: {
+                "200": { description: "Success" },
+              },
+            });
+          }
+        } catch (error) {
+          // Method not supported or network error
+        }
+      }
+    }
+  }
+
+  /**
+   * Advanced discovery using multiple sophisticated techniques
+   */
+  private async tryAdvancedDiscovery(
+    baseUrl: string
+  ): Promise<APIDiscoveryResult> {
+    const discoveredEndpoints: PublicAPIEndpoint[] = [];
+    let confidence = 0;
+    const suggestions: string[] = [];
+
+    try {
+      // Strategy 1: Try to find robots.txt or sitemap
+      const robotsEndpoints = await this.analyzeRobotsAndSitemap(baseUrl);
+      discoveredEndpoints.push(...robotsEndpoints);
+
+      // Strategy 2: Look for common API documentation patterns
+      const docEndpoints = await this.findDocumentationEndpoints(baseUrl);
+      discoveredEndpoints.push(...docEndpoints);
+
+      // Strategy 3: Analyze response headers for hints
+      const headerHints = await this.analyzeResponseHeaders(baseUrl);
+      discoveredEndpoints.push(...headerHints);
+
+      // Strategy 4: Try OPTIONS requests to discover supported methods
+      const optionsEndpoints = await this.discoverViaOptions(baseUrl);
+      discoveredEndpoints.push(...optionsEndpoints);
+
+      const uniqueEndpoints = this.deduplicateEndpoints(discoveredEndpoints);
+
+      if (uniqueEndpoints.length > 0) {
+        confidence = 60 + Math.min(uniqueEndpoints.length * 5, 40);
+        const api = this.createAPIFromEndpoints(baseUrl, uniqueEndpoints);
+
+        return {
+          success: true,
+          api,
+          endpoints: uniqueEndpoints,
+          confidence,
+          suggestions: [
+            `Advanced discovery found ${uniqueEndpoints.length} endpoints`,
+            "Analyzed robots.txt, documentation, and response headers",
+            ...suggestions,
+          ],
+        };
+      }
+    } catch (error) {
+      suggestions.push(`Advanced discovery encountered errors: ${error}`);
+    }
+
+    return { success: false, confidence: 0, suggestions };
+  }
+
+  /**
+   * Analyze robots.txt and sitemap for API endpoints
+   */
+  private async analyzeRobotsAndSitemap(
+    baseUrl: string
+  ): Promise<PublicAPIEndpoint[]> {
+    const endpoints: PublicAPIEndpoint[] = [];
+
+    try {
+      // Check robots.txt
+      const robotsResponse = await fetch(`${baseUrl}/robots.txt`);
+      if (robotsResponse.ok) {
+        const robotsText = await robotsResponse.text();
+        const apiPaths = this.extractAPIPathsFromText(robotsText);
+
+        for (const path of apiPaths) {
+          endpoints.push({
+            id: `robots-${path.replace(/[^a-zA-Z0-9]/g, "-")}`,
+            path,
+            method: "GET",
+            summary: `Found in robots.txt: ${path}`,
+            description: `API endpoint discovered in robots.txt`,
+            responses: { "200": { description: "Success" } },
+          });
+        }
+      }
+    } catch (error) {
+      // robots.txt not available
+    }
+
+    return endpoints;
+  }
+
+  /**
+   * Find documentation endpoints that might reveal API structure
+   */
+  private async findDocumentationEndpoints(
+    baseUrl: string
+  ): Promise<PublicAPIEndpoint[]> {
+    const endpoints: PublicAPIEndpoint[] = [];
+    const docPaths = [
+      "/docs",
+      "/documentation",
+      "/api-docs",
+      "/swagger",
+      "/redoc",
+      "/graphql",
+      "/playground",
+      "/explorer",
+    ];
+
+    for (const docPath of docPaths) {
+      try {
+        const response = await fetch(`${baseUrl}${docPath}`);
+        if (response.ok) {
+          const content = await response.text();
+          const discoveredPaths =
+            this.extractAPIPathsFromDocumentation(content);
+
+          for (const path of discoveredPaths) {
+            endpoints.push({
+              id: `doc-${path.replace(/[^a-zA-Z0-9]/g, "-")}`,
+              path,
+              method: "GET",
+              summary: `Found in documentation: ${path}`,
+              description: `API endpoint discovered in ${docPath}`,
+              responses: { "200": { description: "Success" } },
+            });
+          }
+        }
+      } catch (error) {
+        // Documentation path not available
+      }
+    }
+
+    return endpoints;
+  }
+
+  /**
+   * Analyze response headers for API hints
+   */
+  private async analyzeResponseHeaders(
+    baseUrl: string
+  ): Promise<PublicAPIEndpoint[]> {
+    const endpoints: PublicAPIEndpoint[] = [];
+
+    try {
+      const response = await fetch(baseUrl);
+      const headers = response.headers;
+
+      // Look for API-related headers
+      const apiHeaders = ["x-api-version", "x-ratelimit-limit", "x-powered-by"];
+      const hasApiHeaders = apiHeaders.some((header) => headers.has(header));
+
+      if (hasApiHeaders) {
+        // If we detect API headers, try common API paths
+        const apiPaths = ["/api", "/v1", "/v2", "/rest"];
+        for (const path of apiPaths) {
+          endpoints.push({
+            id: `header-hint-${path.replace(/[^a-zA-Z0-9]/g, "-")}`,
+            path,
+            method: "GET",
+            summary: `Inferred from headers: ${path}`,
+            description: `API endpoint inferred from response headers`,
+            responses: { "200": { description: "Success" } },
+          });
+        }
+      }
+    } catch (error) {
+      // Header analysis failed
+    }
+
+    return endpoints;
+  }
+
+  /**
+   * Use OPTIONS requests to discover supported methods
+   */
+  private async discoverViaOptions(
+    baseUrl: string
+  ): Promise<PublicAPIEndpoint[]> {
+    const endpoints: PublicAPIEndpoint[] = [];
+    const commonPaths = ["/", "/api", "/v1"];
+
+    for (const path of commonPaths) {
+      try {
+        const response = await fetch(`${baseUrl}${path}`, {
+          method: "OPTIONS",
+        });
+        const allowHeader = response.headers.get("allow");
+
+        if (allowHeader) {
+          const methods = allowHeader
+            .split(",")
+            .map((m) => m.trim().toUpperCase());
+
+          for (const method of methods) {
+            if (["GET", "POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+              endpoints.push({
+                id: `options-${method.toLowerCase()}-${path.replace(
+                  /[^a-zA-Z0-9]/g,
+                  "-"
+                )}`,
+                path,
+                method: method as any,
+                summary: `${method} ${path} (via OPTIONS)`,
+                description: `Discovered via OPTIONS request`,
+                responses: { "200": { description: "Success" } },
+              });
+            }
+          }
+        }
+      } catch (error) {
+        // OPTIONS not supported
+      }
+    }
+
+    return endpoints;
+  }
+
+  /**
+   * Extract API paths from text content
+   */
+  private extractAPIPathsFromText(text: string): string[] {
+    const paths: string[] = [];
+    const pathRegex = /\/[a-zA-Z0-9\/_-]+/g;
+    const matches = text.match(pathRegex);
+
+    if (matches) {
+      for (const match of matches) {
+        if (
+          match.length > 1 &&
+          !match.includes(".") &&
+          (match.includes("api") ||
+            match.includes("v1") ||
+            match.includes("v2"))
+        ) {
+          paths.push(match);
+        }
+      }
+    }
+
+    return [...new Set(paths)];
+  }
+
+  /**
+   * Extract API paths from documentation content
+   */
+  private extractAPIPathsFromDocumentation(content: string): string[] {
+    const paths: string[] = [];
+
+    // Look for OpenAPI/Swagger path patterns
+    const swaggerPathRegex =
+      /"([^"]*?)"\s*:\s*\{[^}]*"(get|post|put|delete|patch)"/gi;
+    let match;
+
+    while ((match = swaggerPathRegex.exec(content)) !== null) {
+      const path = match[1];
+      if (path.startsWith("/") && path.length > 1) {
+        paths.push(path);
+      }
+    }
+
+    // Look for REST endpoint patterns
+    const restPathRegex = /\b(GET|POST|PUT|DELETE|PATCH)\s+([\/\w\-{}]+)/gi;
+    while ((match = restPathRegex.exec(content)) !== null) {
+      const path = match[2];
+      if (path.startsWith("/") && path.length > 1) {
+        paths.push(path);
+      }
+    }
+
+    return [...new Set(paths)];
+  }
+
+  /**
+   * Remove duplicate endpoints
+   */
+  private deduplicateEndpoints(
+    endpoints: PublicAPIEndpoint[]
+  ): PublicAPIEndpoint[] {
+    const seen = new Set<string>();
+    return endpoints.filter((endpoint) => {
+      const key = `${endpoint.method}:${endpoint.path}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }
   async autoConfigureAPIServer(
     discoveredAPI: PublicAPISpec,
     options: AutoConfigOptions = {}

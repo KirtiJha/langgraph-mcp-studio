@@ -259,26 +259,34 @@ server.run().catch(console.error);`;
 
         parameters.forEach((param) => {
           // Ensure param and param.name exist
-          if (!param || typeof param !== "object") {
+          if (!param || typeof param !== "object" || !param.name) {
             console.log("Skipping invalid parameter:", param);
             return; // Skip invalid parameters
           }
 
-          // Debug logging
-          console.log("Processing parameter:", JSON.stringify(param, null, 2));
-
           const paramName = this.sanitizeParameterName(param.name);
-          console.log(
-            "Sanitized parameter name:",
-            paramName,
-            "from original:",
-            param.name
-          );
 
-          properties[paramName] = {
+          // Add better description fallback
+          const description =
+            param.description ||
+            `${param.name} parameter for ${endpoint.method} ${endpoint.path}`;
+
+          const paramSchema: any = {
             type: param.type || "string",
-            description: this.escapeString(param.description || ""),
+            description: this.escapeString(description),
           };
+
+          // Add enum if available
+          if (param.enum) {
+            paramSchema.enum = param.enum;
+          }
+
+          // Add example if available
+          if (param.example !== undefined) {
+            paramSchema.example = param.example;
+          }
+
+          properties[paramName] = paramSchema;
 
           if (param.required) {
             required.push(paramName);

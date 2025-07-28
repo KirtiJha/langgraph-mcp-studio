@@ -15,7 +15,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from "@heroicons/react/24/outline";
-import { ServerConfig } from "../../shared/types";
+import { ServerConfig, ModelConfig } from "../../shared/types";
 
 interface ServerConfigModalProps {
   isOpen: boolean;
@@ -54,6 +54,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [argsText, setArgsText] = useState("");
   const [isValid, setIsValid] = useState(false);
   const [showJsonView, setShowJsonView] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelConfig[]>([]);
 
   const isReadOnly = mode === "view";
   const isEditing = mode === "edit";
@@ -104,6 +105,22 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         : (config.url || "").trim() !== "");
     setIsValid(isValidConfig);
   }, [config]);
+
+  // Load available models when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const loadModels = async () => {
+        try {
+          const models = await (window as any).electronAPI.getModelConfigs();
+          setAvailableModels(models || []);
+        } catch (error) {
+          console.error('ServerConfigModal: Failed to load models:', error);
+          setAvailableModels([]);
+        }
+      };
+      loadModels();
+    }
+  }, [isOpen]);
 
   const resetForm = () => {
     setConfig({
@@ -403,6 +420,41 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Preferred AI Model */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Preferred AI Model
+                  </label>
+                  <select
+                    value={config.preferredModelId || ""}
+                    onChange={(e) =>
+                      setConfig({ 
+                        ...config, 
+                        preferredModelId: e.target.value || undefined 
+                      })
+                    }
+                    disabled={isReadOnly}
+                    aria-label="Preferred AI Model"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Use default model</option>
+                    {availableModels.length > 0 ? (
+                      availableModels.filter(model => model.enabled).map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.modelId}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No models available</option>
+                    )}
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {availableModels.length === 0 
+                      ? "No AI models configured. Please add models in Settings first." 
+                      : `${availableModels.length} models available. Choose a specific model for this server's tool execution.`}
+                  </p>
+                </div>
               </div>
             )}
 

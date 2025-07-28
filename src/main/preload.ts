@@ -13,6 +13,13 @@ const IpcChannels = {
   EXECUTE_TOOL: "execute-tool",
   SEND_MESSAGE: "send-message",
   CLEAR_CHAT: "clear-chat",
+  GET_MODEL_CONFIGS: "get-model-configs",
+  SAVE_MODEL_CONFIG: "save-model-config",
+  DELETE_MODEL_CONFIG: "delete-model-config",
+  TEST_MODEL_CONNECTION: "test-model-connection",
+  GET_AVAILABLE_MODELS: "get-available-models",
+  SET_DEFAULT_MODEL: "set-default-model",
+  GET_OLLAMA_MODELS: "get-ollama-models",
   LIST_RESOURCES: "list-resources",
   READ_RESOURCE: "read-resource",
   LIST_PROMPTS: "list-prompts",
@@ -53,10 +60,24 @@ const api = {
     ipcRenderer.invoke(IpcChannels.EXECUTE_TOOL, { serverId, toolName, args }),
 
   // Agent operations
-  // Agent operations
   sendMessage: ({ message, model }: { message: string; model?: string }) =>
     ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, { message, model }),
   clearChat: () => ipcRenderer.invoke(IpcChannels.CLEAR_CHAT),
+
+  // Model management operations
+  getModelConfigs: () => ipcRenderer.invoke(IpcChannels.GET_MODEL_CONFIGS),
+  saveModelConfig: (config: any) => 
+    ipcRenderer.invoke(IpcChannels.SAVE_MODEL_CONFIG, config),
+  deleteModelConfig: (configId: string) => 
+    ipcRenderer.invoke(IpcChannels.DELETE_MODEL_CONFIG, configId),
+  setDefaultModel: (configId: string) => 
+    ipcRenderer.invoke(IpcChannels.SET_DEFAULT_MODEL, configId),
+  testModelConnection: (config: any) => 
+    ipcRenderer.invoke(IpcChannels.TEST_MODEL_CONNECTION, config),
+  getAvailableModels: () => 
+    ipcRenderer.invoke(IpcChannels.GET_AVAILABLE_MODELS),
+  getOllamaModels: (baseURL?: string) => 
+    ipcRenderer.invoke(IpcChannels.GET_OLLAMA_MODELS, baseURL),
 
   // Resource operations
   listResources: (serverId: string) =>

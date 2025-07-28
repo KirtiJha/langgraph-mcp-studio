@@ -1,15 +1,12 @@
 # MCP Studio
 
-A modern, professional desktop application for managing and interacting with Model Context Protocol (MCP) servers. Built ### � MCP Server & Tool Management
+## 🌟 Enterprise-Grade Model Context Protocol Development Platform
 
-- **Easy Server Setup**: Add MCP servers with intuitive tabbed configuration interface
-- **Advanced Configuration**: Support for environment variables, custom arguments, and working directories
-- **Real-time Status**: Live server connection monitoring with beautiful loading states and error handling
-- **Protocol Support**: Supports both stdio and SSE (Server-Sent Events) transports
-- **Tool Integration**: All server tools appear in unified Tools tab with schema validation
-- **Generated Tools**: Converted APIs automatically become available as tools with proper typingctron, React, TypeScript, and enhanced with beautiful Tailwind CSS styling.
+**The professional solution for building, deploying, and managing Model Context Protocol (MCP) servers** - Enterprise features include model selection, Postman collection import, visual code editing, and universal config export.
 
-**🌟 Key Feature: Public API Discovery & Conversion** - Discover thousands of public APIs, test them interactively, and convert them into MCP servers with one click for seamless AI integration.
+A modern, professional desktop application for managing and interacting with Model Context Protocol (MCP) servers. Built with Electron, React, TypeScript, and enhanced with beautiful Tailwind CSS styling.
+
+**🌟 Key Enterprise Features** - Model selection for AI routing, Postman collection import, visual code editor with export capabilities, and universal configuration support for Claude Desktop, Copilot, and custom MCP clients.
 
 ![MCP Studio](https://via.placeholder.com/800x400/1e293b/f1f5f9?text=MCP+Studio)
 
@@ -146,9 +143,35 @@ IBM_CLIENT_SECRET=your_ibm_client_secret
 - 📖 **IBM SSO Setup**: See [IBM_SSO_AUTH_SETUP_GUIDE.md](IBM_SSO_AUTH_SETUP_GUIDE.md)
 - 📖 **OAuth2 Setup**: See [OAUTH2_SETUP_GUIDE.md](OAUTH2_SETUP_GUIDE.md)
 
-## 🌟 Key Features
+## 🌟 Enterprise Features
 
-### 🚀 Public API Discovery & Conversion (NEW!)
+### 🎛️ Advanced Model Selection
+- **Multiple AI Models**: Choose from 5+ enterprise AI models for each server
+- **Model-Specific Routing**: Route different tools to different models based on capability
+- **Performance Optimization**: Match computational requirements with optimal model selection
+- **Enterprise Integration**: Support for IBM WatsonX, OpenAI, Anthropic, and custom models
+
+### 📦 Postman Collection Import
+- **V2.1 Support**: Full Postman Collection v2.1 specification support
+- **Automatic Conversion**: Transform Postman collections into MCP servers instantly
+- **Environment Variables**: Import and map Postman environment variables
+- **Request Validation**: Comprehensive validation of imported requests and schemas
+
+### 👨‍💻 Visual Code Editor
+- **Syntax Highlighting**: Professional TypeScript code editor with full IntelliSense
+- **Real-time Preview**: Live preview of generated MCP server code
+- **Export Capabilities**: One-click export to multiple formats and platforms
+- **Custom Modifications**: Edit and customize generated server code directly
+
+### 🔄 Universal Config Export
+- **Claude Desktop**: Export configurations for Claude Desktop integration
+- **GitHub Copilot**: Generate Copilot-compatible server configurations
+- **Custom MCP Clients**: Universal JSON export for any MCP-compatible client
+- **Deployment Ready**: Production-ready configurations with environment setup
+
+## 🚀 Key Features
+
+### 🌐 Public API Discovery & Conversion
 
 **The flagship feature that sets MCP Studio apart** - Transform any public API into a powerful MCP server tool for your AI assistant.
 
@@ -185,26 +208,32 @@ IBM_CLIENT_SECRET=your_ibm_client_secret
 4. **Use** → Ask your AI "What's the weather in Paris?" and it uses the API automatically
 
 - **API Explorer**: Browse and search thousands of public APIs from popular directories
-### �️ Advanced MCP Server Management
+### 🛠️ Enterprise MCP Server Management
 
-- **Easy Server Setup**: Add MCP servers with a simple, intuitive form
-- **Advanced Configuration**: Tabbed modal interface for server settings (Basic, Command, Environment, Context, JSON)
+- **Advanced Configuration**: Tabbed modal interface with model selection for enterprise AI routing
+- **Universal Export**: Export server configurations for Claude Desktop, GitHub Copilot, and custom MCP clients
+- **Postman Integration**: Import Postman Collection v2.1 files and convert to MCP servers automatically
+- **Visual Code Editor**: Built-in TypeScript editor with syntax highlighting and export capabilities
 - **Real-time Status**: Live server connection monitoring with beautiful loading states
-- **Server Configuration**: Support for environment variables, custom arguments, and working directories
 - **Protocol Support**: Supports both stdio and SSE (Server-Sent Events) transports
-- **Tool Integration**: Converted APIs appear as tools with full schema validation
+- **Enterprise Security**: Environment variable management and secure credential storage
 
-### 🤖 AI Assistant Integration
+### 🤖 Enterprise AI Assistant Integration
 
-- **LangGraph Integration**: Powered by LangGraph React agents with IBM WatsonX AI
+- **Multi-Model Support**: Choose from 5+ AI models (IBM WatsonX, OpenAI, Anthropic, etc.) for each server
+- **LangGraph Integration**: Powered by LangGraph React agents with enterprise-grade AI routing
 - **Dynamic Tool Usage**: AI automatically uses converted API tools to answer questions
+- **Model-Specific Routing**: Route different tasks to optimal AI models based on complexity
 - **Enhanced Tool Execution**: Real-time status indicators during tool execution with detailed results
 - **Tool Schema Validation**: Comprehensive argument validation with type information
-- **Multi-Tool Orchestration**: AI can combine multiple API tools to complete complex tasks
+- **Multi-Tool Orchestration**: AI can combine multiple API tools to complete complex enterprise tasks
 - **Natural Language**: Ask questions like "What's the weather?" and AI uses appropriate weather API
 
-### 🛠️ Developer Tools & Debugging
+### 🛠️ Enterprise Developer Tools & Code Export
 
+- **Visual Code Editor**: Professional TypeScript editor with syntax highlighting and IntelliSense
+- **Universal Export**: Export server configurations for Claude Desktop, GitHub Copilot, and any MCP client
+- **Postman Collection Import**: Full support for Postman Collection v2.1 with automatic MCP conversion
 - **Real-time Logs Console**: Built-in logging system capturing all system events and API calls
 - **Live Log Streaming**: Real-time updates with filtering and auto-scroll functionality
 - **API Testing Sandbox**: Test any endpoint with parameter validation and response visualization
@@ -213,6 +242,25 @@ IBM_CLIENT_SECRET=your_ibm_client_secret
 - **Development Mode**: Visual indicators and enhanced debugging when running in dev mode
 
 ## Recent Updates
+
+### Version 2.0.0 - Enterprise Features & Model Selection (MAJOR RELEASE)
+
+#### 🏢 Enterprise-Grade Capabilities
+
+- **🎛️ Advanced Model Selection**: Choose from 5+ enterprise AI models for each server with intelligent routing
+- **📦 Postman Collection Import**: Full Postman Collection v2.1 support with automatic MCP server conversion  
+- **👨‍💻 Visual Code Editor**: Professional TypeScript editor with syntax highlighting and real-time preview
+- **🔄 Universal Config Export**: Export configurations for Claude Desktop, GitHub Copilot, and custom MCP clients
+- **🚀 Model-Specific Routing**: Route different tools to different AI models based on computational requirements
+- **🔒 Enterprise Security**: Enhanced environment variable management and secure credential storage
+
+#### 🎨 Professional Development Experience
+
+- **✨ Advanced Code Generation**: Enhanced TypeScript MCP server generation with enterprise-grade patterns
+- **🔧 Visual Server Editor**: Built-in code editor with IntelliSense, syntax highlighting, and export capabilities  
+- **📱 Universal Deployment**: One-click export to multiple platforms and MCP client configurations
+- **🛠️ Postman Integration**: Seamless import and conversion of existing Postman collections to MCP servers
+- **⚡ Performance Optimizations**: Model selection optimization and intelligent AI routing for enterprise workloads
 
 ### Version 1.3.0 - Public API Discovery & Conversion (MAJOR RELEASE)
 
@@ -346,19 +394,26 @@ _Coming soon - Screenshots will be added after initial release_
 4. Watch as the AI executes tools and provides responses
 5. Expand the "Tools Used" section to see detailed execution information
 
-### Converting APIs to MCP Servers (Key Feature)
+### Converting APIs to MCP Servers & Enterprise Configuration
 
-**The fastest way to expand your AI assistant's capabilities:**
+**The fastest way to expand your AI assistant's capabilities with enterprise features:**
 
 1. **Navigate** to the "Public APIs" tab
-2. **Browse or Search** for APIs by category, name, or functionality
+2. **Browse or Search** for APIs by category, name, or functionality  
 3. **View Details** to see available endpoints and documentation
 4. **Test Endpoints** to ensure the API works as expected
 5. **Convert to MCP** with one click - generates a complete TypeScript MCP server
-6. **Start the Server** directly from the API management interface
-7. **Use in Chat** - the API endpoints are now available as tools for your AI assistant
+6. **Select AI Model** - Choose from 5+ enterprise AI models for optimal performance
+7. **Configure & Export** - Use the visual code editor and export for multiple platforms
+8. **Start the Server** directly from the API management interface
+9. **Use in Chat** - the API endpoints are now available as tools for your AI assistant
 
-**Example Workflow:**
+**Enterprise Workflow Examples:**
+- **Postman Import**: Import existing Postman collections → Convert to MCP → Deploy across multiple clients
+- **Multi-Model Setup**: Weather API → Route to fast model, Complex analysis → Route to advanced model  
+- **Universal Export**: Create server → Export for Claude Desktop → Also export for GitHub Copilot → Custom client integration
+
+**Example API Workflows:**
 - Find "OpenWeatherMap API" → Test weather endpoint → Convert to MCP → Ask AI "What's the weather in Tokyo?"
 - Find "Language Translation API" → Test translation → Convert to MCP → Ask AI "Translate 'Hello' to French"
 
@@ -489,7 +544,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Roadmap
 
-### 🎯 Completed Features
+### 🎯 Completed Enterprise Features
+- [x] **Advanced Model Selection** - Choose from 5+ AI models with intelligent routing for enterprise workloads
+- [x] **Postman Collection Import** - Full v2.1 support with automatic MCP server conversion
+- [x] **Visual Code Editor** - Professional TypeScript editor with syntax highlighting and export capabilities
+- [x] **Universal Config Export** - Export for Claude Desktop, GitHub Copilot, and custom MCP clients
 - [x] **Public API Discovery Engine** - Browse 1000+ APIs from multiple sources
 - [x] **Interactive API Testing** - Test endpoints with parameter validation
 - [x] **One-Click API to MCP Conversion** - Automatic server generation
@@ -498,7 +557,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] **Enhanced Code Generation** - Production-ready TypeScript MCP servers
 - [x] **Beautiful Loading States** - Modern UI with smooth animations
 
-### 🚀 Upcoming Features
+### 🚀 Upcoming Enterprise Features
+- [ ] **Advanced Model Orchestration** - AI-powered model selection based on task complexity
+- [ ] **Enterprise Team Collaboration** - Multi-user workspaces with role-based access control
+- [ ] **Custom Model Integration** - Support for custom enterprise AI models and on-premise deployments
+- [ ] **Advanced Postman Features** - Support for Postman environments, pre-request scripts, and test automation
+- [ ] **Visual Workflow Builder** - Drag-and-drop interface for creating complex MCP server workflows
+- [ ] **Enterprise Analytics** - Usage tracking, performance metrics, and cost optimization insights
 - [ ] **Multi-language Support** - Support for Python, JavaScript, and Go MCP server generation
 - [ ] **API Collections** - Save and organize favorite APIs for quick access
 - [ ] **Custom API Import** - Import custom OpenAPI specs from URLs or files
@@ -510,11 +575,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] **API Versioning** - Support for multiple API versions and migration paths
 - [ ] **Performance Analytics** - Detailed metrics and optimization suggestions
 
-### 🔮 Future Vision
-- [ ] **AI-Powered API Discovery** - Intelligent API recommendations based on user intent
+### 🔮 Future Enterprise Vision
+- [ ] **AI-Powered API Discovery** - Intelligent API recommendations based on user intent and enterprise requirements
 - [ ] **Natural Language API Query** - "Find me a weather API" → automatic discovery and setup
-- [ ] **Cross-Platform Mobile App** - Companion mobile app for API management
-- [ ] **Enterprise Features** - Team collaboration, role-based access, audit logs
+- [ ] **Enterprise Mobile Companion** - Mobile app for API management and monitoring
+- [ ] **Advanced Security Features** - SSO integration, audit logs, compliance reporting, and data governance
 
 ---
 
