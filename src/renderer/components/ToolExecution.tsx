@@ -10,6 +10,7 @@ import {
   InformationCircleIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 
 interface ToolExecutionProps {
@@ -20,12 +21,19 @@ interface ToolExecutionProps {
     args: any,
     serverId: string
   ) => Promise<any>;
+  onToolStateChange?: (
+    toolName: string,
+    serverId: string,
+    enabled: boolean
+  ) => void;
 }
 
 interface Tool {
   name: string;
   description: string;
   serverId: string;
+  enabled?: boolean; // Whether this tool is enabled for the agent
+  isSystemTool?: boolean; // Whether this is a system tool (e.g., sequential thinking)
   inputSchema?: {
     type: string;
     properties?: Record<string, any>;
@@ -55,6 +63,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
   tools,
   servers,
   onExecuteTool,
+  onToolStateChange,
 }) => {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [toolArgs, setToolArgs] = useState<Record<string, any>>({});
@@ -63,6 +72,10 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
   const [expandedExecution, setExpandedExecution] = useState<string | null>(
     null
   );
+  const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
+  const [localToolStates, setLocalToolStates] = useState<
+    Record<string, boolean>
+  >({});
 
   // Populate default values when tool is selected
   const selectTool = (tool: Tool) => {
@@ -193,6 +206,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
               setToolArgs({ ...toolArgs, [argName]: e.target.value })
             }
             className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            title={`Select ${argName}`}
           >
             <option value="">Select {argName}...</option>
             {argSchema.enum.map((option: any, idx: number) => (
@@ -275,6 +289,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
                   setToolArgs({ ...toolArgs, [argName]: e.target.checked })
                 }
                 className="sr-only peer"
+                title={`Toggle ${argName}`}
               />
               <div className="relative w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
@@ -351,6 +366,61 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
     navigator.clipboard.writeText(text);
   };
 
+  // Tool toggle functionality
+  const handleToolToggle = async (tool: Tool) => {
+    if (!tool.serverId) return;
+
+    const toolKey = `${tool.serverId}:${tool.name}`;
+    setTogglingTools((prev) => new Set(prev).add(toolKey));
+
+    try {
+      const newState = await window.electronAPI.toggleToolState(
+        tool.name,
+        tool.serverId
+      );
+
+      // Update local state immediately for responsive UI
+      setLocalToolStates((prev) => ({
+        ...prev,
+        [toolKey]: newState,
+      }));
+
+      // Notify parent component about the change
+      if (onToolStateChange) {
+        onToolStateChange(tool.name, tool.serverId, newState);
+      }
+
+      console.log(
+        `Tool ${tool.name} is now ${newState ? "enabled" : "disabled"}`
+      );
+    } catch (error) {
+      console.error("Failed to toggle tool state:", error);
+    } finally {
+      setTogglingTools((prev) => {
+        const next = new Set(prev);
+        next.delete(toolKey);
+        return next;
+      });
+    }
+  };
+
+  const getToolKey = (tool: Tool): string => {
+    return `${tool.serverId}:${tool.name}`;
+  };
+
+  const isToolToggling = (tool: Tool): boolean => {
+    return togglingTools.has(getToolKey(tool));
+  };
+
+  // Get the current enabled state for a tool (prioritize local state for responsive UI)
+  const getToolEnabledState = (tool: Tool): boolean => {
+    const toolKey = getToolKey(tool);
+    if (localToolStates.hasOwnProperty(toolKey)) {
+      return localToolStates[toolKey];
+    }
+    return tool.enabled !== false;
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       <div className="flex-shrink-0 p-8 pb-4">
@@ -358,8 +428,36 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
           Tool Execution
         </h2>
         <p className="text-slate-400 text-lg">
-          Execute tools from your connected MCP servers
+          Execute tools from your connected MCP servers and control which tools
+          are available to the AI assistant
         </p>
+
+        {/* Tools Summary */}
+        {tools.length > 0 && (
+          <div className="mt-4 p-4 bg-slate-900/30 rounded-lg border border-slate-800/50">
+            <div className="flex items-center space-x-2 mb-2">
+              <Cog6ToothIcon className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-medium text-slate-200">
+                Tools Summary
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded">
+                {tools.filter((t) => getToolEnabledState(t)).length} Enabled
+              </span>
+              <span className="text-xs px-2 py-1 bg-slate-500/20 text-slate-400 rounded">
+                {tools.filter((t) => !getToolEnabledState(t)).length} Disabled
+              </span>
+              <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">
+                {tools.filter((t) => t.isSystemTool).length} System Tools
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Only enabled tools will be available to the AI assistant for
+              automated execution
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 pb-8">
@@ -375,39 +473,116 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
                 {tools.map((tool) => {
                   const server = servers.find((s) => s.id === tool.serverId);
                   return (
-                    <motion.button
+                    <motion.div
                       key={`${tool.serverId}-${tool.name}`}
-                      onClick={() => selectTool(tool)}
-                      className={`w-full text-left p-4 rounded-lg border transition-all duration-200 ${
+                      className={`relative p-4 rounded-lg border transition-all duration-200 ${
                         selectedTool?.name === tool.name
-                          ? "bg-indigo-500/20 border-indigo-500/30 text-indigo-300"
-                          : "bg-slate-800/50 border-slate-700/50 text-slate-300 hover:bg-slate-800 hover:border-slate-600"
+                          ? "bg-indigo-500/20 border-indigo-500/30"
+                          : "bg-slate-800/50 border-slate-700/50 hover:bg-slate-800 hover:border-slate-600"
                       }`}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <div className="flex items-start space-x-3">
-                        <WrenchScrewdriverIcon className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium">{tool.name}</h4>
-                          <p className="text-sm opacity-75 mt-1">
-                            {tool.description}
-                          </p>
-                          <div className="flex items-center mt-2">
-                            <span className="text-xs px-2 py-1 bg-slate-700/50 rounded">
-                              {server?.name || "Unknown Server"}
-                            </span>
-                            <div
-                              className={`w-2 h-2 rounded-full ml-2 ${
-                                server?.connected
-                                  ? "bg-emerald-400"
-                                  : "bg-slate-500"
+                      {/* Enable/Disable Toggle */}
+                      <div className="absolute top-2 right-2 flex items-center space-x-2">
+                        {tool.isSystemTool && (
+                          <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-400 rounded">
+                            System
+                          </span>
+                        )}
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-slate-400">
+                            {getToolEnabledState(tool) ? "On" : "Off"}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToolToggle(tool);
+                            }}
+                            disabled={isToolToggling(tool)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                              getToolEnabledState(tool)
+                                ? "bg-indigo-600"
+                                : "bg-slate-600"
+                            } ${
+                              isToolToggling(tool)
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer"
+                            }`}
+                            title={`${
+                              getToolEnabledState(tool) ? "Disable" : "Enable"
+                            } tool for AI assistant`}
+                          >
+                            <span
+                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 ${
+                                getToolEnabledState(tool)
+                                  ? "translate-x-5"
+                                  : "translate-x-1"
                               }`}
                             />
-                          </div>
+                          </button>
+                          {isToolToggling(tool) && (
+                            <div className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+                          )}
                         </div>
                       </div>
-                    </motion.button>
+
+                      {/* Tool Status Indicator */}
+                      {!getToolEnabledState(tool) && (
+                        <div className="absolute top-2 left-2">
+                          <span className="text-xs px-2 py-1 bg-amber-500/20 text-amber-400 rounded">
+                            Disabled
+                          </span>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => selectTool(tool)}
+                        className="w-full text-left pt-6"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <WrenchScrewdriverIcon
+                            className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                              !getToolEnabledState(tool)
+                                ? "text-slate-500"
+                                : "text-indigo-400"
+                            }`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4
+                              className={`font-medium ${
+                                !getToolEnabledState(tool)
+                                  ? "text-slate-400"
+                                  : "text-slate-200"
+                              }`}
+                            >
+                              {tool.name}
+                            </h4>
+                            <p
+                              className={`text-sm mt-1 ${
+                                !getToolEnabledState(tool)
+                                  ? "text-slate-500"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {tool.description}
+                            </p>
+                            <div className="flex items-center mt-2">
+                              <span className="text-xs px-2 py-1 bg-slate-700/50 rounded">
+                                {server?.name || "Unknown Server"}
+                              </span>
+                              <div
+                                className={`w-2 h-2 rounded-full ml-2 ${
+                                  server?.connected
+                                    ? "bg-emerald-400"
+                                    : "bg-slate-500"
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </motion.div>
                   );
                 })}
 
@@ -435,6 +610,24 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
                 </h3>
 
                 <div className="mb-6">
+                  {/* Tool Status Warning */}
+                  {!getToolEnabledState(selectedTool) && (
+                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <ExclamationTriangleIcon className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-amber-400 text-sm font-medium">
+                            Tool Disabled
+                          </p>
+                          <p className="text-amber-400/80 text-xs">
+                            This tool is disabled and won't be available to the
+                            AI assistant. You can still execute it manually.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-start space-x-3 mb-4">
                     <WrenchScrewdriverIcon className="w-6 h-6 text-indigo-400 mt-1 flex-shrink-0" />
                     <div className="flex-1">
@@ -572,6 +765,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
                             copyToClipboard(JSON.stringify(toolArgs, null, 2))
                           }
                           className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                          title="Copy arguments to clipboard"
                         >
                           <ClipboardDocumentIcon className="w-4 h-4" />
                         </button>
@@ -720,6 +914,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
                                     )
                                   }
                                   className="absolute top-2 right-2 p-1 text-slate-400 hover:text-slate-200 transition-colors duration-200"
+                                  title="Copy arguments to clipboard"
                                 >
                                   <ClipboardDocumentIcon className="w-4 h-4" />
                                 </button>
@@ -755,6 +950,7 @@ export const ToolExecution: React.FC<ToolExecutionProps> = ({
                                       )
                                     }
                                     className="absolute top-2 right-2 p-1 text-slate-400 hover:text-slate-200 transition-colors duration-200"
+                                    title="Copy result to clipboard"
                                   >
                                     <ClipboardDocumentIcon className="w-4 h-4" />
                                   </button>

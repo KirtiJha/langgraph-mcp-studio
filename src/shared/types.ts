@@ -11,6 +11,9 @@ export enum IpcChannels {
   // Tool operations
   LIST_TOOLS = "list-tools",
   EXECUTE_TOOL = "execute-tool",
+  TOGGLE_TOOL_STATE = "toggle-tool-state",
+  GET_TOOL_STATES = "get-tool-states",
+  SET_TOOL_ENABLED = "set-tool-enabled",
 
   // Agent operations
   SEND_MESSAGE = "send-message",
@@ -77,6 +80,8 @@ export interface Tool {
   description?: string;
   inputSchema?: any;
   serverId?: string; // Track which server this tool belongs to
+  enabled?: boolean; // Whether this tool is enabled for the agent
+  isSystemTool?: boolean; // Whether this is a system tool (e.g., sequential thinking)
 }
 
 export interface Resource {
@@ -212,7 +217,14 @@ export interface AuthConfig {
 }
 
 // LLM Model Configuration Types
-export type LLMProvider = "watsonx" | "openai" | "anthropic" | "ollama" | "azure" | "cohere" | "groq";
+export type LLMProvider =
+  | "watsonx"
+  | "openai"
+  | "anthropic"
+  | "ollama"
+  | "azure"
+  | "cohere"
+  | "groq";
 
 export interface ModelConfig {
   id: string;
@@ -222,7 +234,14 @@ export interface ModelConfig {
   enabled: boolean;
   isDefault?: boolean;
   // Provider-specific configuration
-  config: WatsonxConfig | OpenAIConfig | AnthropicConfig | OllamaConfig | AzureConfig | CohereConfig | GroqConfig;
+  config:
+    | WatsonxConfig
+    | OpenAIConfig
+    | AnthropicConfig
+    | OllamaConfig
+    | AzureConfig
+    | CohereConfig
+    | GroqConfig;
   // Common model parameters
   parameters?: {
     temperature?: number;

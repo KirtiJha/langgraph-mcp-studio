@@ -441,6 +441,26 @@ function setupIpcHandlers() {
     }
   );
 
+  // Tool state management
+  ipcMain.handle(IpcChannels.GET_TOOL_STATES, async () => {
+    return mcpManager.getToolStates();
+  });
+
+  ipcMain.handle(
+    IpcChannels.SET_TOOL_ENABLED,
+    async (_, { toolName, serverId, enabled }) => {
+      mcpManager.setToolEnabled(toolName, serverId, enabled);
+      return true;
+    }
+  );
+
+  ipcMain.handle(
+    IpcChannels.TOGGLE_TOOL_STATE,
+    async (_, { toolName, serverId }) => {
+      return mcpManager.toggleToolState(toolName, serverId);
+    }
+  );
+
   // Agent operations
   ipcMain.handle(IpcChannels.SEND_MESSAGE, async (_, { message, model }) => {
     if (!agent) {
@@ -954,36 +974,39 @@ function setupIpcHandlers() {
   );
 
   // Authentication operations
-  ipcMain.handle(IpcChannels.FETCH_USER_INFO, async (_, { url, accessToken }) => {
-    try {
-      const fetch = (await import("node-fetch")).default;
-      const https = await import("https");
+  ipcMain.handle(
+    IpcChannels.FETCH_USER_INFO,
+    async (_, { url, accessToken }) => {
+      try {
+        const fetch = (await import("node-fetch")).default;
+        const https = await import("https");
 
-      // Create HTTPS agent that ignores SSL certificate errors for development
-      const httpsAgent = new https.Agent({
-        rejectUnauthorized: false,
-      });
+        // Create HTTPS agent that ignores SSL certificate errors for development
+        const httpsAgent = new https.Agent({
+          rejectUnauthorized: false,
+        });
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        agent: url.startsWith("https:") ? httpsAgent : undefined,
-      });
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          agent: url.startsWith("https:") ? httpsAgent : undefined,
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const userInfo = await response.json();
+        return userInfo;
+      } catch (error) {
+        console.error("Failed to fetch user info:", error);
+        throw error;
       }
-
-      const userInfo = await response.json();
-      return userInfo;
-    } catch (error) {
-      console.error("Failed to fetch user info:", error);
-      throw error;
     }
-  });
+  );
 
   // File operations for server code management
   ipcMain.handle(IpcChannels.SELECT_DIRECTORY, async () => {
@@ -1061,9 +1084,15 @@ function setupIpcHandlers() {
       ibm: {
         clientId: process.env.IBM_CLIENT_ID || "",
         clientSecret: process.env.IBM_CLIENT_SECRET || "",
-        authUrl: process.env.IBM_AUTH_URL || "https://w3id.sso.ibm.com/oidc/endpoint/default/authorize",
-        tokenUrl: process.env.IBM_TOKEN_URL || "https://w3id.sso.ibm.com/oidc/endpoint/default/token",
-        userInfoUrl: process.env.IBM_USERINFO_URL || "https://w3id.sso.ibm.com/oidc/endpoint/default/userinfo",
+        authUrl:
+          process.env.IBM_AUTH_URL ||
+          "https://w3id.sso.ibm.com/oidc/endpoint/default/authorize",
+        tokenUrl:
+          process.env.IBM_TOKEN_URL ||
+          "https://w3id.sso.ibm.com/oidc/endpoint/default/token",
+        userInfoUrl:
+          process.env.IBM_USERINFO_URL ||
+          "https://w3id.sso.ibm.com/oidc/endpoint/default/userinfo",
         scopes: ["openid", "profile", "email"],
       },
     };

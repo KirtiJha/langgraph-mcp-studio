@@ -28,12 +28,19 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Switch,
+  FormControlLabel,
+  Tooltip,
+  Divider,
 } from "@mui/material";
 import {
   PlayArrow as PlayIcon,
   ExpandMore as ExpandMoreIcon,
   Code as CodeIcon,
   Build as BuildIcon,
+  ToggleOn as ToggleOnIcon,
+  ToggleOff as ToggleOffIcon,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
 import { ServerStatus, Tool } from "../../shared/types";
 
@@ -56,6 +63,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   const [executionResult, setExecutionResult] = useState<any>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
+  const [togglingTools, setTogglingTools] = useState<Set<string>>(new Set());
 
   const connectedServers = servers.filter((s) => s.connected);
 
@@ -152,6 +160,45 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     setExecutionError(null);
   };
 
+  const handleToolToggle = async (tool: Tool) => {
+    if (!tool.serverId) return;
+
+    const toolKey = `${tool.serverId}:${tool.name}`;
+    setTogglingTools((prev) => new Set(prev).add(toolKey));
+
+    try {
+      const newState = await window.electronAPI.toggleToolState(
+        tool.name,
+        tool.serverId
+      );
+
+      // Update the tool state in our local state
+      setTools((prevTools) =>
+        prevTools.map((t) =>
+          t.name === tool.name && t.serverId === tool.serverId
+            ? { ...t, enabled: newState }
+            : t
+        )
+      );
+    } catch (error) {
+      console.error("Failed to toggle tool state:", error);
+    } finally {
+      setTogglingTools((prev) => {
+        const next = new Set(prev);
+        next.delete(toolKey);
+        return next;
+      });
+    }
+  };
+
+  const getToolKey = (tool: Tool): string => {
+    return `${tool.serverId}:${tool.name}`;
+  };
+
+  const isToolToggling = (tool: Tool): boolean => {
+    return togglingTools.has(getToolKey(tool));
+  };
+
   const renderToolSchema = (tool: Tool) => {
     if (!tool.inputSchema) return null;
 
@@ -167,9 +214,18 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
             border: "1px solid rgba(255, 255, 255, 0.1)",
           }}
         >
-          <pre style={{ margin: 0, fontSize: "12px", overflow: "auto" }}>
+          <Box
+            component="pre"
+            sx={{
+              margin: 0,
+              fontSize: "12px",
+              overflow: "auto",
+              fontFamily: "monospace",
+              whiteSpace: "pre-wrap",
+            }}
+          >
             {JSON.stringify(tool.inputSchema, null, 2)}
-          </pre>
+          </Box>
         </Paper>
       </Box>
     );
@@ -195,7 +251,8 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
         Tools
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
-        Execute tools from your connected MCP servers
+        Execute tools from your connected MCP servers and control which tools
+        are available to the AI assistant
       </Typography>
 
       {/* Server Selector */}
@@ -213,6 +270,52 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
           ))}
         </Select>
       </FormControl>
+
+      {/* Tools Summary */}
+      {tools.length > 0 && (
+        <Paper
+          sx={{ p: 2, mb: 3, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <SettingsIcon sx={{ color: "primary.main" }} />
+            <Typography variant="subtitle1">Tools Summary</Typography>
+          </Box>
+          <Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+            <Chip
+              label={`${
+                tools.filter((t) => t.enabled !== false).length
+              } Enabled`}
+              color="success"
+              variant="outlined"
+              size="small"
+            />
+            <Chip
+              label={`${
+                tools.filter((t) => t.enabled === false).length
+              } Disabled`}
+              color="default"
+              variant="outlined"
+              size="small"
+            />
+            <Chip
+              label={`${
+                tools.filter((t) => t.isSystemTool).length
+              } System Tools`}
+              color="secondary"
+              variant="outlined"
+              size="small"
+            />
+          </Box>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ mt: 1, display: "block" }}
+          >
+            Only enabled tools will be available to the AI assistant for
+            automated execution
+          </Typography>
+        </Paper>
+      )}
 
       {/* Scrollable Tools Content */}
       <Box sx={{ flexGrow: 1, overflow: "auto" }}>
@@ -236,8 +339,57 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                     <CodeIcon sx={{ mr: 1, color: "primary.main" }} />
-                    <Typography variant="h6">{tool.name}</Typography>
+                    <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                      {tool.name}
+                    </Typography>
+
+                    {/* Tool Status Indicators */}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      {tool.isSystemTool && (
+                        <Chip
+                          label="System"
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                        />
+                      )}
+
+                      {/* Enable/Disable Toggle */}
+                      {tool.serverId && (
+                        <Tooltip
+                          title={
+                            tool.enabled !== false
+                              ? "Disable tool for agent"
+                              : "Enable tool for agent"
+                          }
+                        >
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={tool.enabled !== false}
+                                onChange={() => handleToolToggle(tool)}
+                                disabled={isToolToggling(tool)}
+                                size="small"
+                                color="primary"
+                              />
+                            }
+                            label=""
+                            sx={{ mr: 0 }}
+                          />
+                        </Tooltip>
+                      )}
+
+                      {isToolToggling(tool) && <CircularProgress size={16} />}
+                    </Box>
                   </Box>
+
+                  {/* Tool Status Message */}
+                  {tool.enabled === false && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      This tool is disabled and won't be available to the AI
+                      assistant
+                    </Alert>
+                  )}
 
                   {tool.description && (
                     <Typography
@@ -252,7 +404,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                   {renderToolSchema(tool)}
                 </CardContent>
 
-                <CardActions>
+                <CardActions sx={{ justifyContent: "space-between" }}>
                   <Button
                     startIcon={<PlayIcon />}
                     color="primary"
@@ -260,6 +412,13 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                   >
                     Execute
                   </Button>
+
+                  <Chip
+                    label={tool.enabled !== false ? "Enabled" : "Disabled"}
+                    size="small"
+                    color={tool.enabled !== false ? "success" : "default"}
+                    variant="outlined"
+                  />
                 </CardActions>
               </Card>
             ))}
@@ -312,11 +471,18 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                     border: "1px solid rgba(34, 197, 94, 0.3)",
                   }}
                 >
-                  <pre
-                    style={{ margin: 0, fontSize: "12px", overflow: "auto" }}
+                  <Box
+                    component="pre"
+                    sx={{
+                      margin: 0,
+                      fontSize: "12px",
+                      overflow: "auto",
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                    }}
                   >
                     {JSON.stringify(executionResult, null, 2)}
-                  </pre>
+                  </Box>
                 </Paper>
               </Box>
             )}

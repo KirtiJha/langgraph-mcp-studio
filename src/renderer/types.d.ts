@@ -26,9 +26,23 @@ declare global {
         args: any
       ) => Promise<any>;
 
+      // Tool state management
+      getToolStates: () => Promise<Record<string, boolean>>;
+      setToolEnabled: (
+        toolName: string,
+        serverId: string,
+        enabled: boolean
+      ) => Promise<boolean>;
+      toggleToolState: (toolName: string, serverId: string) => Promise<boolean>;
+
       // Agent operations
-      sendMessage: ({ message, model }: { message: string; model?: string }) =>
-        Promise<any>;
+      sendMessage: ({
+        message,
+        model,
+      }: {
+        message: string;
+        model?: string;
+      }) => Promise<any>;
       clearChat: () => Promise<{ success: boolean }>;
 
       // Model management
@@ -36,7 +50,9 @@ declare global {
       saveModelConfig: (config: any) => Promise<{ success: boolean }>;
       deleteModelConfig: (configId: string) => Promise<{ success: boolean }>;
       setDefaultModel: (configId: string) => Promise<{ success: boolean }>;
-      testModelConnection: (config: any) => Promise<{ success: boolean; error?: string }>;
+      testModelConnection: (
+        config: any
+      ) => Promise<{ success: boolean; error?: string }>;
       getAvailableModels: () => Promise<any[]>;
       getOllamaModels: (baseURL?: string) => Promise<any[]>;
 

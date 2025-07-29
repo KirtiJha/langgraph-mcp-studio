@@ -16,6 +16,7 @@ import { LoggingService } from "../services/LoggingService";
 // Define the store schema
 interface StoreSchema {
   servers: ServerConfig[];
+  toolStates: Record<string, boolean>; // toolId -> enabled state
 }
 
 export class MCPManager extends EventEmitter {
@@ -435,19 +436,22 @@ export class MCPManager extends EventEmitter {
     return tools;
   }
 
-  // Method for UI - shows all tools including sequential thinking (marked as system tool)
+  // Method for UI - shows all tools including sequential thinking (marked as system tool) with enabled states
   async listToolsForUI(serverId?: string): Promise<Tool[]> {
     const allTools = await this.listTools(serverId);
-    // Mark sequential thinking tool as a system tool but still show it in UI
+    // Mark sequential thinking tool as a system tool and add enabled states
     return allTools.map((tool) => ({
       ...tool,
       isSystemTool: tool.name === "sequentialthinking",
+      enabled: tool.serverId
+        ? this.isToolEnabled(tool.name, tool.serverId)
+        : true,
     }));
   }
 
-  // Method for agent - includes all tools including sequential thinking
+  // Method for agent - includes only enabled tools
   async listToolsForAgent(serverId?: string): Promise<Tool[]> {
-    return this.listTools(serverId);
+    return this.listEnabledToolsForAgent(serverId);
   }
 
   async listResources(serverId?: string): Promise<Resource[]> {
@@ -926,5 +930,61 @@ export class MCPManager extends EventEmitter {
       this.servers.set(serverId, status);
       console.log(`MCPManager: Updated last activity for server ${serverId}`);
     }
+  }
+
+  // Tool state management methods
+  private getToolId(toolName: string, serverId: string): string {
+    return `${serverId}:${toolName}`;
+  }
+
+  public getToolStates(): Record<string, boolean> {
+    return this.store.get("toolStates", {});
+  }
+
+  public setToolEnabled(
+    toolName: string,
+    serverId: string,
+    enabled: boolean
+  ): void {
+    const toolId = this.getToolId(toolName, serverId);
+    const toolStates = this.getToolStates();
+    toolStates[toolId] = enabled;
+    this.store.set("toolStates", toolStates);
+
+    this.loggingService.addLog(
+      "info",
+      "MCPManager",
+      `Tool "${toolName}" ${
+        enabled ? "enabled" : "disabled"
+      } for server "${serverId}"`,
+      { toolName, serverId, enabled },
+      { serverId, toolName, category: "tool" }
+    );
+
+    // Emit event to refresh agent
+    this.emit("toolStateChanged", { toolName, serverId, enabled });
+  }
+
+  public isToolEnabled(toolName: string, serverId: string): boolean {
+    const toolId = this.getToolId(toolName, serverId);
+    const toolStates = this.getToolStates();
+    // Default to enabled for new tools
+    return toolStates[toolId] !== false;
+  }
+
+  public toggleToolState(toolName: string, serverId: string): boolean {
+    const currentState = this.isToolEnabled(toolName, serverId);
+    const newState = !currentState;
+    this.setToolEnabled(toolName, serverId, newState);
+    return newState;
+  }
+
+  // Enhanced method for agent - only returns enabled tools
+  async listEnabledToolsForAgent(serverId?: string): Promise<Tool[]> {
+    const allTools = await this.listTools(serverId);
+    return allTools.filter((tool) => {
+      if (!tool.serverId) return true; // Include tools without serverId for backward compatibility
+      return this.isToolEnabled(tool.name, tool.serverId);
+    });
   }
 }

@@ -11,6 +11,9 @@ const IpcChannels = {
   DISCONNECT_SERVER: "disconnect-server",
   LIST_TOOLS: "list-tools",
   EXECUTE_TOOL: "execute-tool",
+  TOGGLE_TOOL_STATE: "toggle-tool-state",
+  GET_TOOL_STATES: "get-tool-states",
+  SET_TOOL_ENABLED: "set-tool-enabled",
   SEND_MESSAGE: "send-message",
   CLEAR_CHAT: "clear-chat",
   GET_MODEL_CONFIGS: "get-model-configs",
@@ -59,6 +62,17 @@ const api = {
   executeTool: (serverId: string, toolName: string, args: any) =>
     ipcRenderer.invoke(IpcChannels.EXECUTE_TOOL, { serverId, toolName, args }),
 
+  // Tool state management
+  getToolStates: () => ipcRenderer.invoke(IpcChannels.GET_TOOL_STATES),
+  setToolEnabled: (toolName: string, serverId: string, enabled: boolean) =>
+    ipcRenderer.invoke(IpcChannels.SET_TOOL_ENABLED, {
+      toolName,
+      serverId,
+      enabled,
+    }),
+  toggleToolState: (toolName: string, serverId: string) =>
+    ipcRenderer.invoke(IpcChannels.TOGGLE_TOOL_STATE, { toolName, serverId }),
+
   // Agent operations
   sendMessage: ({ message, model }: { message: string; model?: string }) =>
     ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, { message, model }),
@@ -66,17 +80,17 @@ const api = {
 
   // Model management operations
   getModelConfigs: () => ipcRenderer.invoke(IpcChannels.GET_MODEL_CONFIGS),
-  saveModelConfig: (config: any) => 
+  saveModelConfig: (config: any) =>
     ipcRenderer.invoke(IpcChannels.SAVE_MODEL_CONFIG, config),
-  deleteModelConfig: (configId: string) => 
+  deleteModelConfig: (configId: string) =>
     ipcRenderer.invoke(IpcChannels.DELETE_MODEL_CONFIG, configId),
-  setDefaultModel: (configId: string) => 
+  setDefaultModel: (configId: string) =>
     ipcRenderer.invoke(IpcChannels.SET_DEFAULT_MODEL, configId),
-  testModelConnection: (config: any) => 
+  testModelConnection: (config: any) =>
     ipcRenderer.invoke(IpcChannels.TEST_MODEL_CONNECTION, config),
-  getAvailableModels: () => 
+  getAvailableModels: () =>
     ipcRenderer.invoke(IpcChannels.GET_AVAILABLE_MODELS),
-  getOllamaModels: (baseURL?: string) => 
+  getOllamaModels: (baseURL?: string) =>
     ipcRenderer.invoke(IpcChannels.GET_OLLAMA_MODELS, baseURL),
 
   // Resource operations

@@ -33,6 +33,12 @@ export class LangGraphAgent {
     this.modelService = modelService;
     this.checkpointer = new MemorySaver(); // Initialize memory for conversations
 
+    // Listen for tool state changes to refresh agent
+    this.mcpManager.on("toolStateChanged", () => {
+      console.log("LangGraphAgent: Tool state changed, refreshing agent...");
+      this.refreshAgent();
+    });
+
     // Initialize agent asynchronously
     this.initializeAgent();
   }
@@ -51,7 +57,7 @@ export class LangGraphAgent {
   private async initializeDefaultModel() {
     // Try to get default model from ModelService
     const defaultModel = this.modelService.getDefaultModel();
-    
+
     if (defaultModel && defaultModel.enabled) {
       try {
         this.model = this.modelService.createModelInstance(defaultModel);
@@ -59,7 +65,10 @@ export class LangGraphAgent {
         console.log(`Initialized with configured model: ${defaultModel.name}`);
         return;
       } catch (error) {
-        console.warn(`Failed to initialize configured model ${defaultModel.name}:`, error);
+        console.warn(
+          `Failed to initialize configured model ${defaultModel.name}:`,
+          error
+        );
       }
     }
 
@@ -67,14 +76,22 @@ export class LangGraphAgent {
     const apiKey = process.env.WATSONX_API_KEY;
     const projectId = process.env.WATSONX_PROJECT_ID;
 
-    if (apiKey && projectId && !apiKey.includes("your_") && !projectId.includes("your_")) {
+    if (
+      apiKey &&
+      projectId &&
+      !apiKey.includes("your_") &&
+      !projectId.includes("your_")
+    ) {
       try {
-        const { ChatWatsonx } = await import("@langchain/community/chat_models/ibm");
-        
+        const { ChatWatsonx } = await import(
+          "@langchain/community/chat_models/ibm"
+        );
+
         this.model = new ChatWatsonx({
           model: process.env.WATSONX_MODEL_ID || "ibm/granite-3-3-8b-instruct",
           version: "2023-05-29",
-          serviceUrl: process.env.WATSONX_URL || "https://us-south.ml.cloud.ibm.com",
+          serviceUrl:
+            process.env.WATSONX_URL || "https://us-south.ml.cloud.ibm.com",
           projectId: projectId,
           watsonxAIAuthType: "iam",
           watsonxAIApikey: apiKey,
@@ -83,21 +100,26 @@ export class LangGraphAgent {
           topP: 0.9,
           streaming: false,
         });
-        
+
         console.log("Initialized with environment Watsonx model");
         return;
       } catch (error) {
-        console.warn("Failed to initialize Watsonx model from environment:", error);
+        console.warn(
+          "Failed to initialize Watsonx model from environment:",
+          error
+        );
       }
     }
 
-    console.warn("No model configuration found. Please configure a model in settings.");
+    console.warn(
+      "No model configuration found. Please configure a model in settings."
+    );
   }
 
   private async setupAgent(model?: BaseChatModel) {
     // Use provided model or current model
     const agentModel = model || this.model;
-    
+
     if (!agentModel) {
       console.warn("No model available for agent setup");
       return;
@@ -122,7 +144,10 @@ export class LangGraphAgent {
       this.toolNode = new ToolNode(this.tools);
 
       // Bind tools to model for native tool calling
-      if ('bindTools' in agentModel && typeof agentModel.bindTools === 'function') {
+      if (
+        "bindTools" in agentModel &&
+        typeof agentModel.bindTools === "function"
+      ) {
         this.modelWithTools = agentModel.bindTools(this.tools, {
           tool_choice: "auto",
         });
@@ -155,7 +180,7 @@ export class LangGraphAgent {
 
       // Use the model with tools if available, otherwise use the base model
       const modelToUse = this.modelWithTools || this.model;
-      
+
       if (!modelToUse) {
         throw new Error("No model available");
       }
@@ -380,17 +405,24 @@ Be natural and helpful. Explain what information you found and how it answers th
                 let modelSwitched = false;
                 let previousModel = null;
                 let actualModelUsed = this.currentModelConfig?.modelId;
-                
-                if (serverConfig?.preferredModelId && 
-                    serverConfig.preferredModelId !== this.currentModelConfig?.id) {
+
+                if (
+                  serverConfig?.preferredModelId &&
+                  serverConfig.preferredModelId !== this.currentModelConfig?.id
+                ) {
                   try {
-                    console.log(`Switching to preferred model for server ${serverId}: ${serverConfig.preferredModelId}`);
+                    console.log(
+                      `Switching to preferred model for server ${serverId}: ${serverConfig.preferredModelId}`
+                    );
                     previousModel = this.currentModelConfig;
                     await this.switchToModel(serverConfig.preferredModelId);
                     modelSwitched = true;
                     actualModelUsed = this.currentModelConfig?.modelId;
                   } catch (error) {
-                    console.warn(`Failed to switch to preferred model ${serverConfig.preferredModelId} for server ${serverId}, using current model:`, error);
+                    console.warn(
+                      `Failed to switch to preferred model ${serverConfig.preferredModelId} for server ${serverId}, using current model:`,
+                      error
+                    );
                   }
                 }
 
@@ -404,10 +436,15 @@ Be natural and helpful. Explain what information you found and how it answers th
                 // Switch back to previous model if we switched
                 if (modelSwitched && previousModel) {
                   try {
-                    console.log(`Switching back to previous model: ${previousModel.id}`);
+                    console.log(
+                      `Switching back to previous model: ${previousModel.id}`
+                    );
                     await this.switchToModel(previousModel.id);
                   } catch (error) {
-                    console.warn(`Failed to switch back to previous model ${previousModel.id}:`, error);
+                    console.warn(
+                      `Failed to switch back to previous model ${previousModel.id}:`,
+                      error
+                    );
                   }
                 }
 
@@ -421,7 +458,9 @@ Be natural and helpful. Explain what information you found and how it answers th
 
                 // Store model information for this tool execution
                 // We'll append it to the result so we can extract it later
-                const resultWithModelInfo = `${stringResult}|||MODEL_USED:${actualModelUsed || 'unknown'}|||`;
+                const resultWithModelInfo = `${stringResult}|||MODEL_USED:${
+                  actualModelUsed || "unknown"
+                }|||`;
 
                 // Cache the result (without model info)
                 this.recentToolExecutions.set(cacheKey, {
@@ -498,7 +537,8 @@ Be natural and helpful. Explain what information you found and how it answers th
         return {
           id: uuidv4(),
           role: "assistant",
-          content: "No model is configured. Please configure a model in settings.",
+          content:
+            "No model is configured. Please configure a model in settings.",
           timestamp: new Date(),
         };
       }
@@ -598,15 +638,22 @@ User query: ${message}`,
               );
 
               // Extract model information from tool result if available
-              let toolResult = toolMessage ? (toolMessage as any).content : undefined;
-              let modelUsedForTool = this.currentModelConfig?.modelId || modelId;
+              let toolResult = toolMessage
+                ? (toolMessage as any).content
+                : undefined;
+              let modelUsedForTool =
+                this.currentModelConfig?.modelId || modelId;
 
-              if (toolResult && typeof toolResult === 'string' && toolResult.includes('|||MODEL_USED:')) {
-                const parts = toolResult.split('|||MODEL_USED:');
+              if (
+                toolResult &&
+                typeof toolResult === "string" &&
+                toolResult.includes("|||MODEL_USED:")
+              ) {
+                const parts = toolResult.split("|||MODEL_USED:");
                 if (parts.length === 2) {
                   toolResult = parts[0]; // Clean result without model info
-                  const modelPart = parts[1].split('|||')[0]; // Extract model info
-                  if (modelPart && modelPart !== 'unknown') {
+                  const modelPart = parts[1].split("|||")[0]; // Extract model info
+                  if (modelPart && modelPart !== "unknown") {
                     modelUsedForTool = modelPart;
                   }
                 }
@@ -646,10 +693,12 @@ User query: ${message}`,
   // Method to switch to a specific model configuration
   async switchToModel(modelConfigId: string): Promise<void> {
     const configs = this.modelService.getModelConfigs();
-    const targetConfig = configs.find(c => c.id === modelConfigId);
-    
+    const targetConfig = configs.find((c) => c.id === modelConfigId);
+
     if (!targetConfig || !targetConfig.enabled) {
-      throw new Error(`Model configuration '${modelConfigId}' not found or disabled`);
+      throw new Error(
+        `Model configuration '${modelConfigId}' not found or disabled`
+      );
     }
 
     try {

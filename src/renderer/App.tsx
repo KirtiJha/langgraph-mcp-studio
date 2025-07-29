@@ -407,16 +407,18 @@ function App() {
   };
 
   // Helper function to get model name by ID
-  const getModelNameById = (modelId: string | undefined): string | undefined => {
+  const getModelNameById = (
+    modelId: string | undefined
+  ): string | undefined => {
     if (!modelId) return undefined;
-    const model = models.find(m => m.id === modelId);
+    const model = models.find((m) => m.id === modelId);
     return model ? `${model.name} (${model.provider})` : undefined;
   };
 
   // Helper function to get model name from model ID
   const getModelName = (modelId: string | undefined): string => {
     if (!modelId) return "Default";
-    const model = models.find(m => m.id === modelId);
+    const model = models.find((m) => m.id === modelId);
     return model ? model.modelId : "Unknown Model";
   };
 
@@ -880,6 +882,29 @@ function App() {
       }
     }
   }, [isBrowserMode]);
+
+  const handleToolStateChange = async (
+    toolName: string,
+    serverId: string,
+    enabled: boolean
+  ) => {
+    // Update local tools state immediately for responsive UI
+    setTools((prevTools) =>
+      prevTools.map((tool) =>
+        tool.name === toolName && tool.serverId === serverId
+          ? { ...tool, enabled }
+          : tool
+      )
+    );
+
+    // Optionally refresh tools from server to ensure consistency
+    try {
+      const updatedTools = await window.electronAPI.listTools();
+      setTools(updatedTools);
+    } catch (error) {
+      console.error("Error refreshing tools after state change:", error);
+    }
+  };
 
   return (
     <ErrorBoundary>
@@ -1364,7 +1389,9 @@ function App() {
                           ) : (
                             <div className="grid gap-4">
                               {servers.map((server) => {
-                                const serverConfig = serverConfigs.find(config => config.id === server.id);
+                                const serverConfig = serverConfigs.find(
+                                  (config) => config.id === server.id
+                                );
                                 return (
                                   <ServerCard
                                     key={server.id}
@@ -1373,7 +1400,9 @@ function App() {
                                     contextParamsCount={getContextParamsCountForServer(
                                       server.id
                                     )}
-                                    preferredModelName={getModelName(serverConfig?.preferredModelId)}
+                                    preferredModelName={getModelName(
+                                      serverConfig?.preferredModelId
+                                    )}
                                     onConnect={handleConnect}
                                     onDisconnect={handleDisconnect}
                                     onView={handleViewServerConfig}
@@ -1442,6 +1471,7 @@ function App() {
                             tools={tools}
                             servers={servers}
                             onExecuteTool={handleExecuteTool}
+                            onToolStateChange={handleToolStateChange}
                           />
                         </motion.div>
                       </AnimatePresence>
