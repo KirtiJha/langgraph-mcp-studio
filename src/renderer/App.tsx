@@ -14,6 +14,7 @@ import {
   CogIcon,
   ClipboardDocumentListIcon,
   GlobeAltIcon,
+  CodeBracketIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
@@ -26,12 +27,15 @@ import ToolExecution from "./components/ToolExecution";
 import KeyboardShortcuts from "./components/KeyboardShortcuts";
 import ChatInterface from "./components/ChatInterface";
 import AddServerDialog from "./components/AddServerDialog";
+import AddRemoteServerDialog from "./components/AddRemoteServerDialog";
+import MCPServerGeneratorDialog from "./components/MCPServerGeneratorDialog";
 import ServerConfigModal from "./components/ServerConfigModal";
 import ServerCard from "./components/ServerCard";
 import ConfirmDialog from "./components/ConfirmDialog";
 import APIServerManager from "./components/APIServerManager";
 import { ServerCodeEditor } from "./components/ServerCodeEditor";
 import PublicAPIExplorer from "./components/PublicAPIExplorer";
+import Workflow from "./components/workflow/Workflow";
 import LandingPage from "./components/LandingPage";
 import LoadingScreen from "./components/LoadingScreen";
 import UserMenu from "./components/UserMenu";
@@ -143,6 +147,8 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isAddServerOpen, setIsAddServerOpen] = useState(false);
+  const [isAddRemoteServerOpen, setIsAddRemoteServerOpen] = useState(false);
+  const [isGenerateServerOpen, setIsGenerateServerOpen] = useState(false);
   const [isServerConfigOpen, setIsServerConfigOpen] = useState(false);
   const [selectedServerConfig, setSelectedServerConfig] =
     useState<ServerConfig | null>(null);
@@ -466,6 +472,23 @@ function App() {
     }
   };
 
+  const handleGenerateServer = async (config: any) => {
+    try {
+      const result = await window.electronAPI.generateMCPServer(config);
+      console.log("✅ Generated MCP server:", result);
+
+      // Small delay to ensure files are fully written to disk
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      await loadData(); // Refresh the server list
+      // Optionally switch to the server code editor
+      setCodeEditorServerId(result.serverId);
+      setShowCodeEditor(true);
+    } catch (error) {
+      console.error("❌ Error generating MCP server:", error);
+    }
+  };
+
   const handleViewServerConfig = async (serverId: string) => {
     try {
       console.log("🔍 handleViewServerConfig called with serverId:", serverId);
@@ -594,15 +617,10 @@ function App() {
     const serverConfig = serverConfigs.find(
       (config: ServerConfig) => config.id === serverId
     );
-    if (!serverConfig?.toolConfigs) return 0;
+    if (!serverConfig?.contextParams) return 0;
 
     // Count total parameters across all tools
-    return Object.values(serverConfig.toolConfigs).reduce(
-      (total: number, toolParams: any) => {
-        return total + Object.keys(toolParams || {}).length;
-      },
-      0
-    );
+    return Object.keys(serverConfig.contextParams || {}).length;
   };
 
   const sendMessage = async (
@@ -721,7 +739,7 @@ function App() {
         setSelectedTab("chat");
         break;
       case "switch-resources":
-        setSelectedTab("resources");
+        setSelectedTab("workflows");
         break;
       case "switch-logs":
         setSelectedTab("logs");
@@ -986,6 +1004,20 @@ function App() {
                   onAdd={handleAddServer}
                 />
 
+                {/* Add Remote Server Dialog */}
+                <AddRemoteServerDialog
+                  open={isAddRemoteServerOpen}
+                  onClose={() => setIsAddRemoteServerOpen(false)}
+                  onAdd={handleAddServer}
+                />
+
+                {/* MCP Server Generator Dialog */}
+                <MCPServerGeneratorDialog
+                  open={isGenerateServerOpen}
+                  onOpenChange={setIsGenerateServerOpen}
+                  onGenerate={handleGenerateServer}
+                />
+
                 {/* Server Configuration Modal */}
                 <ServerConfigModal
                   isOpen={isServerConfigOpen}
@@ -1069,6 +1101,28 @@ function App() {
                         <PlusIcon className="w-3.5 h-3.5 relative z-10" />
                         <span className="font-medium relative z-10">
                           Add Server
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setIsAddRemoteServerOpen(true)}
+                        className="group relative bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-4 py-1.5 rounded-lg flex items-center space-x-2 transition-all duration-200 shadow-md hover:shadow-emerald-500/25 hover:scale-105 text-sm"
+                      >
+                        <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        <GlobeAltIcon className="w-3.5 h-3.5 relative z-10" />
+                        <span className="font-medium relative z-10">
+                          Add Remote Server
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => setIsGenerateServerOpen(true)}
+                        className="group relative bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-4 py-1.5 rounded-lg flex items-center space-x-2 transition-all duration-200 shadow-md hover:shadow-orange-500/25 hover:scale-105 text-sm"
+                      >
+                        <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                        <CodeBracketIcon className="w-3.5 h-3.5 relative z-10" />
+                        <span className="font-medium relative z-10">
+                          Generate Server
                         </span>
                       </button>
 
@@ -1164,11 +1218,11 @@ function App() {
                             color: "purple",
                           },
                           {
-                            id: "resources",
-                            label: "Resources",
-                            icon: DocumentTextIcon,
+                            id: "workflows",
+                            label: "Workflows",
+                            icon: CommandLineIcon,
                             count: 0,
-                            color: "amber",
+                            color: "emerald",
                           },
                           {
                             id: "logs",
@@ -1337,7 +1391,7 @@ function App() {
                               </div>
                               <div className="w-full bg-slate-700/50 rounded-full h-1">
                                 <div
-                                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-1 rounded-full transition-all duration-500"
+                                  className={`bg-gradient-to-r from-emerald-500 to-emerald-400 h-1 rounded-full transition-all duration-500`}
                                   style={{
                                     width: `${
                                       servers.length > 0
@@ -1422,13 +1476,24 @@ function App() {
                                   <p className="text-zinc-500 mb-6">
                                     Add your first MCP server to get started
                                   </p>
-                                  <button
-                                    onClick={() => setIsAddServerOpen(true)}
-                                    className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 mx-auto transition-all duration-200"
-                                  >
-                                    <PlusIcon className="w-5 h-5" />
-                                    <span>Add Server</span>
-                                  </button>
+                                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                    <button
+                                      onClick={() => setIsAddServerOpen(true)}
+                                      className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 justify-center transition-all duration-200"
+                                    >
+                                      <PlusIcon className="w-5 h-5" />
+                                      <span>Add Local Server</span>
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        setIsAddRemoteServerOpen(true)
+                                      }
+                                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 justify-center transition-all duration-200"
+                                    >
+                                      <GlobeAltIcon className="w-5 h-5" />
+                                      <span>Add Remote Server</span>
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -1513,30 +1578,22 @@ function App() {
                       />
                     )}
 
-                    {/* Resources Tab */}
-                    {selectedTab === "resources" && (
+                    {/* Workflows Tab */}
+                    {selectedTab === "workflows" && (
                       <div className="flex-1 flex flex-col overflow-hidden">
-                        <div className="flex-shrink-0 p-6 pb-4">
-                          <h2 className="text-2xl font-bold text-white mb-2">
-                            Resources
-                          </h2>
-                          <p className="text-zinc-400">
-                            Resources provided by your MCP servers
-                          </p>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto px-6 pb-6">
-                          <div className="text-center py-12">
-                            <DocumentTextIcon className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-zinc-300 mb-2">
-                              Resources coming soon
-                            </h3>
-                            <p className="text-zinc-500">
-                              Resource management will be available in a future
-                              update
-                            </p>
-                          </div>
-                        </div>
+                        <Workflow
+                          onExecuteTool={handleExecuteTool}
+                          servers={servers.map((server) => ({
+                            id: server.id,
+                            name: server.name,
+                            connected: server.connected,
+                            tools:
+                              tools.filter(
+                                (tool) => tool.serverId === server.id
+                              ) || [],
+                          }))}
+                          tools={tools}
+                        />
                       </div>
                     )}
 

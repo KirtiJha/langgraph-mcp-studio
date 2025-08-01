@@ -1,9 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { EventEmitter } from "events";
 import Store from "electron-store";
 import { v4 as uuidv4 } from "uuid";
+import * as EventSourceModule from "eventsource";
+import fetch from "node-fetch";
 import {
   ServerConfig,
   ServerStatus,
@@ -53,6 +56,9 @@ export class MCPManager extends EventEmitter {
         command: "npx",
         args: ["-y", "@modelcontextprotocol/server-sequential-thinking"],
         env: {},
+        enabled: true,
+        autoRestart: true,
+        timeout: 30000,
       };
 
       try {
@@ -207,8 +213,29 @@ export class MCPManager extends EventEmitter {
           args: cleanArgs,
           env: env,
         });
-      } else {
+      } else if (config.type === "sse") {
         transport = new SSEClientTransport(new URL(config.url!));
+      } else if (config.type === "remote") {
+        this.loggingService.addLog(
+          "info",
+          "MCPManager",
+          `Connecting to remote server "${config.name}"`,
+          {
+            url: config.url,
+            authType: config.authType,
+            type: config.type,
+          },
+          {
+            serverId: id,
+            serverName: config.name,
+            category: "server",
+          }
+        );
+
+        // Create authenticated SSE transport for remote servers
+        transport = await this.createRemoteTransport(config);
+      } else {
+        throw new Error(`Unsupported server type: ${config.type}`);
       }
 
       const client = new Client(
@@ -986,5 +1013,230 @@ export class MCPManager extends EventEmitter {
       if (!tool.serverId) return true; // Include tools without serverId for backward compatibility
       return this.isToolEnabled(tool.name, tool.serverId);
     });
+  }
+
+  private async createRemoteTransport(config: ServerConfig): Promise<any> {
+    if (!config.url) {
+      throw new Error("Remote server URL is required");
+    }
+
+    // Create base URL
+    const url = new URL(config.url);
+
+    // Handle authentication
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    switch (config.authType) {
+      case "bearer":
+        if (!config.accessToken) {
+          throw new Error("Access token is required for Bearer authentication");
+        }
+        headers["Authorization"] = `Bearer ${config.accessToken}`;
+        break;
+
+      case "apiKey":
+        if (!config.apiKey || !config.apiKeyHeader) {
+          throw new Error(
+            "API key and header are required for API key authentication"
+          );
+        }
+        headers[config.apiKeyHeader] = config.apiKey;
+        break;
+
+      case "basic":
+        if (!config.username || !config.password) {
+          throw new Error(
+            "Username and password are required for Basic authentication"
+          );
+        }
+        const credentials = Buffer.from(
+          `${config.username}:${config.password}`
+        ).toString("base64");
+        headers["Authorization"] = `Basic ${credentials}`;
+        break;
+
+      case "oauth":
+        if (!config.accessToken) {
+          throw new Error("Access token is required for OAuth authentication");
+        }
+        headers["Authorization"] = `Bearer ${config.accessToken}`;
+        break;
+
+      case "none":
+      default:
+        // No authentication headers needed
+        break;
+    }
+
+    // Check if this is GitHub's official MCP server
+    if (
+      url.hostname === "api.githubcopilot.com" &&
+      url.pathname.startsWith("/mcp")
+    ) {
+      console.log(
+        `MCPManager: Using StreamableHTTPClientTransport for GitHub MCP server`
+      );
+      // GitHub's MCP server uses HTTP transport, not SSE
+      return new StreamableHTTPClientTransport(url, {
+        requestInit: {
+          headers,
+        },
+      });
+    }
+
+    // For other remote servers, use SSE transport with custom headers
+    console.log(
+      `MCPManager: Using SSE transport for remote server: ${url.toString()}`
+    );
+    const authenticatedTransport = new AuthenticatedSSETransport(url, headers);
+    return authenticatedTransport;
+  }
+}
+
+// Custom SSE Transport with authentication support
+class AuthenticatedSSETransport {
+  private url: URL;
+  private headers: Record<string, string>;
+  private eventSource?: EventSourceModule.EventSource;
+  private messageHandlers: Set<(message: any) => void> = new Set();
+  private errorHandlers: Set<(error: Error) => void> = new Set();
+  private closeHandlers: Set<() => void> = new Set();
+
+  constructor(url: URL, headers: Record<string, string> = {}) {
+    this.url = url;
+    this.headers = headers;
+  }
+
+  async start(): Promise<void> {
+    // Use Node.js EventSource with authentication headers
+    // Note: TypeScript definitions might not include headers option, but it's supported in Node.js EventSource
+    console.log(
+      `AuthenticatedSSETransport: Connecting to ${this.url.toString()}`
+    );
+    console.log(`AuthenticatedSSETransport: Headers:`, this.headers);
+
+    this.eventSource = new EventSourceModule.EventSource(this.url.toString(), {
+      headers: this.headers,
+    } as any);
+
+    this.eventSource.onopen = () => {
+      console.log(
+        `AuthenticatedSSETransport: Connection opened to ${this.url.toString()}`
+      );
+    };
+
+    this.eventSource.onmessage = (event) => {
+      console.log(`AuthenticatedSSETransport: Received message:`, event.data);
+      try {
+        const data = JSON.parse(event.data);
+        this.messageHandlers.forEach((handler) => handler(data));
+      } catch (error) {
+        console.error(
+          `AuthenticatedSSETransport: Error parsing message:`,
+          error
+        );
+        this.errorHandlers.forEach((handler) => handler(error as Error));
+      }
+    };
+
+    this.eventSource.onerror = (error) => {
+      console.error(`AuthenticatedSSETransport: Connection error:`, error);
+      console.error(
+        `AuthenticatedSSETransport: EventSource state:`,
+        this.eventSource?.readyState
+      );
+
+      // Get more detailed error information
+      const errorDetails = {
+        readyState: this.eventSource?.readyState,
+        url: this.url.toString(),
+        headers: this.headers,
+        error: error,
+      };
+      console.error(
+        `AuthenticatedSSETransport: Full error details:`,
+        errorDetails
+      );
+
+      this.errorHandlers.forEach((handler) =>
+        handler(
+          new Error(
+            `SSE connection error to ${this.url.toString()}: ${JSON.stringify(
+              errorDetails
+            )}`
+          )
+        )
+      );
+    };
+
+    return new Promise((resolve, reject) => {
+      if (this.eventSource) {
+        const timeout = setTimeout(() => {
+          reject(
+            new Error(
+              `Connection timeout after 10 seconds to ${this.url.toString()}`
+            )
+          );
+        }, 10000);
+
+        this.eventSource.onopen = () => {
+          clearTimeout(timeout);
+          console.log(
+            `AuthenticatedSSETransport: Successfully connected to ${this.url.toString()}`
+          );
+          resolve();
+        };
+
+        this.eventSource.onerror = (error) => {
+          clearTimeout(timeout);
+          console.error(`AuthenticatedSSETransport: Connection failed:`, error);
+          reject(
+            new Error(
+              `Failed to connect to SSE endpoint: ${this.url.toString()}`
+            )
+          );
+        };
+      } else {
+        reject(new Error("Failed to create EventSource"));
+      }
+    });
+  }
+
+  async send(message: any): Promise<void> {
+    // Send HTTP POST request with authentication headers
+    const response = await fetch(this.url.toString(), {
+      method: "POST",
+      headers: {
+        ...this.headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+  }
+
+  onMessage(handler: (message: any) => void): void {
+    this.messageHandlers.add(handler);
+  }
+
+  onError(handler: (error: Error) => void): void {
+    this.errorHandlers.add(handler);
+  }
+
+  onClose(handler: () => void): void {
+    this.closeHandlers.add(handler);
+  }
+
+  async close(): Promise<void> {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = undefined;
+    }
+    this.closeHandlers.forEach((handler) => handler());
   }
 }

@@ -50,13 +50,12 @@ const MicrosoftIcon = () => (
 
 const IBMIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M0 9.036h4.365v1.455H0v-1.455zM0 11.945h4.365v1.455H0v-1.455zM0 14.855h4.365v1.454H0v-1.454zM19.635 9.036H24v1.455h-4.365v-1.455zM19.635 11.945H24v1.455h-4.365v-1.455zM19.635 14.855H24v1.454h-4.365v-1.454zM5.818 9.036h5.454v1.455H5.818v-1.455zM5.818 11.945h5.454v1.455H5.818v-1.455zM5.818 14.855h5.454v1.454H5.818v-1.454zM12.728 9.036h5.454v1.455h-5.454v-1.455zM12.728 11.945h5.454v1.455h-5.454v-1.455zM12.728 14.855h5.454v1.454h-5.454v-1.454zM5.818 6.127h5.454v1.455H5.818v-1.455zM5.818 16.764h5.454v1.454H5.818v-1.454zM12.728 6.127h5.454v1.455h-5.454v-1.455zM12.728 16.764h5.454v1.454h-5.454v-1.454z"/>
+    <path d="M7.5 6h9v1.5h-9V6zm-1.5 3h12v1.5H6V9zm0 3h12v1.5H6V12zm1.5 3h9v1.5h-9V15zm3-12h3v1.5h-3V3zm0 18h3v1.5h-3V21zm-6-9h1.5v1.5H4.5V12zm15 0H21v1.5h-1.5V12zM3 9h1.5v1.5H3V9zm18 0h1.5v1.5H21V9zM3 15h1.5v1.5H3V15zm18 0h1.5v1.5H21V15z" />
+    <circle cx="12" cy="12" r="2" fill="#1f5182" />
   </svg>
 );
 
-const SSOIcon = () => (
-  <ShieldCheckIcon className="w-5 h-5" />
-);
+const SSOIcon = () => <ShieldCheckIcon className="w-5 h-5" />;
 
 interface AuthDialogProps {
   isOpen: boolean;
@@ -72,7 +71,9 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
   onAuthError,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(null);
+  const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
   const [showSSOConfig, setShowSSOConfig] = useState(false);
   const [ssoConfig, setSSOConfig] = useState({
@@ -124,7 +125,8 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
       onAuthSuccess(user);
       onClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Authentication failed";
+      const errorMessage =
+        err instanceof Error ? err.message : "Authentication failed";
       setError(errorMessage);
       onAuthError(errorMessage);
     } finally {
@@ -155,6 +157,14 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
 
   const providers = [
     {
+      id: "ibm" as AuthProvider,
+      name: "IBM SSO",
+      icon: IBMIcon,
+      description: "Sign in with your IBM SSO account",
+      color: "from-blue-600 to-blue-800",
+      hoverColor: "from-blue-700 to-blue-900",
+    },
+    {
       id: "google" as AuthProvider,
       name: "Google",
       icon: GoogleIcon,
@@ -177,14 +187,6 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
       description: "Sign in with your Microsoft account",
       color: "from-blue-500 to-blue-600",
       hoverColor: "from-blue-600 to-blue-700",
-    },
-    {
-      id: "ibm" as AuthProvider,
-      name: "IBM SSO",
-      icon: IBMIcon,
-      description: "Sign in with your IBM SSO account",
-      color: "from-slate-600 to-slate-700",
-      hoverColor: "from-slate-700 to-slate-800",
     },
     {
       id: "sso" as AuthProvider,
@@ -257,7 +259,10 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
                     type="text"
                     value={ssoConfig.organizationName}
                     onChange={(e) =>
-                      setSSOConfig({ ...ssoConfig, organizationName: e.target.value })
+                      setSSOConfig({
+                        ...ssoConfig,
+                        organizationName: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Your Organization"
@@ -317,7 +322,10 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
                     type="password"
                     value={ssoConfig.clientSecret}
                     onChange={(e) =>
-                      setSSOConfig({ ...ssoConfig, clientSecret: e.target.value })
+                      setSSOConfig({
+                        ...ssoConfig,
+                        clientSecret: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="your-client-secret"
@@ -332,7 +340,10 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
                     type="url"
                     value={ssoConfig.userInfoUrl}
                     onChange={(e) =>
-                      setSSOConfig({ ...ssoConfig, userInfoUrl: e.target.value })
+                      setSSOConfig({
+                        ...ssoConfig,
+                        userInfoUrl: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="https://your-sso.com/userinfo"
@@ -348,7 +359,13 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
                   </button>
                   <button
                     onClick={handleSSOSetup}
-                    disabled={!ssoConfig.organizationName || !ssoConfig.authUrl || !ssoConfig.tokenUrl || !ssoConfig.clientId || isLoading}
+                    disabled={
+                      !ssoConfig.organizationName ||
+                      !ssoConfig.authUrl ||
+                      !ssoConfig.tokenUrl ||
+                      !ssoConfig.clientId ||
+                      isLoading
+                    }
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {isLoading ? "Signing in..." : "Sign in with SSO"}
@@ -373,7 +390,9 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
                       loadingProvider === provider.id
                         ? provider.hoverColor
                         : provider.color
-                    } hover:${provider.hoverColor} text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+                    } hover:${
+                      provider.hoverColor
+                    } text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                       {loadingProvider === provider.id ? (
@@ -384,7 +403,9 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
                     </div>
                     <div className="flex-1 text-left">
                       <h4 className="font-medium">{provider.name}</h4>
-                      <p className="text-sm text-white/70">{provider.description}</p>
+                      <p className="text-sm text-white/70">
+                        {provider.description}
+                      </p>
                     </div>
                   </button>
                 ))}
@@ -407,12 +428,14 @@ export const AuthDialog: React.FC<AuthDialogProps> = ({
             <div className="mt-6 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
               <div className="flex items-center gap-2 text-green-400 mb-2">
                 <ShieldCheckIcon className="w-4 h-4" />
-                <span className="text-sm font-medium">Secure Authentication</span>
+                <span className="text-sm font-medium">
+                  Secure Authentication
+                </span>
               </div>
               <p className="text-xs text-slate-400">
-                All authentication is performed using industry-standard OAuth 2.0 
-                protocols with PKCE for enhanced security. Your credentials are never 
-                stored by MCP Studio.
+                All authentication is performed using industry-standard OAuth
+                2.0 protocols with PKCE for enhanced security. Your credentials
+                are never stored by MCP Studio.
               </p>
             </div>
           </div>

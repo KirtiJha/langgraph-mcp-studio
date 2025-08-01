@@ -58,39 +58,32 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   const features = [
     {
-      icon: ServerIcon,
-      title: "Advanced Server Configuration",
+      icon: CpuChipIcon,
+      title: "Intelligent Workflows",
       description:
-        "Model-specific AI routing, Postman collection import, and visual server code editor with export capabilities",
+        "Create sophisticated multi-step workflows with AI agents that automate complex tasks and integrations",
       color: "from-blue-500 to-cyan-500",
     },
     {
       icon: GlobeAltIcon,
-      title: "Public API Explorer",
+      title: "Remote MCP Servers",
       description:
-        "Discover, test, and convert thousands of public APIs into MCP servers instantly",
+        "Instantly connect to 18+ remote servers including GitHub, Linear, Sentry, and Atlassian with one-click setup",
       color: "from-indigo-500 to-purple-500",
     },
     {
-      icon: CpuChipIcon,
-      title: "Smart Code Generation",
+      icon: CodeBracketIcon,
+      title: "MCP Server Generator",
       description:
-        "Generate production-ready TypeScript MCP servers with full source code visibility and editing",
-      color: "from-purple-500 to-pink-500",
+        "Generate production-ready MCP servers in TypeScript or Python with tools, resources, prompts, and full VS Code integration",
+      color: "from-emerald-500 to-teal-500",
     },
     {
       icon: WrenchScrewdriverIcon,
-      title: "Multi-Format Import",
+      title: "Universal Integration",
       description:
-        "Import from Postman collections, JSON configs, or OpenAPI specs with intelligent parsing",
+        "Works seamlessly with Claude Desktop, GitHub Copilot, and any MCP-compatible AI client or platform",
       color: "from-green-500 to-emerald-500",
-    },
-    {
-      icon: ChatBubbleLeftRightIcon,
-      title: "AI Model Selection",
-      description:
-        "Choose specific AI models per server for optimized tool execution and performance",
-      color: "from-orange-500 to-red-500",
     },
   ];
 
@@ -126,7 +119,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-2">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -135,7 +128,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </div>
 
       <div className="relative w-full max-w-6xl mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-8 items-center">
           {/* Left side - Welcome content */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
@@ -144,7 +137,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             className="text-center lg:text-left"
           >
             {/* Logo and Title */}
-            <div className="flex items-center justify-center lg:justify-start mb-8">
+            <div className="flex items-center justify-center lg:justify-start mb-6">
               <Logo size="lg" className="mr-4" />
               <div>
                 <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
@@ -161,19 +154,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl lg:text-2xl text-slate-300 mb-8 leading-relaxed"
+              className="text-xl lg:text-2xl text-slate-300 mb-6 leading-relaxed"
             >
-              Professional MCP server management with{" "}
+              Professional AI workflow orchestration with{" "}
               <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent font-semibold">
-                AI model selection
-              </span>,{" "}
+                intelligent workflows
+              </span>
+              ,{" "}
               <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent font-semibold">
-                Postman collection import
-              </span>, and{" "}
+                remote MCP servers
+              </span>
+              ,{" "}
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-semibold">
+                server generation
+              </span>
+              , and{" "}
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-semibold">
-                visual code editing
+                enterprise integrations
               </span>{" "}
-              for enterprise-grade API integration
+              for next-generation AI applications
             </motion.p>
 
             {/* Feature showcase */}
@@ -181,7 +180,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="mb-10"
+              className="mb-6"
             >
               <AnimatePresence mode="wait">
                 <motion.div
@@ -190,20 +189,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.5 }}
-                  className="flex items-center justify-center lg:justify-start gap-4 p-4 bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30"
+                  className="flex items-center justify-center lg:justify-start gap-3 p-3 bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700/30"
                 >
                   <div
-                    className={`p-3 rounded-xl bg-gradient-to-r ${features[currentFeature].color}`}
+                    className={`p-2 rounded-lg bg-gradient-to-r ${features[currentFeature].color}`}
                   >
                     {React.createElement(features[currentFeature].icon, {
-                      className: "w-6 h-6 text-white",
+                      className: "w-5 h-5 text-white",
                     })}
                   </div>
                   <div className="text-left">
-                    <h3 className="text-lg font-semibold text-white mb-1">
+                    <h3 className="text-base font-semibold text-white mb-1">
                       {features[currentFeature].title}
                     </h3>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-xs text-slate-400">
                       {features[currentFeature].description}
                     </p>
                   </div>
@@ -227,9 +226,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <div className="text-sm text-slate-400">Code Export</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">
-                  v2.1
-                </div>
+                <div className="text-2xl font-bold text-white mb-1">v2.1</div>
                 <div className="text-sm text-slate-400">Postman Import</div>
               </div>
             </motion.div>
@@ -333,136 +330,78 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </motion.div>
         </div>
 
-        {/* Bottom feature grid */}
+        {/* Bottom feature grid - Made more compact */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
-          className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6"
+          className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {features.map((feature, index) => (
             <motion.div
               key={index}
-              whileHover={{ y: -5 }}
-              className={`p-6 bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 cursor-pointer transition-all duration-300 ${
+              whileHover={{ y: -3 }}
+              className={`p-4 bg-slate-800/30 backdrop-blur-sm rounded-xl border border-slate-700/30 cursor-pointer transition-all duration-300 ${
                 index === currentFeature ? "ring-2 ring-blue-500/50" : ""
               }`}
               onClick={() => setCurrentFeature(index)}
             >
               <div
-                className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${feature.color} mb-4`}
+                className={`inline-flex p-2 rounded-lg bg-gradient-to-r ${feature.color} mb-3`}
               >
                 {React.createElement(feature.icon, {
-                  className: "w-6 h-6 text-white",
+                  className: "w-5 h-5 text-white",
                 })}
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
+              <h3 className="text-base font-semibold text-white mb-2">
                 {feature.title}
               </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-400 leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Key Features Highlight */}
+        {/* Key Features Highlight - Compact version */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.0 }}
-          className="mt-16 bg-gradient-to-r from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-3xl border border-slate-600/30 p-8"
+          className="mt-8 bg-gradient-to-r from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-2xl border border-slate-600/30 p-6"
         >
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              🚀 New Enterprise Features
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-white mb-2">
+              🚀 Advanced AI Orchestration
             </h2>
-            <p className="text-lg text-slate-300">
-              Enhanced capabilities for professional development workflows
+            <p className="text-sm text-slate-300">
+              Next-generation workflow automation and remote server integration
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Model Selection */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
-            >
-              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 mb-4">
-                <CogIcon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                AI Model Selection
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Choose specific AI models (GPT-4, Claude, Llama) for each MCP server for optimized performance
-              </p>
-            </motion.div>
-
-            {/* Postman Import */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
-            >
-              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 mb-4">
-                <DocumentTextIcon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Postman Collections
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Import Postman Collection v2.1 files with automatic endpoint and authentication detection
-              </p>
-            </motion.div>
-
-            {/* Code Editor */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
-            >
-              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-green-500 to-cyan-500 mb-4">
-                <CodeBracketIcon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Visual Code Editor
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                View and edit generated TypeScript MCP server code with syntax highlighting and live preview
-              </p>
-            </motion.div>
-
-            {/* Config Export */}
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/30 p-6 text-center"
-            >
-              <div className="inline-flex p-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 mb-4">
-                <CommandLineIcon className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Universal Export
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Export server configurations for Claude Desktop, Copilot, or any MCP-compatible client
-              </p>
-            </motion.div>
-          </div>
-
-          {/* Additional Benefits */}
-          <div className="mt-12 text-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span className="text-slate-300">Production-Ready Code</span>
-              </div>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-slate-300">Enterprise Authentication</span>
-              </div>
-              <div className="flex items-center justify-center gap-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span className="text-slate-300">Multi-Client Compatibility</span>
-              </div>
+          {/* Compact benefits grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+              <span className="text-slate-300 text-sm">
+                Intelligent Automation
+              </span>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-slate-300 text-sm">
+                Remote Server Ecosystem
+              </span>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-2 h-2 bg-teal-500 rounded-full"></div>
+              <span className="text-slate-300 text-sm">Server Generation</span>
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span className="text-slate-300 text-sm">
+                Enterprise Integration
+              </span>
             </div>
           </div>
         </motion.div>
@@ -472,7 +411,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.0 }}
-          className="mt-16 border-t border-slate-800/50 pt-8"
+          className="mt-8 border-t border-slate-800/50 pt-6"
         >
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-500">
             <div className="flex items-center gap-4">

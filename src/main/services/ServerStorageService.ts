@@ -130,11 +130,40 @@ export class ServerStorageService {
   /**
    * Read server code file
    */
-  async readServerCode(
-    serverId: string,
-    fileName: string = "server.ts"
-  ): Promise<string> {
-    const filePath = path.join(this.getServerPath(serverId), fileName);
+  async readServerCode(serverId: string, fileName?: string): Promise<string> {
+    const serverPath = this.getServerPath(serverId);
+
+    // If no fileName provided, try to auto-detect the main file
+    if (!fileName) {
+      const possibleFiles = [
+        "server.ts",
+        "server.py",
+        "src/index.ts",
+        "index.js",
+      ];
+
+      for (const file of possibleFiles) {
+        const filePath = path.join(serverPath, file);
+        try {
+          await fs.access(filePath);
+          fileName = file;
+          break;
+        } catch {
+          // File doesn't exist, try next
+          continue;
+        }
+      }
+
+      if (!fileName) {
+        throw new Error(
+          `No main server file found in ${serverPath}. Expected one of: ${possibleFiles.join(
+            ", "
+          )}`
+        );
+      }
+    }
+
+    const filePath = path.join(serverPath, fileName);
     try {
       return await fs.readFile(filePath, "utf-8");
     } catch (error) {
@@ -185,6 +214,49 @@ export class ServerStorageService {
         `Failed to open server folder: ${
           error instanceof Error ? error.message : String(error)
         }`
+      );
+    }
+  }
+
+  /**
+   * Open server folder in VS Code
+   */
+  async openServerInVSCode(serverId: string): Promise<void> {
+    const serverPath = this.getServerPath(serverId);
+    const { spawn } = require("child_process");
+
+    try {
+      // Ensure directory exists first
+      await fs.mkdir(serverPath, { recursive: true });
+
+      // Try to open with VS Code
+      // This will work if 'code' command is available in PATH
+      const child = spawn("code", [serverPath], {
+        detached: true,
+        stdio: "ignore",
+      });
+
+      child.unref();
+
+      // Give it a moment to start
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (child.killed) {
+            reject(
+              new Error(
+                'VS Code command not found. Please make sure VS Code is installed and the "code" command is available in PATH.'
+              )
+            );
+          } else {
+            resolve();
+          }
+        }, 1000);
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to open server folder in VS Code: ${
+          error instanceof Error ? error.message : String(error)
+        }. Please make sure VS Code is installed and the "code" command is available in PATH.`
       );
     }
   }

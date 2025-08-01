@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeftIcon,
@@ -234,21 +234,24 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
     }));
   };
 
-  const updateHeader = (oldKey: string, newKey: string, value: string) => {
-    setRequestData((prev) => {
-      const newHeaders = { ...prev.headers };
-      if (oldKey !== newKey && oldKey in newHeaders) {
-        delete newHeaders[oldKey];
-      }
-      if (newKey) {
-        newHeaders[newKey] = value;
-      }
-      return {
-        ...prev,
-        headers: newHeaders,
-      };
-    });
-  };
+  const updateHeader = useCallback(
+    (oldKey: string, newKey: string, value: string) => {
+      setRequestData((prev) => {
+        const newHeaders = { ...prev.headers };
+        if (oldKey !== newKey && oldKey in newHeaders) {
+          delete newHeaders[oldKey];
+        }
+        if (newKey) {
+          newHeaders[newKey] = value;
+        }
+        return {
+          ...prev,
+          headers: newHeaders,
+        };
+      });
+    },
+    []
+  );
 
   const removeHeader = (key: string) => {
     setRequestData((prev) => {
@@ -262,7 +265,7 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
   };
 
   // Extract parameters from the selected endpoint
-  const getEndpointParameters = () => {
+  const getEndpointParameters = useCallback(() => {
     if (!selectedEndpoint || !selectedEndpoint.parameters) {
       console.log("🔍 No parameters found for selected endpoint:", {
         hasSelectedEndpoint: !!selectedEndpoint,
@@ -306,7 +309,7 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
     });
 
     return filteredParams;
-  };
+  }, [selectedEndpoint]);
 
   // Validate required parameters
   const validateRequiredParameters = (): {
@@ -339,21 +342,24 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
   useEffect(() => {
     if (selectedEndpoint) {
       const endpointParams = getEndpointParameters();
-      const initialParams: Record<string, string> = {};
 
-      // Pre-populate required parameters
-      endpointParams.forEach((param) => {
-        if (param.required && param.in === "query") {
-          initialParams[param.name] = "";
-        }
+      setRequestData((prev) => {
+        const newQueryParams = { ...prev.queryParams };
+
+        // Initialize all query parameters that aren't already set
+        endpointParams.forEach((param) => {
+          if (param.in === "query" && !(param.name in newQueryParams)) {
+            newQueryParams[param.name] = "";
+          }
+        });
+
+        return {
+          ...prev,
+          queryParams: newQueryParams,
+        };
       });
-
-      setRequestData((prev) => ({
-        ...prev,
-        queryParams: initialParams,
-      }));
     }
-  }, [selectedEndpoint]);
+  }, [selectedEndpoint, getEndpointParameters]);
 
   const addQueryParam = () => {
     setRequestData((prev) => ({
@@ -365,21 +371,32 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
     }));
   };
 
-  const updateQueryParam = (oldKey: string, newKey: string, value: string) => {
-    setRequestData((prev) => {
-      const newParams = { ...prev.queryParams };
-      if (oldKey !== newKey && oldKey in newParams) {
-        delete newParams[oldKey];
-      }
-      if (newKey) {
-        newParams[newKey] = value;
-      }
-      return {
-        ...prev,
-        queryParams: newParams,
-      };
-    });
-  };
+  const updateQueryParam = useCallback(
+    (oldKey: string, newKey: string, value: string) => {
+      setRequestData((prev) => {
+        const newParams = { ...prev.queryParams };
+
+        // If we're renaming a key, delete the old one
+        if (oldKey !== newKey && oldKey in newParams) {
+          delete newParams[oldKey];
+        }
+
+        // Always set the new value if newKey is provided
+        if (newKey) {
+          newParams[newKey] = value;
+        } else if (oldKey === newKey) {
+          // If newKey is empty but we're updating the same key, remove it
+          delete newParams[oldKey];
+        }
+
+        return {
+          ...prev,
+          queryParams: newParams,
+        };
+      });
+    },
+    []
+  );
 
   const removeQueryParam = (key: string) => {
     setRequestData((prev) => {
@@ -826,7 +843,7 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
                     <div key={key} className="flex gap-2">
                       <input
                         type="text"
-                        value={key}
+                        value={key || ""}
                         onChange={(e) =>
                           updateHeader(key, e.target.value, value)
                         }
@@ -835,7 +852,7 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
                       />
                       <input
                         type="text"
-                        value={value}
+                        value={value || ""}
                         onChange={(e) => updateHeader(key, key, e.target.value)}
                         className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                         placeholder="Header value"
@@ -986,16 +1003,16 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
                               ? "checkbox"
                               : "text"
                           }
-                          value={
-                            param.type === "boolean"
-                              ? undefined
-                              : requestData.queryParams?.[param.name] || ""
-                          }
-                          checked={
-                            param.type === "boolean"
-                              ? requestData.queryParams?.[param.name] === "true"
-                              : undefined
-                          }
+                          {...(param.type === "boolean"
+                            ? {
+                                checked:
+                                  requestData.queryParams?.[param.name] ===
+                                  "true",
+                              }
+                            : {
+                                value:
+                                  requestData.queryParams?.[param.name] || "",
+                              })}
                           onChange={(e) => {
                             const value =
                               param.type === "boolean"
@@ -1068,7 +1085,7 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
                     >
                       <input
                         type="text"
-                        value={key}
+                        value={key || ""}
                         onChange={(e) =>
                           updateQueryParam(key, e.target.value, value)
                         }
@@ -1077,7 +1094,7 @@ const PublicAPITester: React.FC<PublicAPITesterProps> = ({
                       />
                       <input
                         type="text"
-                        value={value}
+                        value={value || ""}
                         onChange={(e) =>
                           updateQueryParam(key, key, e.target.value)
                         }

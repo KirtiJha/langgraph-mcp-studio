@@ -1,0 +1,683 @@
+openapi: 3.0.3
+info:
+  title: MCP Test API Server - Agent Friendly
+  description: Simplified API designed for LLM agents to query chat, user, message, and feedback data
+  version: 2.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3001
+    description: Development server
+
+paths:
+  # Users Endpoints
+  /api/users:
+    get:
+      summary: Get all users
+      description: Retrieve all users for agent analysis
+      tags: [Users]
+      responses:
+        "200":
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersResponse"
+
+  /api/users/email/{email}:
+    get:
+      summary: Get user by email
+      description: Find a specific user by their email address
+      tags: [Users]
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "user@example.com"
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+
+  /api/users/search:
+    get:
+      summary: Search users
+      description: Search users by name or email
+      tags: [Users]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query for name or email
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersResponse"
+
+  /api/users/role/{role}:
+    get:
+      summary: Get users by role
+      description: Find users with specific role (admin, user, etc.)
+      tags: [Users]
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "admin"
+      responses:
+        "200":
+          description: Users with specified role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersResponse"
+
+  /api/users/recent:
+    get:
+      summary: Get recent users
+      description: Get users who joined recently
+      tags: [Users]
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 7
+          description: Number of days to look back
+      responses:
+        "200":
+          description: Recent users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersResponse"
+
+  # Chats Endpoints
+  /api/chats:
+    get:
+      summary: Get all chats
+      description: Retrieve all chats for agent analysis
+      tags: [Chats]
+      responses:
+        "200":
+          description: List of all chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatsResponse"
+
+  /api/chats/id/{id}:
+    get:
+      summary: Get chat by ID
+      description: Find a specific chat by its UUID
+      tags: [Chats]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "567df03f-2185-4e48-b004-11ded02442d7"
+      responses:
+        "200":
+          description: Chat found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chat"
+        "404":
+          description: Chat not found
+
+  /api/chats/user/{email}:
+    get:
+      summary: Get chats by user email
+      description: Find all chats for a specific user
+      tags: [Chats]
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "user@example.com"
+      responses:
+        "200":
+          description: User's chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatsResponse"
+
+  /api/chats/search:
+    get:
+      summary: Search chats
+      description: Search chats by title content
+      tags: [Chats]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query for chat title
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatsResponse"
+
+  /api/chats/recent:
+    get:
+      summary: Get recent chats
+      description: Get recently modified chats
+      tags: [Chats]
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+          description: Number of hours to look back
+      responses:
+        "200":
+          description: Recent chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatsResponse"
+
+  # Messages Endpoints
+  /api/messages:
+    get:
+      summary: Get all messages
+      description: Retrieve all messages for agent analysis
+      tags: [Messages]
+      responses:
+        "200":
+          description: List of all messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+
+  /api/messages/id/{id}:
+    get:
+      summary: Get message by ID
+      description: Find a specific message by its UUID
+      tags: [Messages]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "8faf04b4-d7a3-484c-8942-5510a5b934cc"
+      responses:
+        "200":
+          description: Message found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "404":
+          description: Message not found
+
+  /api/messages/chat/{chatId}:
+    get:
+      summary: Get messages by chat ID
+      description: Find all messages in a specific chat
+      tags: [Messages]
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "567df03f-2185-4e48-b004-11ded02442d7"
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+
+  /api/messages/role/{role}:
+    get:
+      summary: Get messages by role
+      description: Find messages by role (user, assistant, system)
+      tags: [Messages]
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [user, assistant, system]
+          example: "user"
+      responses:
+        "200":
+          description: Messages with specified role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+
+  /api/messages/search:
+    get:
+      summary: Search messages
+      description: Search messages by content
+      tags: [Messages]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query for message content
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+
+  /api/messages/recent:
+    get:
+      summary: Get recent messages
+      description: Get recently created messages
+      tags: [Messages]
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+          description: Number of hours to look back
+      responses:
+        "200":
+          description: Recent messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+
+  /api/messages/user/{email}:
+    get:
+      summary: Get messages for user
+      description: Find all messages in all chats for a specific user
+      tags: [Messages]
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "user@example.com"
+      responses:
+        "200":
+          description: User's messages across all chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+
+  # Feedbacks Endpoints
+  /api/feedbacks:
+    get:
+      summary: Get all feedbacks
+      description: Retrieve all feedback for agent analysis
+      tags: [Feedbacks]
+      responses:
+        "200":
+          description: List of all feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/chat/{chatId}:
+    get:
+      summary: Get feedback by chat ID
+      description: Find all feedback for a specific chat
+      tags: [Feedbacks]
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "aa55fd87-83ae-4747-807d-ca5cc59cd73e"
+      responses:
+        "200":
+          description: Chat feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/message/{messageId}:
+    get:
+      summary: Get feedback by message ID
+      description: Find feedback for a specific message
+      tags: [Feedbacks]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "68cd2636-bbbe-48cb-8434-f09ee7f7d8f3"
+      responses:
+        "200":
+          description: Message feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/user/{email}:
+    get:
+      summary: Get feedback by user email
+      description: Find all feedback given by a specific user
+      tags: [Feedbacks]
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "user@example.com"
+      responses:
+        "200":
+          description: User's feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/rating/{rating}:
+    get:
+      summary: Get feedback by rating
+      description: Find feedback with specific rating
+      tags: [Feedbacks]
+      parameters:
+        - name: rating
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+          example: 20
+      responses:
+        "200":
+          description: Feedback with specified rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/vote/{voteType}:
+    get:
+      summary: Get feedback by vote type
+      description: Find feedback by upvote/downvote
+      tags: [Feedbacks]
+      parameters:
+        - name: voteType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [up, down]
+          example: "down"
+      responses:
+        "200":
+          description: Feedback with specified vote type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/search:
+    get:
+      summary: Search feedback
+      description: Search feedback by comments
+      tags: [Feedbacks]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query for feedback comments
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+  /api/feedbacks/recent:
+    get:
+      summary: Get recent feedback
+      description: Get recently created feedback
+      tags: [Feedbacks]
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+          description: Number of hours to look back
+      responses:
+        "200":
+          description: Recent feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbacksResponse"
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId (internal use)
+        name:
+          type: string
+          example: "Sovik Roy"
+        email:
+          type: string
+          format: email
+          example: "sovik.roy@in.ibm.com"
+        emailVerified:
+          type: string
+          nullable: true
+        image:
+          type: string
+          example: "000B6B744"
+        createdAt:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+        role:
+          type: string
+          example: "admin"
+
+    Chat:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId (internal use)
+        id:
+          type: string
+          format: uuid
+          example: "567df03f-2185-4e48-b004-11ded02442d7"
+        title:
+          type: string
+          example: "can you modify this apex code"
+        userId:
+          type: string
+          description: MongoDB ObjectId reference to user
+        createdAt:
+          type: string
+          format: date-time
+        lastModifiedAt:
+          type: string
+          format: date-time
+
+    Message:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId (internal use)
+        id:
+          type: string
+          format: uuid
+          example: "8faf04b4-d7a3-484c-8942-5510a5b934cc"
+        content:
+          type: string
+          example: "can you modify this apex code"
+        role:
+          type: string
+          enum: [user, assistant, system]
+          example: "user"
+        chatId:
+          type: string
+          format: uuid
+          example: "567df03f-2185-4e48-b004-11ded02442d7"
+        createdAt:
+          type: string
+          format: date-time
+
+    Feedback:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: MongoDB ObjectId (internal use)
+        chatId:
+          type: string
+          format: uuid
+          example: "aa55fd87-83ae-4747-807d-ca5cc59cd73e"
+        messageId:
+          type: string
+          format: uuid
+          example: "68cd2636-bbbe-48cb-8434-f09ee7f7d8f3"
+        comments:
+          type: string
+          example: "too many unrelated classes and only 1 is correct"
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 20
+        createdAt:
+          type: string
+          format: date-time
+        lastModifiedAt:
+          type: string
+          format: date-time
+        isUpvoted:
+          type: boolean
+          example: false
+
+    UsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        totalRecords:
+          type: integer
+          description: Total number of users
+
+    ChatsResponse:
+      type: object
+      properties:
+        chats:
+          type: array
+          items:
+            $ref: "#/components/schemas/Chat"
+        totalRecords:
+          type: integer
+          description: Total number of chats
+
+    MessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        totalRecords:
+          type: integer
+          description: Total number of messages
+
+    FeedbacksResponse:
+      type: object
+      properties:
+        feedbacks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Feedback"
+        totalRecords:
+          type: integer
+          description: Total number of feedbacks
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Error message
+
+tags:
+  - name: Users
+    description: User management operations
+  - name: Chats
+    description: Chat management operations
+  - name: Messages
+    description: Message management operations
+  - name: Feedbacks
+    description: Feedback management operations

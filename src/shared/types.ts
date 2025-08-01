@@ -1,3 +1,9 @@
+export {
+  MCPServerConfig,
+  GeneratedServer,
+  GeneratedFile,
+} from "../main/services/MCPServerGenerator";
+
 export enum IpcChannels {
   // Server management
   ADD_SERVER = "add-server",
@@ -7,6 +13,7 @@ export enum IpcChannels {
   UPDATE_SERVER = "update-server",
   CONNECT_SERVER = "connect-server",
   DISCONNECT_SERVER = "disconnect-server",
+  TEST_REMOTE_SERVER_CONNECTION = "test-remote-server-connection",
 
   // Tool operations
   LIST_TOOLS = "list-tools",
@@ -17,6 +24,7 @@ export enum IpcChannels {
 
   // Agent operations
   SEND_MESSAGE = "send-message",
+  SEND_WORKFLOW_MESSAGE = "send-workflow-message",
   CLEAR_CHAT = "clear-chat",
 
   // Model management
@@ -53,26 +61,51 @@ export enum IpcChannels {
   WRITE_SERVER_CODE = "write-server-code",
   GET_SERVER_FILES = "get-server-files",
   OPEN_SERVER_FOLDER = "open-server-folder",
+  OPEN_SERVER_IN_VSCODE = "open-server-in-vscode",
+
+  // MCP Server generation
+  GENERATE_MCP_SERVER = "generate-mcp-server",
 
   // Authentication
   FETCH_USER_INFO = "fetch-user-info",
 }
 
 export interface ServerConfig {
-  id?: string;
+  id: string;
   name: string;
-  type: "stdio" | "sse";
+  type: "stdio" | "sse" | "remote";
   command?: string;
   args?: string[];
-  url?: string;
   env?: Record<string, string>;
-  cwd?: string; // Working directory for the server process
-  // Store additional context parameters to auto-inject into tool calls
+  url?: string;
+  username?: string;
+  password?: string;
+  token?: string;
+  apiKey?: string;
+  enabled: boolean;
+  autoRestart: boolean;
+  timeout: number;
+  tools?: ToolConfig[];
+  resources?: ResourceConfig[];
+  prompts?: PromptConfig[];
+  headers?: Record<string, string>;
+  metadata?: Record<string, any>;
   contextParams?: Record<string, any>;
-  // Store tool-specific parameter configurations
-  toolConfigs?: Record<string, Record<string, any>>;
-  // Preferred AI model for this server's tools
   preferredModelId?: string;
+  // Remote-specific configuration
+  authType?: "none" | "bearer" | "oauth" | "basic" | "apiKey";
+  oauthClientId?: string;
+  oauthClientSecret?: string;
+  oauthScopes?: string[];
+  oauthTokenEndpoint?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  tokenExpiry?: Date;
+  apiKeyHeader?: string; // e.g., "X-API-Key", "Authorization"
+  sessionId?: string;
+  description?: string;
+  category?: string;
+  isOfficial?: boolean;
 }
 
 export interface Tool {
@@ -84,11 +117,23 @@ export interface Tool {
   isSystemTool?: boolean; // Whether this is a system tool (e.g., sequential thinking)
 }
 
+export interface ToolConfig {
+  name: string;
+  enabled: boolean;
+  parameters?: Record<string, any>;
+}
+
 export interface Resource {
   uri: string;
   name?: string;
   description?: string;
   mimeType?: string;
+}
+
+export interface ResourceConfig {
+  uri: string;
+  enabled: boolean;
+  metadata?: Record<string, any>;
 }
 
 export interface Prompt {
@@ -99,6 +144,12 @@ export interface Prompt {
     description?: string;
     required?: boolean;
   }>;
+}
+
+export interface PromptConfig {
+  name: string;
+  enabled: boolean;
+  defaultArguments?: Record<string, any>;
 }
 
 export interface LogEntry {

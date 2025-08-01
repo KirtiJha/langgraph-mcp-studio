@@ -1,0 +1,184 @@
+/* Ensure ReactFlow canvas is interactive */
+.react-flow {
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+  width: 100%;
+  height: 100%;
+  z-index: 5 !important;
+}
+
+.react-flow__renderer {
+  pointer-events: auto !important;
+  z-index: 5 !important;
+}
+
+.react-flow__pane {
+  pointer-events: auto !important;
+  cursor: grab;
+  z-index: 5 !important;
+  -webkit-app-region: no-drag !important;
+}
+
+.react-flow__pane.dragging {
+  cursor: grabbing;
+}
+
+.react-flow__node {
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+  cursor: pointer;
+  z-index: 10 !important;
+}
+
+.react-flow__node:hover {
+  transform: scale(1.02);
+}
+
+.react-flow__edge {
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+  z-index: 8 !important;
+}
+
+.react-flow__handle {
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+  z-index: 12 !important;
+  opacity: 1 !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+/* Ensure canvas container is interactive */
+.workflow-canvas-container {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+.react-flow-container {
+  pointer-events: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Ensure ReactFlow wrapper has proper layout */
+.react-flow__renderer {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Make sure viewport is properly sized */
+.react-flow__viewport {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fix any potential overlay issues */
+.react-flow__controls,
+.react-flow__minimap {
+  pointer-events: auto !important;
+  z-index: 20 !important;
+}
+
+/* Ensure ReactFlow controls are visible and properly styled */
+.react-flow__controls {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  border-radius: 8px !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+  padding: 8px !important;
+  position: absolute !important;
+  bottom: 16px !important;
+  left: 16px !important;
+}
+
+.react-flow__controls-button {
+  background: transparent !important;
+  border: none !important;
+  color: #cbd5e1 !important;
+  font-size: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+}
+
+.react-flow__controls-button:disabled {
+  color: #475569 !important;
+  cursor: not-allowed !important;
+}
+
+/* Style the zoom slider specifically */
+.react-flow__controls-zoom {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.react-flow__controls-zoomslider {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100px !important;
+  height: 4px !important;
+  background: rgba(71, 85, 105, 0.5) !important;
+  outline: none !important;
+  border-radius: 2px !important;
+  cursor: pointer !important;
+  margin: 8px 0 !important;
+}
+
+.react-flow__controls-zoomslider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 16px !important;
+  height: 16px !important;
+  background: #3b82f6 !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-flow__controls-zoomslider::-webkit-slider-thumb:hover {
+  background: #2563eb !important;
+  transform: scale(1.1) !important;
+}
+
+.react-flow__controls-zoomslider::-moz-range-thumb {
+  width: 16px !important;
+  height: 16px !important;
+  background: #3b82f6 !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.react-flow__controls-zoomslider::-moz-range-thumb:hover {
+  background: #2563eb !important;
+  transform: scale(1.1) !important;
+}
+
+/* Ensure minimap is also properly styled */
+.react-flow__minimap {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(71, 85, 105, 0.5) !important;
+  border-radius: 8px !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  backdrop-filter: blur(8px) !important;
+  position: absolute !important;
+  bottom: 16px !important;
+  right: 16px !important;
+}

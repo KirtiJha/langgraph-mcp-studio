@@ -55,7 +55,7 @@ export const ServerCodeEditor: React.FC<ServerCodeEditorProps> = ({
   serverName,
 }) => {
   const [files, setFiles] = useState<ServerFile[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string>("server.ts");
+  const [selectedFile, setSelectedFile] = useState<string>("");
   const [fileContent, setFileContent] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -80,7 +80,9 @@ export const ServerCodeEditor: React.FC<ServerCodeEditorProps> = ({
     "stopped" | "running" | "building"
   >("stopped");
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportFormat, setExportFormat] = useState<"claude" | "copilot" | "custom">("claude");
+  const [exportFormat, setExportFormat] = useState<
+    "claude" | "copilot" | "custom"
+  >("claude");
 
   // Debug log for export dialog state
   useEffect(() => {
@@ -94,7 +96,6 @@ export const ServerCodeEditor: React.FC<ServerCodeEditorProps> = ({
   useEffect(() => {
     if (isOpen && serverId) {
       loadServerFiles();
-      loadFileContent("server.ts");
       addTerminalOutput("command", `# Server Code Editor - ${serverName}`);
       addTerminalOutput("output", `Working directory: ${serverId}`);
     }
@@ -231,6 +232,26 @@ export const ServerCodeEditor: React.FC<ServerCodeEditorProps> = ({
       if (result.exists) {
         setFiles(result.files);
         addTerminalOutput("output", `✅ Loaded ${result.files.length} files`);
+
+        // Auto-select the main file
+        const mainFiles = [
+          "server.ts",
+          "server.py",
+          "src/index.ts",
+          "index.js",
+        ];
+        const mainFile = result.files.find((file) =>
+          mainFiles.includes(file.name)
+        );
+
+        if (mainFile) {
+          setSelectedFile(mainFile.name);
+          loadFileContent(mainFile.name);
+        } else if (result.files.length > 0) {
+          // Fallback to first file if no main file found
+          setSelectedFile(result.files[0].name);
+          loadFileContent(result.files[0].name);
+        }
       } else {
         setFiles([]);
         setError(
@@ -371,15 +392,19 @@ export const ServerCodeEditor: React.FC<ServerCodeEditorProps> = ({
     const configs = {
       claude: {
         filename: "claude_desktop_config.json",
-        content: JSON.stringify({
-          mcpServers: {
-            [serverName]: {
-              command: "node",
-              args: [`${serverPath}/server.js`],
-              env: {}
-            }
-          }
-        }, null, 2),
+        content: JSON.stringify(
+          {
+            mcpServers: {
+              [serverName]: {
+                command: "node",
+                args: [`${serverPath}/server.js`],
+                env: {},
+              },
+            },
+          },
+          null,
+          2
+        ),
         instructions: `Claude Desktop Configuration:
 
 1. Copy the generated configuration
@@ -388,21 +413,25 @@ export const ServerCodeEditor: React.FC<ServerCodeEditorProps> = ({
 4. Add this configuration to your claude_desktop_config.json file
 5. Restart Claude Desktop
 
-The server will be available in Claude Desktop for use.`
+The server will be available in Claude Desktop for use.`,
       },
       copilot: {
-        filename: "copilot_config.json", 
-        content: JSON.stringify({
-          mcp: {
-            servers: {
-              [serverName]: {
-                command: "node",
-                args: [`${serverPath}/server.js`],
-                description: `Generated MCP server: ${serverName}`
-              }
-            }
-          }
-        }, null, 2),
+        filename: "copilot_config.json",
+        content: JSON.stringify(
+          {
+            mcp: {
+              servers: {
+                [serverName]: {
+                  command: "node",
+                  args: [`${serverPath}/server.js`],
+                  description: `Generated MCP server: ${serverName}`,
+                },
+              },
+            },
+          },
+          null,
+          2
+        ),
         instructions: `GitHub Copilot Configuration:
 
 1. Copy the generated configuration
@@ -410,23 +439,27 @@ The server will be available in Claude Desktop for use.`
 3. Or use the GitHub Copilot extension settings
 4. Restart VS Code
 
-The MCP server will be available for GitHub Copilot to use.`
+The MCP server will be available for GitHub Copilot to use.`,
       },
       custom: {
         filename: "mcp_server_info.json",
-        content: JSON.stringify({
-          name: serverName,
-          description: `Generated MCP server: ${serverName}`,
-          path: serverPath,
-          command: "node",
-          args: [`${serverPath}/server.js`],
-          capabilities: ["tools", "resources", "prompts"],
-          installation: {
-            dependencies: ["@modelcontextprotocol/sdk"],
-            buildCommand: "npm install && npm run build",
-            startCommand: "node server.js"
-          }
-        }, null, 2),
+        content: JSON.stringify(
+          {
+            name: serverName,
+            description: `Generated MCP server: ${serverName}`,
+            path: serverPath,
+            command: "node",
+            args: [`${serverPath}/server.js`],
+            capabilities: ["tools", "resources", "prompts"],
+            installation: {
+              dependencies: ["@modelcontextprotocol/sdk"],
+              buildCommand: "npm install && npm run build",
+              startCommand: "node server.js",
+            },
+          },
+          null,
+          2
+        ),
         instructions: `Custom MCP Client Configuration:
 
 1. Server Location: ${serverPath}
@@ -440,8 +473,8 @@ To use with any MCP client:
 4. Start server: node server.js
 5. Connect your MCP client to the running server
 
-Server supports standard MCP protocol for tools, resources, and prompts.`
-      }
+Server supports standard MCP protocol for tools, resources, and prompts.`,
+      },
     };
 
     return configs[exportFormat];
@@ -450,12 +483,15 @@ Server supports standard MCP protocol for tools, resources, and prompts.`
   const exportMCPConfig = async () => {
     try {
       const config = generateMCPConfig();
-      addTerminalOutput("command", `$ Generating ${exportFormat.toUpperCase()} configuration...`);
-      
+      addTerminalOutput(
+        "command",
+        `$ Generating ${exportFormat.toUpperCase()} configuration...`
+      );
+
       // Create a downloadable file
-      const blob = new Blob([config.content], { type: 'application/json' });
+      const blob = new Blob([config.content], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = config.filename;
       document.body.appendChild(a);
@@ -463,12 +499,14 @@ Server supports standard MCP protocol for tools, resources, and prompts.`
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      addTerminalOutput("output", `✅ Configuration file downloaded: ${config.filename}`);
+      addTerminalOutput(
+        "output",
+        `✅ Configuration file downloaded: ${config.filename}`
+      );
       addTerminalOutput("output", "📋 Instructions copied to clipboard");
-      
+
       // Copy instructions to clipboard
       await navigator.clipboard.writeText(config.instructions);
-      
     } catch (err) {
       addTerminalOutput("error", `❌ Failed to export configuration: ${err}`);
     }
@@ -491,6 +529,28 @@ Server supports standard MCP protocol for tools, resources, and prompts.`
       addTerminalOutput("output", "📁 Folder opened in system explorer");
     } catch (err) {
       const errorMsg = `Failed to open server folder: ${
+        err instanceof Error ? err.message : String(err)
+      }`;
+      setError(errorMsg);
+      addTerminalOutput("error", `❌ ${errorMsg}`);
+    }
+  };
+
+  const openServerInVSCode = async () => {
+    try {
+      addTerminalOutput("command", "$ Opening server in VS Code...");
+
+      // Check if the function is available
+      if (!window.electronAPI || !window.electronAPI.openServerInVSCode) {
+        throw new Error(
+          "VS Code integration not available. Please restart the application and try again."
+        );
+      }
+
+      await window.electronAPI.openServerInVSCode(serverId);
+      addTerminalOutput("output", "🆚 Server opened in VS Code");
+    } catch (err) {
+      const errorMsg = `Failed to open server in VS Code: ${
         err instanceof Error ? err.message : String(err)
       }`;
       setError(errorMsg);
@@ -675,6 +735,14 @@ Server supports standard MCP protocol for tools, resources, and prompts.`
                   title="Open in Explorer"
                 >
                   <FolderOpenIcon className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={openServerInVSCode}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                  title="Open in VS Code"
+                >
+                  <CodeBracketIcon className="w-4 h-4" />
                 </button>
 
                 <button
@@ -1132,171 +1200,177 @@ Server supports standard MCP protocol for tools, resources, and prompts.`
             }
           }}
         >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 w-full max-w-2xl max-h-[80vh] overflow-y-auto"
-            >
-              {/* Dialog Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <ShareIcon className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">
-                      Export MCP Server
-                    </h3>
-                    <p className="text-sm text-slate-400">
-                      Configure for use with other MCP clients
-                    </p>
-                  </div>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+          >
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <ShareIcon className="w-4 h-4 text-white" />
                 </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">
+                    Export MCP Server
+                  </h3>
+                  <p className="text-sm text-slate-400">
+                    Configure for use with other MCP clients
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowExportDialog(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Dialog Content */}
+            <div className="p-6 space-y-6">
+              {/* Client Selection */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-3">
+                  Select MCP Client
+                </label>
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    onClick={() => setExportFormat("claude")}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      exportFormat === "claude"
+                        ? "border-indigo-500 bg-indigo-500/10"
+                        : "border-slate-600 hover:border-slate-500"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">C</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-white">
+                          Claude Desktop
+                        </h4>
+                        <p className="text-sm text-slate-400">
+                          Anthropic's Claude Desktop application
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setExportFormat("copilot")}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      exportFormat === "copilot"
+                        ? "border-indigo-500 bg-indigo-500/10"
+                        : "border-slate-600 hover:border-slate-500"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">GH</span>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-white">
+                          GitHub Copilot
+                        </h4>
+                        <p className="text-sm text-slate-400">
+                          GitHub's AI coding assistant
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setExportFormat("custom")}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      exportFormat === "custom"
+                        ? "border-indigo-500 bg-indigo-500/10"
+                        : "border-slate-600 hover:border-slate-500"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <CogIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-white">
+                          Custom MCP Client
+                        </h4>
+                        <p className="text-sm text-slate-400">
+                          Any MCP-compatible client or custom setup
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Configuration Preview */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-3">
+                  Configuration Preview
+                </label>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <SyntaxHighlighter
+                    language="json"
+                    style={vscDarkPlus}
+                    customStyle={{
+                      margin: 0,
+                      padding: 0,
+                      background: "transparent",
+                      fontSize: "12px",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    {generateMCPConfig().content}
+                  </SyntaxHighlighter>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div>
+                <label className="block text-sm font-medium text-white mb-3">
+                  Setup Instructions
+                </label>
+                <div className="bg-slate-800 rounded-lg p-4">
+                  <pre className="text-sm text-slate-300 whitespace-pre-wrap">
+                    {generateMCPConfig().instructions}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-700">
+                <button
+                  onClick={exportMCPConfig}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  Download Config
+                </button>
+
+                <button
+                  onClick={copyMCPConfig}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+                >
+                  <ClipboardDocumentIcon className="w-4 h-4" />
+                  Copy Config
+                </button>
+
                 <button
                   onClick={() => setShowExportDialog(false)}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
                 >
-                  <XMarkIcon className="w-5 h-5" />
+                  Close
                 </button>
               </div>
-
-              {/* Dialog Content */}
-              <div className="p-6 space-y-6">
-                {/* Client Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    Select MCP Client
-                  </label>
-                  <div className="grid grid-cols-1 gap-3">
-                    <button
-                      onClick={() => setExportFormat("claude")}
-                      className={`p-4 rounded-lg border-2 transition-all text-left ${
-                        exportFormat === "claude"
-                          ? "border-indigo-500 bg-indigo-500/10"
-                          : "border-slate-600 hover:border-slate-500"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">C</span>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-white">Claude Desktop</h4>
-                          <p className="text-sm text-slate-400">
-                            Anthropic's Claude Desktop application
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => setExportFormat("copilot")}
-                      className={`p-4 rounded-lg border-2 transition-all text-left ${
-                        exportFormat === "copilot"
-                          ? "border-indigo-500 bg-indigo-500/10"
-                          : "border-slate-600 hover:border-slate-500"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">GH</span>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-white">GitHub Copilot</h4>
-                          <p className="text-sm text-slate-400">
-                            GitHub's AI coding assistant
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => setExportFormat("custom")}
-                      className={`p-4 rounded-lg border-2 transition-all text-left ${
-                        exportFormat === "custom"
-                          ? "border-indigo-500 bg-indigo-500/10"
-                          : "border-slate-600 hover:border-slate-500"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                          <CogIcon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-white">Custom MCP Client</h4>
-                          <p className="text-sm text-slate-400">
-                            Any MCP-compatible client or custom setup
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Configuration Preview */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    Configuration Preview
-                  </label>
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <SyntaxHighlighter
-                      language="json"
-                      style={vscDarkPlus}
-                      customStyle={{
-                        margin: 0,
-                        padding: 0,
-                        background: "transparent",
-                        fontSize: "12px",
-                        lineHeight: "1.4",
-                      }}
-                    >
-                      {generateMCPConfig().content}
-                    </SyntaxHighlighter>
-                  </div>
-                </div>
-
-                {/* Instructions */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-3">
-                    Setup Instructions
-                  </label>
-                  <div className="bg-slate-800 rounded-lg p-4">
-                    <pre className="text-sm text-slate-300 whitespace-pre-wrap">
-                      {generateMCPConfig().instructions}
-                    </pre>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3 pt-4 border-t border-slate-700">
-                  <button
-                    onClick={exportMCPConfig}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
-                  >
-                    <ArrowDownTrayIcon className="w-4 h-4" />
-                    Download Config
-                  </button>
-
-                  <button
-                    onClick={copyMCPConfig}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
-                  >
-                    <ClipboardDocumentIcon className="w-4 h-4" />
-                    Copy Config
-                  </button>
-
-                  <button
-                    onClick={() => setShowExportDialog(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+            </div>
           </motion.div>
-        )}
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

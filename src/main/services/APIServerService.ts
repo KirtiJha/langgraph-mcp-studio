@@ -566,6 +566,9 @@ class APIServerService {
           args: [serverPath],
           env: {},
           description: server.description,
+          enabled: true,
+          autoRestart: true,
+          timeout: 30000,
         };
 
         // Add server to MCPManager

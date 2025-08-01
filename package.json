@@ -26,15 +26,35 @@
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "public/favicon.png",
+      "public/favicon.svg"
     ],
+    "extraMetadata": {
+      "name": "MCP Studio",
+      "productName": "MCP Studio"
+    },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
     },
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Development"
     }
   },
   "dependencies": {
@@ -52,6 +72,7 @@
     "@modelcontextprotocol/sdk": "^1.12.3",
     "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@xyflow/react": "^12.8.2",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
@@ -67,6 +88,7 @@
     "react-syntax-highlighter": "^15.6.1",
     "react-window": "^1.8.11",
     "react-window-infinite-loader": "^1.0.10",
+    "reactflow": "^11.11.4",
     "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "tailwindcss": "^3.4.17",

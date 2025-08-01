@@ -43,6 +43,17 @@ declare global {
         message: string;
         model?: string;
       }) => Promise<any>;
+      sendWorkflowMessage: ({
+        message,
+        workflow,
+        node,
+        model,
+      }: {
+        message: string;
+        workflow: any;
+        node?: any;
+        model?: string;
+      }) => Promise<any>;
       clearChat: () => Promise<{ success: boolean }>;
 
       // Model management
@@ -114,6 +125,53 @@ declare global {
         }>;
       }>;
       openServerFolder: (serverId: string) => Promise<void>;
+      openServerInVSCode: (serverId: string) => Promise<void>;
+
+      // MCP Server generation
+      generateMCPServer: (config: any) => Promise<any>;
+
+      // Workflow operations
+      executeWorkflow: ({
+        workflow,
+        initialData,
+        options,
+      }: {
+        workflow: any;
+        initialData?: any;
+        options?: any;
+      }) => Promise<any>;
+      clearWorkflowChat: () => Promise<any>;
+      getWorkflowExecution: (executionId: string) => Promise<any>;
+      stopWorkflowExecution: (executionId: string) => Promise<boolean>;
+      pauseWorkflowExecution: (executionId: string) => Promise<boolean>;
+      resumeWorkflowExecution: (executionId: string) => Promise<boolean>;
+      sendWorkflowChatMessage: (
+        workflowId: string,
+        message: string,
+        executionId?: string
+      ) => Promise<string>;
+      askWorkflowQuestion: (
+        workflow: any,
+        question: string,
+        context?: any
+      ) => Promise<string>;
+      analyzeWorkflow: (workflow: any) => Promise<{
+        analysis: string;
+        suggestions: string[];
+        issues: string[];
+        optimization: string[];
+      }>;
+      generateWorkflowCode: (
+        workflow: any,
+        format?: "javascript" | "python" | "json"
+      ) => Promise<string>;
+      getWorkflowTemplates: () => Promise<any[]>;
+      saveWorkflowTemplate: (
+        workflow: any,
+        templateName: string,
+        description: string
+      ) => Promise<boolean>;
+      onWorkflowEvent: (callback: (event: any) => void) => () => void;
 
       // Generic invoke method
       invoke: (channel: string, ...args: any[]) => Promise<any>;

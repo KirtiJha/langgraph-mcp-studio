@@ -15,6 +15,7 @@ const IpcChannels = {
   GET_TOOL_STATES: "get-tool-states",
   SET_TOOL_ENABLED: "set-tool-enabled",
   SEND_MESSAGE: "send-message",
+  SEND_WORKFLOW_MESSAGE: "send-workflow-message",
   CLEAR_CHAT: "clear-chat",
   GET_MODEL_CONFIGS: "get-model-configs",
   SAVE_MODEL_CONFIG: "save-model-config",
@@ -37,7 +38,10 @@ const IpcChannels = {
   WRITE_SERVER_CODE: "write-server-code",
   GET_SERVER_FILES: "get-server-files",
   OPEN_SERVER_FOLDER: "open-server-folder",
+  OPEN_SERVER_IN_VSCODE: "open-server-in-vscode",
+  GENERATE_MCP_SERVER: "generate-mcp-server",
   FETCH_USER_INFO: "fetch-user-info",
+  TEST_REMOTE_SERVER_CONNECTION: "test-remote-server-connection",
 } as const;
 
 const api = {
@@ -76,6 +80,23 @@ const api = {
   // Agent operations
   sendMessage: ({ message, model }: { message: string; model?: string }) =>
     ipcRenderer.invoke(IpcChannels.SEND_MESSAGE, { message, model }),
+  sendWorkflowMessage: ({
+    message,
+    workflow,
+    node,
+    model,
+  }: {
+    message: string;
+    workflow: any;
+    node?: any;
+    model?: string;
+  }) =>
+    ipcRenderer.invoke(IpcChannels.SEND_WORKFLOW_MESSAGE, {
+      message,
+      workflow,
+      node,
+      model,
+    }),
   clearChat: () => ipcRenderer.invoke(IpcChannels.CLEAR_CHAT),
 
   // Model management operations
@@ -188,6 +209,16 @@ const api = {
     ipcRenderer.invoke(IpcChannels.GET_SERVER_FILES, serverId),
   openServerFolder: (serverId: string) =>
     ipcRenderer.invoke(IpcChannels.OPEN_SERVER_FOLDER, serverId),
+  openServerInVSCode: (serverId: string) =>
+    ipcRenderer.invoke(IpcChannels.OPEN_SERVER_IN_VSCODE, serverId),
+
+  // MCP Server generation
+  generateMCPServer: (config: any) =>
+    ipcRenderer.invoke(IpcChannels.GENERATE_MCP_SERVER, config),
+
+  // Remote server testing
+  testRemoteServerConnection: (config: any) =>
+    ipcRenderer.invoke(IpcChannels.TEST_REMOTE_SERVER_CONNECTION, config),
 
   // Generic invoke method for API servers
   invoke: (channel: string, ...args: any[]) =>

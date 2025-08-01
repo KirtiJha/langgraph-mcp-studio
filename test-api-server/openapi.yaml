@@ -1,0 +1,1997 @@
+openapi: 3.0.3
+info:
+  title: MCP Test API Server
+  description: |
+    A comprehensive API server for testing MCP Studio functionality. 
+    Provides CRUD operations for users, chats, messages, and feedbacks with MongoDB backend.
+
+    This API is designed to be easily convertible to an MCP (Model Context Protocol) server.
+  version: 1.0.0
+  contact:
+    name: MCP Studio Team
+    email: support@mcpstudio.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3001
+    description: Development server
+  - url: https://api.mcpstudio.com
+    description: Production server
+
+tags:
+  - name: health
+    description: Health check and server status
+  - name: users
+    description: User management operations
+  - name: chats
+    description: Chat management operations
+  - name: messages
+    description: Message management operations
+  - name: feedbacks
+    description: Feedback and voting operations
+
+paths:
+  # Health endpoints
+  /api/health:
+    get:
+      tags: [health]
+      summary: Health check
+      description: Check server and database health status
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "500":
+          description: Server is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/health/db-stats:
+    get:
+      tags: [health]
+      summary: Database statistics
+      description: Get database and collection statistics
+      operationId: getDatabaseStats
+      responses:
+        "200":
+          description: Database statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatabaseStats"
+        "500":
+          description: Failed to get database statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # User endpoints
+  /api/users:
+    get:
+      tags: [users]
+      summary: Get all users
+      description: Retrieve a paginated list of all users
+      operationId: getUsers
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "500":
+          description: Failed to fetch users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      tags: [users]
+      summary: Create new user
+      description: Create a new user with email address
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateUserResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to create user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/users/{id}:
+    get:
+      tags: [users]
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      responses:
+        "200":
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      tags: [users]
+      summary: Update user
+      description: Update an existing user's information
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateResponse"
+        "400":
+          description: Invalid input or user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [users]
+      summary: Delete user
+      description: Delete a user by their ID
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: User ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      responses:
+        "200":
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to delete user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/users/email/{email}:
+    get:
+      tags: [users]
+      summary: Get user by email
+      description: Retrieve a specific user by their email address
+      operationId: getUserByEmail
+      parameters:
+        - name: email
+          in: path
+          required: true
+          description: User email address
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Chat endpoints
+  /api/chats:
+    get:
+      tags: [chats]
+      summary: Get all chats
+      description: Retrieve a paginated list of all chats
+      operationId: getChats
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Chats retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatListResponse"
+        "500":
+          description: Failed to fetch chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      tags: [chats]
+      summary: Create new chat
+      description: Create a new chat for a user
+      operationId: createChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatRequest"
+      responses:
+        "201":
+          description: Chat created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateChatResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Chat already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to create chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/chats/{id}:
+    get:
+      tags: [chats]
+      summary: Get chat by ID
+      description: Retrieve a specific chat by its ID
+      operationId: getChatById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Chat retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chat"
+        "404":
+          description: Chat not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [chats]
+      summary: Delete chat
+      description: Delete a chat and all related messages and feedbacks
+      operationId: deleteChat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Chat deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteChatResponse"
+        "404":
+          description: Chat not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to delete chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/chats/user/{userId}:
+    get:
+      tags: [chats]
+      summary: Get chats by user ID
+      description: Retrieve all chats owned by a specific user
+      operationId: getChatsByUserId
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: User chats retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatListResponse"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch user chats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/chats/{id}/permissions:
+    get:
+      tags: [chats]
+      summary: Get chat with permissions
+      description: Retrieve chat information with permission validation
+      operationId: getChatWithPermissions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: true
+          description: User ID for permission check
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+        - name: userEmail
+          in: query
+          required: true
+          description: User email for permission check
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Chat retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatPermissions"
+        "400":
+          description: Missing required parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Chat not found or access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/chats/{id}/title:
+    put:
+      tags: [chats]
+      summary: Update chat title
+      description: Update the title of a specific chat
+      operationId: updateChatTitle
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChatTitleRequest"
+      responses:
+        "200":
+          description: Chat title updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Chat not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update chat title
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/chats/{id}/share:
+    post:
+      tags: [chats]
+      summary: Share chat
+      description: Share a chat with other users
+      operationId: shareChat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareChatRequest"
+      responses:
+        "200":
+          description: Chat shared successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShareChatResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Chat not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to share chat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Message endpoints
+  /api/messages:
+    get:
+      tags: [messages]
+      summary: Get all messages
+      description: Retrieve a paginated list of all messages
+      operationId: getMessages
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+        "500":
+          description: Failed to fetch messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      tags: [messages]
+      summary: Create message
+      description: Create a new message in a chat
+      operationId: createMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMessageRequest"
+      responses:
+        "201":
+          description: Message created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateMessageResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to create message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/messages/batch:
+    post:
+      tags: [messages]
+      summary: Create multiple messages
+      description: Create multiple messages in a chat at once
+      operationId: createMessagesBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMessagesBatchRequest"
+      responses:
+        "201":
+          description: Messages created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateMessagesBatchResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to create messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/messages/{id}:
+    get:
+      tags: [messages]
+      summary: Get message by ID
+      description: Retrieve a specific message by its ID
+      operationId: getMessageById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Message ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      responses:
+        "200":
+          description: Message retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "400":
+          description: Invalid message ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      tags: [messages]
+      summary: Update message
+      description: Update an existing message
+      operationId: updateMessage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Message ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMessageRequest"
+      responses:
+        "200":
+          description: Message updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateResponse"
+        "400":
+          description: Invalid input or message ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [messages]
+      summary: Delete message
+      description: Delete a message by its ID
+      operationId: deleteMessage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Message ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      responses:
+        "200":
+          description: Message deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "400":
+          description: Invalid message ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to delete message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/messages/chat/{chatId}:
+    get:
+      tags: [messages]
+      summary: Get messages by chat ID
+      description: Retrieve all messages for a specific chat
+      operationId: getMessagesByChatId
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          description: Number of messages per page (default 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+        "500":
+          description: Failed to fetch messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [messages]
+      summary: Delete all messages for chat
+      description: Delete all messages in a specific chat
+      operationId: deleteMessagesByChatId
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Messages deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "500":
+          description: Failed to delete messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Feedback endpoints
+  /api/feedbacks:
+    get:
+      tags: [feedbacks]
+      summary: Get all feedbacks
+      description: Retrieve a paginated list of all feedbacks
+      operationId: getFeedbacks
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Feedbacks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackListResponse"
+        "500":
+          description: Failed to fetch feedbacks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/feedbacks/vote:
+    post:
+      tags: [feedbacks]
+      summary: Vote on message
+      description: Create or update a vote/feedback for a message
+      operationId: voteMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteMessageRequest"
+      responses:
+        "201":
+          description: Vote created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteMessageResponse"
+        "200":
+          description: Vote updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteMessageResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to vote on message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/feedbacks/{id}:
+    get:
+      tags: [feedbacks]
+      summary: Get feedback by ID
+      description: Retrieve a specific feedback by its ID
+      operationId: getFeedbackById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Feedback ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      responses:
+        "200":
+          description: Feedback retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "400":
+          description: Invalid feedback ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Feedback not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      tags: [feedbacks]
+      summary: Update feedback
+      description: Update an existing feedback
+      operationId: updateFeedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Feedback ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeedbackRequest"
+      responses:
+        "200":
+          description: Feedback updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateResponse"
+        "400":
+          description: Invalid input or feedback ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Feedback not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [feedbacks]
+      summary: Delete feedback
+      description: Delete a feedback by its ID
+      operationId: deleteFeedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Feedback ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      responses:
+        "200":
+          description: Feedback deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "400":
+          description: Invalid feedback ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Feedback not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to delete feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/feedbacks/chat/{chatId}:
+    get:
+      tags: [feedbacks]
+      summary: Get feedbacks by chat ID
+      description: Retrieve all feedbacks for a specific chat
+      operationId: getFeedbacksByChatId
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Page"
+        - name: limit
+          in: query
+          description: Number of feedbacks per page (default 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Feedbacks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackListResponse"
+        "500":
+          description: Failed to fetch feedbacks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      tags: [feedbacks]
+      summary: Delete all feedbacks for chat
+      description: Delete all feedbacks in a specific chat
+      operationId: deleteFeedbacksByChatId
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          description: Chat ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Feedbacks deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+        "500":
+          description: Failed to delete feedbacks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/feedbacks/user/{userId}:
+    get:
+      tags: [feedbacks]
+      summary: Get user feedback history
+      description: Retrieve feedback history for a specific user with filtering and sorting
+      operationId: getUserFeedbackHistory
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: User ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: rating
+          in: query
+          description: Filter by rating
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - name: isUpvoted
+          in: query
+          description: Filter by upvote status
+          schema:
+            type: boolean
+        - name: hasJiraIssue
+          in: query
+          description: Filter by Jira issue presence
+          schema:
+            type: boolean
+        - name: sortBy
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [createdAt, rating, lastModifiedAt]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        "200":
+          description: User feedback history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserFeedbackHistoryResponse"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to fetch user feedback history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/feedbacks/{id}/jira:
+    put:
+      tags: [feedbacks]
+      summary: Update Jira issue in feedback
+      description: Update Jira issue information associated with a feedback
+      operationId: updateJiraIssueInFeedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Feedback ID (ObjectId)
+          schema:
+            type: string
+            pattern: "^[0-9a-fA-F]{24}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJiraIssueRequest"
+      responses:
+        "200":
+          description: Jira issue updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateResponse"
+        "400":
+          description: Invalid input or feedback ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Feedback not found or has no Jira issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Failed to update Jira issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number for pagination (optional - only used when both page and limit are provided)
+      schema:
+        type: integer
+        minimum: 1
+
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page (optional - only used when both page and limit are provided, max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+
+  schemas:
+    # Basic types
+    ObjectId:
+      type: string
+      pattern: "^[0-9a-fA-F]{24}$"
+      description: MongoDB ObjectId
+
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 timestamp
+
+    # Error responses
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Detailed error message
+
+    # Pagination (optional - only when page and limit are both provided)
+    PaginationOptional:
+      type: object
+      properties:
+        current:
+          type: integer
+          description: Current page number
+        total:
+          type: integer
+          description: Total number of pages
+        count:
+          type: integer
+          description: Number of items in current page
+        totalRecords:
+          type: integer
+          description: Total number of records
+
+    # Base list response without pagination
+    BaseListResponse:
+      type: object
+      required:
+        - totalRecords
+      properties:
+        totalRecords:
+          type: integer
+          description: Total number of records in the collection
+
+    # List response with optional pagination
+    ListResponseWithOptionalPagination:
+      type: object
+      properties:
+        totalRecords:
+          type: integer
+          description: Total number of records (always present)
+        pagination:
+          $ref: "#/components/schemas/PaginationOptional"
+
+    # Health schemas
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - database
+        - timestamp
+        - uptime
+        - memory
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        database:
+          type: string
+          enum: [connected, disconnected]
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+        uptime:
+          type: number
+          description: Server uptime in seconds
+        memory:
+          type: object
+          properties:
+            rss:
+              type: number
+            heapTotal:
+              type: number
+            heapUsed:
+              type: number
+            external:
+              type: number
+        version:
+          type: string
+          description: Node.js version
+
+    DatabaseStats:
+      type: object
+      required:
+        - databaseStats
+        - collectionStats
+        - timestamp
+      properties:
+        databaseStats:
+          type: object
+          properties:
+            dbName:
+              type: string
+            collections:
+              type: integer
+            dataSize:
+              type: number
+            storageSize:
+              type: number
+            indexes:
+              type: integer
+        collectionStats:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: integer
+              error:
+                type: string
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+
+    # User schemas
+    User:
+      type: object
+      required:
+        - _id
+        - email
+        - createdAt
+      properties:
+        _id:
+          $ref: "#/components/schemas/ObjectId"
+        email:
+          type: string
+          format: email
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        updatedAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    UpdateUserRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+
+    CreateUserResponse:
+      type: object
+      required:
+        - message
+        - user
+      properties:
+        message:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    UserListResponse:
+      type: object
+      required:
+        - users
+        - totalRecords
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        totalRecords:
+          type: integer
+          description: Total number of users in the collection
+        pagination:
+          $ref: "#/components/schemas/PaginationOptional"
+
+    # Chat schemas
+    SharedUser:
+      type: object
+      required:
+        - userId
+        - name
+        - email
+        - addedAt
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        addedAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    Chat:
+      type: object
+      required:
+        - _id
+        - id
+        - title
+        - userId
+        - createdAt
+        - lastModifiedAt
+        - visibility
+        - sharedWith
+      properties:
+        _id:
+          $ref: "#/components/schemas/ObjectId"
+        id:
+          type: string
+          description: Custom chat ID
+        title:
+          type: string
+        userId:
+          $ref: "#/components/schemas/ObjectId"
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        lastModifiedAt:
+          $ref: "#/components/schemas/Timestamp"
+        visibility:
+          type: string
+          enum: [private, shared]
+        sharedWith:
+          type: array
+          items:
+            $ref: "#/components/schemas/SharedUser"
+
+    CreateChatRequest:
+      type: object
+      required:
+        - id
+        - userId
+        - title
+      properties:
+        id:
+          type: string
+          description: Custom chat ID
+        userId:
+          $ref: "#/components/schemas/ObjectId"
+        title:
+          type: string
+
+    UpdateChatTitleRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+
+    ShareChatRequest:
+      type: object
+      required:
+        - userId
+        - usersToShareWith
+      properties:
+        userId:
+          type: string
+        usersToShareWith:
+          type: array
+          items:
+            type: object
+            required:
+              - userId
+              - name
+              - email
+            properties:
+              userId:
+                type: string
+              name:
+                type: string
+              email:
+                type: string
+                format: email
+
+    CreateChatResponse:
+      type: object
+      required:
+        - message
+        - chat
+      properties:
+        message:
+          type: string
+        chat:
+          $ref: "#/components/schemas/Chat"
+
+    ShareChatResponse:
+      type: object
+      required:
+        - message
+        - success
+      properties:
+        message:
+          type: string
+        success:
+          type: boolean
+
+    ChatListResponse:
+      type: object
+      required:
+        - chats
+        - totalRecords
+      properties:
+        chats:
+          type: array
+          items:
+            $ref: "#/components/schemas/Chat"
+        totalRecords:
+          type: integer
+          description: Total number of chats in the collection
+        pagination:
+          $ref: "#/components/schemas/PaginationOptional"
+
+    ChatPermissions:
+      type: object
+      required:
+        - title
+        - visibility
+        - sharedWith
+        - createdAt
+        - lastModifiedAt
+      properties:
+        title:
+          type: string
+        visibility:
+          type: string
+          enum: [private, shared]
+        sharedWith:
+          type: array
+          items:
+            $ref: "#/components/schemas/SharedUser"
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        lastModifiedAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    DeleteChatResponse:
+      type: object
+      required:
+        - message
+        - deletedCounts
+      properties:
+        message:
+          type: string
+        deletedCounts:
+          type: object
+          required:
+            - chats
+            - messages
+            - feedbacks
+          properties:
+            chats:
+              type: integer
+            messages:
+              type: integer
+            feedbacks:
+              type: integer
+
+    # Message schemas
+    Message:
+      type: object
+      required:
+        - _id
+        - chatId
+        - content
+        - createdAt
+        - updatedAt
+      properties:
+        _id:
+          $ref: "#/components/schemas/ObjectId"
+        chatId:
+          type: string
+        content:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        updatedAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    CreateMessageRequest:
+      type: object
+      required:
+        - chatId
+        - content
+      properties:
+        chatId:
+          type: string
+        content:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    UpdateMessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        metadata:
+          type: object
+          additionalProperties: true
+
+    CreateMessagesBatchRequest:
+      type: object
+      required:
+        - chatId
+        - messages
+      properties:
+        chatId:
+          type: string
+        messages:
+          type: array
+          items:
+            type: object
+            required:
+              - content
+            properties:
+              content:
+                type: string
+              role:
+                type: string
+                enum: [user, assistant, system]
+              metadata:
+                type: object
+                additionalProperties: true
+              createdAt:
+                $ref: "#/components/schemas/Timestamp"
+
+    CreateMessageResponse:
+      type: object
+      required:
+        - message
+        - data
+      properties:
+        message:
+          type: string
+        data:
+          $ref: "#/components/schemas/Message"
+
+    CreateMessagesBatchResponse:
+      type: object
+      required:
+        - message
+        - insertedCount
+        - insertedIds
+      properties:
+        message:
+          type: string
+        insertedCount:
+          type: integer
+        insertedIds:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ObjectId"
+
+    MessageListResponse:
+      type: object
+      required:
+        - messages
+        - totalRecords
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        totalRecords:
+          type: integer
+          description: Total number of messages in the collection
+        pagination:
+          $ref: "#/components/schemas/PaginationOptional"
+
+    # Feedback schemas
+    JiraIssue:
+      type: object
+      required:
+        - issueKey
+        - issueId
+        - issueUrl
+        - summary
+        - description
+        - status
+        - priority
+        - labels
+        - createdDate
+      properties:
+        issueKey:
+          type: string
+        issueId:
+          type: string
+        issueUrl:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        assignee:
+          type: string
+        priority:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        attachments:
+          type: array
+          items:
+            type: string
+        createdDate:
+          $ref: "#/components/schemas/Timestamp"
+
+    Feedback:
+      type: object
+      required:
+        - _id
+        - chatId
+        - messageId
+        - userId
+        - comments
+        - rating
+        - isUpvoted
+        - hasJiraIssue
+        - createdAt
+        - lastModifiedAt
+      properties:
+        _id:
+          $ref: "#/components/schemas/ObjectId"
+        chatId:
+          type: string
+        messageId:
+          type: string
+        userId:
+          $ref: "#/components/schemas/ObjectId"
+        comments:
+          type: string
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 5
+        isUpvoted:
+          type: boolean
+        hasJiraIssue:
+          type: boolean
+        jiraIssue:
+          $ref: "#/components/schemas/JiraIssue"
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        lastModifiedAt:
+          $ref: "#/components/schemas/Timestamp"
+
+    VoteMessageRequest:
+      type: object
+      required:
+        - chatId
+        - messageId
+        - userId
+        - type
+      properties:
+        chatId:
+          type: string
+        messageId:
+          type: string
+        userId:
+          $ref: "#/components/schemas/ObjectId"
+        type:
+          type: string
+          enum: [up, down]
+        comments:
+          type: string
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 5
+        jiraIssue:
+          $ref: "#/components/schemas/JiraIssue"
+
+    UpdateFeedbackRequest:
+      type: object
+      properties:
+        comments:
+          type: string
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 5
+        isUpvoted:
+          type: boolean
+        hasJiraIssue:
+          type: boolean
+        jiraIssue:
+          $ref: "#/components/schemas/JiraIssue"
+
+    UpdateJiraIssueRequest:
+      type: object
+      properties:
+        status:
+          type: string
+        assignee:
+          type: string
+        priority:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        attachments:
+          type: array
+          items:
+            type: string
+
+    VoteMessageResponse:
+      type: object
+      required:
+        - message
+        - result
+        - action
+      properties:
+        message:
+          type: string
+        result:
+          type: object
+        action:
+          type: string
+          enum: [created, updated]
+        insertedId:
+          $ref: "#/components/schemas/ObjectId"
+
+    FeedbackListResponse:
+      type: object
+      required:
+        - feedbacks
+        - totalRecords
+      properties:
+        feedbacks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Feedback"
+        totalRecords:
+          type: integer
+          description: Total number of feedbacks in the collection
+        pagination:
+          $ref: "#/components/schemas/PaginationOptional"
+
+    UserFeedbackHistoryResponse:
+      type: object
+      required:
+        - feedbacks
+        - totalRecords
+      properties:
+        feedbacks:
+          type: array
+          items:
+            allOf:
+              - $ref: "#/components/schemas/Feedback"
+              - type: object
+                properties:
+                  id:
+                    type: string
+        totalRecords:
+          type: integer
+          description: Total number of feedbacks for the user
+        pagination:
+          allOf:
+            - $ref: "#/components/schemas/PaginationOptional"
+            - type: object
+              properties:
+                hasNextPage:
+                  type: boolean
+                hasPreviousPage:
+                  type: boolean
+
+    # Generic response schemas
+    UpdateResponse:
+      type: object
+      required:
+        - message
+        - modifiedCount
+      properties:
+        message:
+          type: string
+        modifiedCount:
+          type: integer
+
+    DeleteResponse:
+      type: object
+      required:
+        - message
+        - deletedCount
+      properties:
+        message:
+          type: string
+        deletedCount:
+          type: integer
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+security:
+  - bearerAuth: []

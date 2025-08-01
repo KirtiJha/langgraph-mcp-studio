@@ -76,6 +76,18 @@ const Navigation: React.FC<NavigationProps> = ({
       icon: CommandLineIcon,
       description: "System logs",
     },
+    {
+      id: "workflows",
+      label: "Workflows",
+      icon: CubeIcon,
+      description: "Visual workflow editor",
+    },
+    {
+      id: "flow-test",
+      label: "Flow Test",
+      icon: WrenchScrewdriverIcon,
+      description: "ReactFlow debug view",
+    },
   ];
 
   // Debug logging for navItems
