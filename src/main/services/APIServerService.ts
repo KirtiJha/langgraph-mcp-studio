@@ -103,9 +103,44 @@ class APIServerService {
       if (configExists) {
         const configData = await fs.readFile(this.configPath, "utf-8");
         const servers: APIServerConfig[] = JSON.parse(configData);
-        servers.forEach((server) => {
+
+        for (const server of servers) {
           this.apiServers.set(server.id, server);
-        });
+
+          // Register each API server with MCP Manager so it appears in the server list
+          if (this.mcpManager) {
+            try {
+              const serverPath = path.join(
+                process.cwd(),
+                "servers",
+                server.id,
+                "server.js"
+              );
+              const mcpServerConfig = {
+                id: server.id,
+                name: server.name,
+                type: "stdio" as const,
+                command: "node",
+                args: [serverPath],
+                env: {},
+                description: server.description,
+                enabled: true,
+                autoRestart: false, // Don't auto-restart on startup
+                timeout: 30000,
+              };
+
+              await this.mcpManager.addServer(mcpServerConfig);
+              console.log(
+                `🔗 Registered API server with MCP Manager: ${server.name}`
+              );
+            } catch (error) {
+              console.warn(
+                `Failed to register API server ${server.name}:`,
+                error
+              );
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to load saved servers:", error);
@@ -557,22 +592,28 @@ class APIServerService {
 
       // Register with MCPManager if available
       if (this.mcpManager) {
-        console.log(`🔗 Registering server ${serverId} with MCP Manager...`);
-        const mcpServerConfig = {
-          id: serverId,
-          name: server.name,
-          type: "stdio" as const,
-          command: "node",
-          args: [serverPath],
-          env: {},
-          description: server.description,
-          enabled: true,
-          autoRestart: true,
-          timeout: 30000,
-        };
+        console.log(`🔗 Connecting server ${serverId} to MCP Manager...`);
 
-        // Add server to MCPManager
-        await this.mcpManager.addServer(mcpServerConfig);
+        // Check if server is already registered
+        const existingServer = this.mcpManager.getServerConfig(serverId);
+        if (!existingServer) {
+          console.log(`🆕 Server not registered, adding to MCP Manager...`);
+          const mcpServerConfig = {
+            id: serverId,
+            name: server.name,
+            type: "stdio" as const,
+            command: "node",
+            args: [serverPath],
+            env: {},
+            description: server.description,
+            enabled: true,
+            autoRestart: true,
+            timeout: 30000,
+          };
+
+          // Add server to MCPManager
+          await this.mcpManager.addServer(mcpServerConfig);
+        }
 
         // Connect to the server
         try {

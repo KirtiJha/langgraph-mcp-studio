@@ -33,6 +33,7 @@ export class MCPManager extends EventEmitter {
     super();
     this.store = store;
     this.loggingService = loggingService;
+
     this.loadServers();
     // Auto-start sequential thinking server
     this.ensureSequentialThinkingServer();
@@ -101,13 +102,29 @@ export class MCPManager extends EventEmitter {
 
   private loadServers() {
     const savedServers: ServerConfig[] = this.store.get("servers", []);
-    savedServers.forEach((config: ServerConfig) => {
+    console.log(
+      `🔍 MCPManager: Loading ${savedServers.length} servers from store`
+    );
+    console.log(
+      `🔍 MCPManager: Raw store data:`,
+      JSON.stringify(savedServers, null, 2)
+    );
+
+    savedServers.forEach((config: ServerConfig, index) => {
+      console.log(
+        `📋 Loading server ${index + 1}: ${config.name} (ID: ${config.id})`
+      );
       this.servers.set(config.id!, {
         id: config.id!,
         name: config.name,
         connected: false,
       });
     });
+
+    console.log(
+      `✅ MCPManager: Loaded ${this.servers.size} servers into memory`
+    );
+    console.log(`📊 Servers in memory:`, Array.from(this.servers.keys()));
   }
 
   async addServer(config: ServerConfig): Promise<ServerStatus> {
@@ -138,7 +155,19 @@ export class MCPManager extends EventEmitter {
   }
 
   listServers(): ServerStatus[] {
-    return Array.from(this.servers.values());
+    const serverList = Array.from(this.servers.values());
+    console.log(
+      `📋 MCPManager: listServers() called, returning ${serverList.length} servers`
+    );
+    console.log(
+      `📊 Server details:`,
+      serverList.map((s) => ({
+        id: s.id,
+        name: s.name,
+        connected: s.connected,
+      }))
+    );
+    return serverList;
   }
 
   async connectServer(id: string): Promise<void> {

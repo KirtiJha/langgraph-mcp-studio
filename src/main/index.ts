@@ -24,7 +24,7 @@ import { IpcChannels } from "../shared/types";
 import { loggingService } from "./services/LoggingService";
 import APIServerService from "./services/APIServerService";
 
-// Set app name and metadata
+// Set app name and metadata - use "MCP Studio" to match existing data location
 app.setName("MCP Studio");
 if (process.platform === "darwin") {
   // macOS specific: Set app name in dock
@@ -41,7 +41,10 @@ let agent: LangGraphAgent; // For regular AI chat
 let workflowAgent: WorkflowAgent; // For workflow-specific operations
 let apiServerService: APIServerService;
 let oauth2Server: http.Server | null = null;
-const store = new Store();
+const store = new Store({
+  name: "config", // This will create/read from 'config.json' in the app data directory
+  // This should match the existing data location for MCP Studio
+});
 
 // Simple OAuth2 callback server
 function createOAuth2Server() {
@@ -342,6 +345,15 @@ app.whenReady().then(async () => {
     }
   });
 
+  // Debug: Log store information
+  console.log("🔍 Store path:", (store as any).path);
+  console.log("🔍 Store size:", (store as any).size);
+  console.log(
+    "🔍 Store contents:",
+    JSON.stringify((store as any).store, null, 2)
+  );
+  console.log("🔍 Servers in store:", (store as any).get("servers", []));
+
   // Initialize MCP Manager
   mcpManager = new MCPManager(store, loggingService);
   loggingService.log("MCP Manager initialized", { timestamp: new Date() });
@@ -426,7 +438,7 @@ async function testRemoteServerConnection(config: {
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "User-Agent": "MCP-Studio/1.0.0",
+      "User-Agent": "LangGraph-MCP-Client/1.0.0",
       ...config.headers,
     };
 
@@ -1121,7 +1133,7 @@ Help the user understand or work with this workflow. Use available MCP tools whe
         const headers = {
           "Content-Type": "application/x-www-form-urlencoded",
           Accept: "application/json",
-          "User-Agent": "MCP-Studio/1.0",
+          "User-Agent": "LangGraph-MCP-Client/1.0",
         };
 
         // Create HTTPS agent that ignores SSL certificate errors for development

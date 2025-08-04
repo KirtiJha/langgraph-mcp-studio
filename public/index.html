@@ -3,44 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MCP Studio - Your Model Context Protocol Command Center</title>
+    <title>MCP Studio - Enterprise Model Context Protocol Command Center</title>
     <meta
       name="description"
-      content="Transform any public API into a powerful MCP server tool for your AI assistant. Modern desktop application with OAuth2 authentication, real-time testing, and seamless AI integration."
+      content="Transform any public API into a powerful MCP server tool for your AI assistant. Enterprise desktop application with multi-model AI routing, OAuth2 authentication, Postman integration, and seamless enterprise SSO."
     />
     <meta
       name="keywords"
-      content="MCP, Model Context Protocol, AI assistant, API conversion, OAuth2, desktop app, electron"
+      content="MCP, Model Context Protocol, AI assistant, API conversion, OAuth2, enterprise SSO, desktop app, electron, TypeScript, multi-model AI"
     />
 
     <!-- Open Graph Meta Tags -->
     <meta
       property="og:title"
-      content="MCP Studio - Your Model Context Protocol Command Center"
+      content="MCP Studio - Enterprise Model Context Protocol Command Center"
     />
     <meta
       property="og:description"
-      content="Transform any public API into a powerful MCP server tool for your AI assistant."
+      content="Transform any public API into a powerful MCP server tool for your AI assistant with enterprise features."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:image"
-      content="https://via.placeholder.com/1200x630/1e293b/f1f5f9?text=MCP+Studio"
+      content="https://via.placeholder.com/1200x630/0f0f0f/6366f1?text=MCP+Studio+Enterprise"
     />
 
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
-      content="MCP Studio - Your Model Context Protocol Command Center"
+      content="MCP Studio - Enterprise Model Context Protocol Command Center"
     />
     <meta
       name="twitter:description"
-      content="Transform any public API into a powerful MCP server tool for your AI assistant."
+      content="Transform any public API into a powerful MCP server tool for your AI assistant with enterprise features."
     />
     <meta
       name="twitter:image"
-      content="https://via.placeholder.com/1200x630/1e293b/f1f5f9?text=MCP+Studio"
+      content="https://via.placeholder.com/1200x630/0f0f0f/6366f1?text=MCP+Studio+Enterprise"
     />
 
     <!-- Favicon -->
@@ -57,13 +57,63 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: "#6366f1",
+                50: "#eef2ff",
+                100: "#e0e7ff",
+                200: "#c7d2fe",
+                300: "#a5b4fc",
+                400: "#818cf8",
+                500: "#6366f1",
+                600: "#4f46e5",
+                700: "#4338ca",
+                800: "#3730a3",
+                900: "#312e81",
+              },
+              secondary: {
+                DEFAULT: "#ec4899",
+                50: "#fdf2f8",
+                100: "#fce7f3",
+                200: "#fbcfe8",
+                300: "#f9a8d4",
+                400: "#f472b6",
+                500: "#ec4899",
+                600: "#db2777",
+                700: "#be185d",
+                800: "#9d174d",
+                900: "#831843",
+              },
+              dark: {
+                DEFAULT: "#0f0f0f",
+                50: "#f5f5f5",
+                100: "#ebebeb",
+                200: "#d1d1d1",
+                300: "#b7b7b7",
+                400: "#8a8a8a",
+                500: "#5c5c5c",
+                600: "#404040",
+                700: "#2a2a2a",
+                800: "#1a1a1a",
+                900: "#0f0f0f",
+              },
+            },
+          },
+        },
+      };
+    </script>
 
     <!-- Custom CSS -->
     <style>
       :root {
-        --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        --gradient-secondary: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);
+        --gradient-accent: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+        --gradient-dark: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
       }
 
       * {
@@ -72,18 +122,28 @@
       }
 
       .gradient-text {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--gradient-primary);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
       }
 
       .gradient-bg {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--gradient-primary);
+      }
+
+      .gradient-dark-bg {
+        background: var(--gradient-dark);
       }
 
       .glass-effect {
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(16px);
+        background: rgba(15, 15, 15, 0.8);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+      }
+
+      .glass-light {
+        backdrop-filter: blur(16px);
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
       }
@@ -95,15 +155,16 @@
       @keyframes float {
         0%,
         100% {
-          transform: translateY(0px);
+          transform: translateY(0px) rotate(0deg);
         }
         50% {
-          transform: translateY(-20px);
+          transform: translateY(-20px) rotate(2deg);
         }
       }
 
       .fade-in {
-        animation: fadeIn 0.8s ease-in-out;
+        animation: fadeIn 0.8s ease-in-out forwards;
+        opacity: 0;
       }
 
       @keyframes fadeIn {
@@ -122,32 +183,50 @@
       }
 
       .feature-card {
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         transform: translateY(0);
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.9) 0%,
+          rgba(249, 250, 251, 0.9) 100%
+        );
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(99, 102, 241, 0.1);
       }
 
       .feature-card:hover {
         transform: translateY(-10px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 25px 50px rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.2);
       }
 
       .download-button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        transition: all 0.3s ease;
+        background: var(--gradient-primary);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         transform: translateY(0);
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
       }
 
       .download-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(99, 102, 241, 0.4);
+      }
+
+      .download-button:active {
+        transform: translateY(-1px) scale(0.98);
       }
 
       .stat-counter {
         transition: all 0.3s ease;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
 
       .nav-link {
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
       }
 
@@ -158,8 +237,9 @@
         left: 0;
         width: 0;
         height: 2px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        transition: width 0.3s ease;
+        background: var(--gradient-primary);
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 1px;
       }
 
       .nav-link:hover::after {
@@ -167,65 +247,173 @@
       }
 
       .tech-badge {
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.8) 0%,
+          rgba(249, 250, 251, 0.8) 100%
+        );
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(99, 102, 241, 0.1);
       }
 
       .tech-badge:hover {
-        transform: scale(1.1);
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.2);
+      }
+
+      .glass-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      .pulse-animation {
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      .slide-up {
+        animation: slideUp 0.6s ease-out forwards;
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      @keyframes slideUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .glow-effect {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .glow-effect::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: conic-gradient(
+          from 0deg,
+          transparent,
+          rgba(99, 102, 241, 0.1),
+          transparent
+        );
+        animation: rotate 4s linear infinite;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .glow-effect:hover::before {
+        opacity: 1;
+      }
+
+      @keyframes rotate {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
   <body class="bg-gray-50 scroll-smooth">
     <!-- Navigation -->
     <nav
-      class="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-gray-200/20"
+      class="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-primary-200/20"
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-2">
-            <div
-              class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center"
-            >
-              <svg
-                class="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div class="flex items-center space-x-3">
+            <!-- MCP Studio Logo with M letter -->
+            <div class="relative w-8 h-8">
+              <!-- Glowing background effect -->
+              <div
+                class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-lg blur-lg opacity-30 animate-pulse"
+              ></div>
+              <!-- Main logo container -->
+              <div
+                class="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-xl border border-indigo-400/20"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
+                <!-- MCP Logo - stylized M with circuit pattern -->
+                <svg
+                  class="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <!-- M letter with modern geometric design -->
+                  <path
+                    d="M3 20V4h3l3 8.5L12 4h3v16h-3v-9l-2.5 7h-1L6 11v9H3z"
+                    fill="white"
+                    class="drop-shadow-sm"
+                  />
+                  <!-- Circuit elements -->
+                  <circle cx="18" cy="6" r="1" fill="white" opacity="0.8" />
+                  <circle cx="18" cy="18" r="1" fill="white" opacity="0.8" />
+                  <path
+                    d="M18 7v4M18 13v4"
+                    stroke="white"
+                    stroke-width="0.5"
+                    opacity="0.6"
+                  />
+                  <path
+                    d="M16 8h4M16 16h4"
+                    stroke="white"
+                    stroke-width="0.5"
+                    opacity="0.6"
+                  />
+                </svg>
+              </div>
             </div>
-            <span class="text-xl font-bold text-gray-900">MCP Studio</span>
+            <span class="text-xl font-bold text-white">MCP Studio</span>
           </div>
           <div class="hidden md:flex space-x-8">
             <a
               href="#features"
-              class="nav-link text-gray-700 hover:text-gray-900 font-medium"
+              class="nav-link text-white/80 hover:text-white font-medium"
               >Features</a
             >
             <a
               href="#how-it-works"
-              class="nav-link text-gray-700 hover:text-gray-900 font-medium"
+              class="nav-link text-white/80 hover:text-white font-medium"
               >How It Works</a
             >
             <a
               href="#tech-stack"
-              class="nav-link text-gray-700 hover:text-gray-900 font-medium"
+              class="nav-link text-white/80 hover:text-white font-medium"
               >Tech Stack</a
             >
             <a
               href="#download"
-              class="nav-link text-gray-700 hover:text-gray-900 font-medium"
+              class="nav-link text-white/80 hover:text-white font-medium"
               >Download</a
             >
           </div>
           <div class="md:hidden">
-            <button class="text-gray-700 hover:text-gray-900">
+            <button
+              class="text-white/80 hover:text-white"
+              aria-label="Open mobile menu"
+            >
               <svg
                 class="w-6 h-6"
                 fill="none"
@@ -247,33 +435,55 @@
 
     <!-- Hero Section -->
     <section
-      class="pt-20 pb-16 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen flex items-center"
+      class="pt-20 pb-16 gradient-dark-bg min-h-screen flex items-center relative overflow-hidden"
     >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <!-- Background Gradient Orbs -->
+      <div class="absolute inset-0 overflow-hidden">
+        <div
+          class="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-20 blur-3xl bg-gradient-to-br from-primary-400 to-secondary-400"
+        ></div>
+        <div
+          class="absolute -bottom-40 -left-40 w-80 h-80 rounded-full opacity-20 blur-3xl bg-gradient-to-tr from-primary-500 to-primary-300"
+        ></div>
+        <div
+          class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10 blur-3xl bg-gradient-to-r from-secondary-400 to-primary-400"
+        ></div>
+      </div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div class="space-y-8 fade-in">
-            <div class="space-y-4">
-              <h1
-                class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight"
+            <div class="space-y-6">
+              <div
+                class="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 text-sm text-white/90"
               >
-                Your
-                <span class="gradient-text">Model Context Protocol</span>
-                Command Center
+                <div
+                  class="w-2 h-2 bg-green-400 rounded-full pulse-animation"
+                ></div>
+                <span>Enterprise Model Context Protocol Platform</span>
+              </div>
+
+              <h1
+                class="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight"
+              >
+                Transform APIs into
+                <span class="gradient-text block">Intelligent AI Tools</span>
               </h1>
-              <p class="text-xl text-gray-600 leading-relaxed">
-                Transform any public API into a powerful MCP server tool for
-                your AI assistant. Modern desktop application with OAuth2
-                authentication, real-time testing, and seamless AI integration.
+              <p class="text-xl text-white/80 leading-relaxed max-w-2xl">
+                The ultimate enterprise desktop application for converting any
+                public API into powerful MCP server tools. Features multi-model
+                AI routing, enterprise SSO, Postman integration, and real-time
+                collaboration.
               </p>
             </div>
 
             <div class="flex flex-col sm:flex-row gap-4">
               <a
                 href="#download"
-                class="download-button text-white px-8 py-4 rounded-lg font-semibold text-lg inline-flex items-center justify-center space-x-2"
+                class="download-button text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center space-x-2 group"
               >
                 <svg
-                  class="w-5 h-5"
+                  class="w-5 h-5 group-hover:scale-110 transition-transform duration-200"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -285,14 +495,14 @@
                     d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                <span>Download Now</span>
+                <span>Download Free</span>
               </a>
               <a
                 href="#features"
-                class="bg-white text-gray-900 px-8 py-4 rounded-lg font-semibold text-lg border border-gray-200 hover:bg-gray-50 transition-colors inline-flex items-center justify-center space-x-2"
+                class="glass-card text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/20 transition-all duration-300 inline-flex items-center justify-center space-x-2 group"
               >
                 <svg
-                  class="w-5 h-5"
+                  class="w-5 h-5 group-hover:rotate-12 transition-transform duration-200"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -301,31 +511,33 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                   />
                 </svg>
-                <span>Learn More</span>
+                <span>Explore Features</span>
               </a>
             </div>
 
             <div class="flex items-center space-x-8 pt-4">
               <div class="text-center">
-                <div class="stat-counter text-3xl font-bold text-gray-900">
+                <div class="stat-counter text-3xl font-bold text-white">
                   1000+
                 </div>
-                <div class="text-sm text-gray-600">Public APIs</div>
+                <div class="text-sm text-white/70">Public APIs</div>
               </div>
               <div class="text-center">
-                <div class="stat-counter text-3xl font-bold text-gray-900">
-                  5
-                </div>
-                <div class="text-sm text-gray-600">OAuth Providers</div>
+                <div class="stat-counter text-3xl font-bold text-white">5+</div>
+                <div class="text-sm text-white/70">AI Models</div>
               </div>
               <div class="text-center">
-                <div class="stat-counter text-3xl font-bold text-gray-900">
+                <div class="stat-counter text-3xl font-bold text-white">8</div>
+                <div class="text-sm text-white/70">Auth Providers</div>
+              </div>
+              <div class="text-center">
+                <div class="stat-counter text-3xl font-bold text-white">
                   100%
                 </div>
-                <div class="text-sm text-gray-600">Open Source</div>
+                <div class="text-sm text-white/70">Open Source</div>
               </div>
             </div>
           </div>
@@ -333,58 +545,92 @@
           <div class="relative">
             <div class="floating-animation">
               <div
-                class="relative bg-white rounded-2xl shadow-2xl overflow-hidden"
+                class="relative glass-card rounded-2xl shadow-2xl overflow-hidden glow-effect"
               >
-                <div class="bg-gray-100 px-4 py-3 flex items-center space-x-2">
-                  <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <div class="ml-4 text-sm text-gray-600">MCP Studio</div>
+                <!-- App Window Header -->
+                <div
+                  class="bg-dark-800/90 px-4 py-3 flex items-center space-x-2 border-b border-white/10"
+                >
+                  <div class="w-3 h-3 bg-red-400 rounded-full"></div>
+                  <div class="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                  <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                  <div class="ml-4 text-sm text-white/80 font-medium">
+                    MCP Studio Enterprise
+                  </div>
                 </div>
-                <div class="p-6">
+
+                <!-- App Content -->
+                <div class="p-6 bg-dark-900/50">
                   <div class="space-y-4">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <div class="text-sm text-gray-600">
+                    <!-- Server Status Cards -->
+                    <div
+                      class="flex items-center space-x-3 p-3 rounded-lg bg-white/5 border border-white/10"
+                    >
+                      <div
+                        class="w-2 h-2 bg-green-400 rounded-full pulse-animation"
+                      ></div>
+                      <div class="text-sm text-white/90 flex-1">
                         Weather API Server
                       </div>
                       <div
-                        class="ml-auto text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                        class="text-xs bg-green-400/20 text-green-300 px-2 py-1 rounded border border-green-400/30"
                       >
                         Connected
                       </div>
                     </div>
-                    <div class="flex items-center space-x-2">
-                      <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <div class="text-sm text-gray-600">
+
+                    <div
+                      class="flex items-center space-x-3 p-3 rounded-lg bg-white/5 border border-white/10"
+                    >
+                      <div
+                        class="w-2 h-2 bg-green-400 rounded-full pulse-animation"
+                      ></div>
+                      <div class="text-sm text-white/90 flex-1">
                         Translation API Server
                       </div>
                       <div
-                        class="ml-auto text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                        class="text-xs bg-green-400/20 text-green-300 px-2 py-1 rounded border border-green-400/30"
                       >
                         Connected
                       </div>
                     </div>
-                    <div class="flex items-center space-x-2">
-                      <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <div class="text-sm text-gray-600">News API Server</div>
+
+                    <div
+                      class="flex items-center space-x-3 p-3 rounded-lg bg-white/5 border border-white/10"
+                    >
                       <div
-                        class="ml-auto text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded"
+                        class="w-2 h-2 bg-blue-400 rounded-full pulse-animation"
+                      ></div>
+                      <div class="text-sm text-white/90 flex-1">
+                        News API Server
+                      </div>
+                      <div
+                        class="text-xs bg-blue-400/20 text-blue-300 px-2 py-1 rounded border border-blue-400/30"
                       >
                         Starting
                       </div>
                     </div>
                   </div>
-                  <div class="mt-6 bg-gray-50 rounded-lg p-4">
-                    <div class="text-sm text-gray-600 mb-2">AI Assistant</div>
-                    <div class="text-xs text-gray-500">
-                      What's the weather in Tokyo?
+
+                  <!-- AI Chat Demo -->
+                  <div
+                    class="mt-6 bg-white/5 rounded-lg p-4 border border-white/10"
+                  >
+                    <div
+                      class="text-sm text-white/80 mb-3 flex items-center space-x-2"
+                    >
+                      <div class="w-2 h-2 bg-primary-400 rounded-full"></div>
+                      <span>AI Assistant Chat</span>
+                    </div>
+                    <div class="text-xs text-white/60 mb-2">
+                      💬 What's the weather in Tokyo and translate "Hello" to
+                      Japanese?
                     </div>
                     <div
-                      class="mt-2 text-xs bg-white px-3 py-2 rounded border-l-4 border-blue-500"
+                      class="text-xs bg-primary-500/20 text-primary-200 px-3 py-2 rounded border-l-4 border-primary-400"
                     >
-                      Using Weather API tool... Current temperature in Tokyo:
-                      22°C, Clear skies
+                      🌤️ Tokyo: 22°C, Clear skies<br />
+                      🇯🇵 "Hello" in Japanese: "こんにちは" (Konnichiwa)
                     </div>
                   </div>
                 </div>
@@ -396,25 +642,49 @@
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="py-20 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="features"
+      class="py-20 bg-gradient-to-br from-gray-900 via-[#0f0f0f] to-gray-800 relative overflow-hidden"
+    >
+      <!-- Background Elements -->
+      <div
+        class="absolute inset-0 bg-gradient-to-br from-primary-900/10 to-secondary-900/10"
+      ></div>
+      <div
+        class="absolute top-0 right-0 w-72 h-72 bg-primary-500/10 rounded-full blur-3xl animate-float"
+      ></div>
+      <div
+        class="absolute bottom-0 left-0 w-72 h-72 bg-secondary-500/10 rounded-full blur-3xl animate-float-delay"
+      ></div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Revolutionary Features
+          <div
+            class="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium mb-6"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"
+              />
+            </svg>
+            <span>Enterprise-Grade Features</span>
+          </div>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            Everything You Need for Enterprise MCP Management
           </h2>
-          <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-            Everything you need to manage MCP servers, discover APIs, and
-            integrate with AI assistants
+          <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+            From API discovery to enterprise deployment, MCP Studio provides all
+            the tools for modern AI integration
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <!-- Feature 1 -->
+          <!-- Feature 1: API Discovery -->
           <div
-            class="feature-card bg-white rounded-xl p-8 shadow-lg border border-gray-100"
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 group"
           >
             <div
-              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4"
+              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
             >
               <svg
                 class="w-6 h-6 text-white"
@@ -430,21 +700,36 @@
                 />
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              API Discovery Engine
+            <h3 class="text-xl font-semibold text-white mb-3">
+              🔍 API Discovery Engine
             </h3>
-            <p class="text-gray-600">
-              Browse and search 1000+ public APIs from multiple curated sources
-              with smart filtering and real-time caching.
+            <p class="text-gray-300 mb-4">
+              Browse 1000+ public APIs from curated sources including APIs.guru
+              and PublicAPIs.org with smart filtering, search, and real-time
+              caching.
             </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs bg-primary-500/20 text-primary-300 px-2 py-1 rounded"
+                >OpenAPI 3.0</span
+              >
+              <span
+                class="text-xs bg-primary-500/20 text-primary-300 px-2 py-1 rounded"
+                >Virtual Scrolling</span
+              >
+              <span
+                class="text-xs bg-primary-500/20 text-primary-300 px-2 py-1 rounded"
+                >Smart Caching</span
+              >
+            </div>
           </div>
 
-          <!-- Feature 2 -->
+          <!-- Feature 2: Multi-Model AI -->
           <div
-            class="feature-card bg-white rounded-xl p-8 shadow-lg border border-gray-100"
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 group"
           >
             <div
-              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4"
+              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
             >
               <svg
                 class="w-6 h-6 text-white"
@@ -460,21 +745,36 @@
                 />
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              Interactive API Testing
+            <h3 class="text-xl font-semibold text-white mb-3">
+              🤖 Multi-Model AI Routing
             </h3>
-            <p class="text-gray-600">
-              Test any API endpoint directly within the application with live
-              validation, authentication support, and CORS bypass.
+            <p class="text-gray-300 mb-4">
+              Route different tools to optimal AI models: LangGraph, IBM
+              WatsonX, OpenAI, Anthropic, and custom models for maximum
+              performance.
             </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs bg-secondary-500/20 text-secondary-300 px-2 py-1 rounded"
+                >5+ AI Models</span
+              >
+              <span
+                class="text-xs bg-secondary-500/20 text-secondary-300 px-2 py-1 rounded"
+                >Smart Routing</span
+              >
+              <span
+                class="text-xs bg-secondary-500/20 text-secondary-300 px-2 py-1 rounded"
+                >Performance Optimized</span
+              >
+            </div>
           </div>
 
-          <!-- Feature 3 -->
+          <!-- Feature 3: One-Click Conversion -->
           <div
-            class="feature-card bg-white rounded-xl p-8 shadow-lg border border-gray-100"
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 group"
           >
             <div
-              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4"
+              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
             >
               <svg
                 class="w-6 h-6 text-white"
@@ -490,21 +790,35 @@
                 />
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              One-Click MCP Conversion
+            <h3 class="text-xl font-semibold text-white mb-3">
+              ⚡ One-Click MCP Conversion
             </h3>
-            <p class="text-gray-600">
-              Transform any public API into a fully functional MCP server with
-              automatic tool generation and TypeScript code.
+            <p class="text-gray-300 mb-4">
+              Transform any API into production-ready TypeScript MCP servers
+              with automatic tool generation, validation, and error handling.
             </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                >TypeScript</span
+              >
+              <span
+                class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                >Auto-Generated</span
+              >
+              <span
+                class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                >Production Ready</span
+              >
+            </div>
           </div>
 
-          <!-- Feature 4 -->
+          <!-- Feature 4: Postman Integration -->
           <div
-            class="feature-card bg-white rounded-xl p-8 shadow-lg border border-gray-100"
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 group"
           >
             <div
-              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4"
+              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
             >
               <svg
                 class="w-6 h-6 text-white"
@@ -516,25 +830,40 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              AI Assistant Integration
+            <h3 class="text-xl font-semibold text-white mb-3">
+              📦 Postman Collection Import
             </h3>
-            <p class="text-gray-600">
-              Seamlessly integrate with LangGraph and IBM WatsonX AI for
-              intelligent tool usage and natural language processing.
+            <p class="text-gray-300 mb-4">
+              Import Postman Collection v2.1 files and automatically convert
+              them to MCP servers with environment variable mapping and
+              validation.
             </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded"
+                >Postman v2.1</span
+              >
+              <span
+                class="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded"
+                >Environment Vars</span
+              >
+              <span
+                class="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded"
+                >Auto Convert</span
+              >
+            </div>
           </div>
 
-          <!-- Feature 5 -->
+          <!-- Feature 5: Enterprise Auth -->
           <div
-            class="feature-card bg-white rounded-xl p-8 shadow-lg border border-gray-100"
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 group"
           >
             <div
-              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4"
+              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
             >
               <svg
                 class="w-6 h-6 text-white"
@@ -550,21 +879,35 @@
                 />
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              Enterprise Authentication
+            <h3 class="text-xl font-semibold text-white mb-3">
+              🔐 Enterprise Authentication
             </h3>
-            <p class="text-gray-600">
-              Support for Google, GitHub, Microsoft, IBM SSO, and custom
-              enterprise authentication providers.
+            <p class="text-gray-300 mb-4">
+              Comprehensive auth support: Google, GitHub, Microsoft, IBM SSO,
+              custom enterprise providers, and advanced authentication flows.
             </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                >8 Providers</span
+              >
+              <span
+                class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                >Enterprise SSO</span
+              >
+              <span
+                class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                >OAuth2 Flow</span
+              >
+            </div>
           </div>
 
-          <!-- Feature 6 -->
+          <!-- Feature 6: Visual Code Editor -->
           <div
-            class="feature-card bg-white rounded-xl p-8 shadow-lg border border-gray-100"
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:bg-white/10 transition-all duration-300 group"
           >
             <div
-              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4"
+              class="w-12 h-12 gradient-bg rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300"
             >
               <svg
                 class="w-6 h-6 text-white"
@@ -576,242 +919,872 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
                 />
               </svg>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              Real-time Monitoring
+            <h3 class="text-xl font-semibold text-white mb-3">
+              👨‍💻 Visual Code Editor
             </h3>
-            <p class="text-gray-600">
-              Live server status updates, comprehensive logging, and performance
-              analytics with beautiful dashboards.
+            <p class="text-gray-300 mb-4">
+              Professional TypeScript editor with Monaco integration, syntax
+              highlighting, IntelliSense, and export to multiple platforms.
             </p>
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
+                >Monaco Editor</span
+              >
+              <span
+                class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
+                >IntelliSense</span
+              >
+              <span
+                class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
+                >Multi Export</span
+              >
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- How It Works Section -->
-    <section id="how-it-works" class="py-20 bg-gray-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="how-it-works"
+      class="py-20 bg-gradient-to-r from-gray-900 via-[#0f0f0f] to-gray-900 relative overflow-hidden"
+    >
+      <!-- Background Elements -->
+      <div
+        class="absolute inset-0 bg-gradient-to-br from-primary-900/20 to-secondary-900/20"
+      ></div>
+      <div
+        class="absolute top-1/4 left-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-float"
+      ></div>
+      <div
+        class="absolute bottom-1/4 right-0 w-96 h-96 bg-secondary-500/10 rounded-full blur-3xl animate-float-delay"
+      ></div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            How It Works
+          <div
+            class="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium mb-6"
+          >
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path
+                d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z"
+              />
+            </svg>
+            <span>Streamlined Workflow</span>
+          </div>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            From Discovery to Deployment in Minutes
           </h2>
-          <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-            Transform any API into an AI-powered tool in just a few simple steps
+          <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+            Our enterprise-grade platform streamlines the entire MCP server
+            lifecycle
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div class="text-center">
-            <div
-              class="w-16 h-16 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4"
-            >
-              <span class="text-2xl font-bold text-white">1</span>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <!-- Step 1 -->
+          <div class="text-center group">
+            <div class="relative mb-6">
+              <div
+                class="w-20 h-20 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-primary-500/50 transition-all duration-300"
+              >
+                <span class="text-2xl font-bold text-white">1</span>
+              </div>
+              <div
+                class="absolute -top-2 -right-2 w-8 h-8 bg-primary-400 rounded-full flex items-center justify-center"
+              >
+                <svg
+                  class="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              Discover APIs
+            <h3 class="text-xl font-semibold text-white mb-3">
+              🔍 Discover APIs
             </h3>
-            <p class="text-gray-600">
-              Browse our catalog of 1000+ public APIs or import your own OpenAPI
-              specifications.
+            <p class="text-gray-300 mb-4">
+              Browse our curated database of 1000+ APIs from APIs.guru,
+              PublicAPIs.org, or import Postman collections
             </p>
+            <div
+              class="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+            >
+              <div class="text-sm text-gray-400 mb-2">Sources:</div>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <span
+                  class="text-xs bg-primary-500/20 text-primary-300 px-2 py-1 rounded"
+                  >APIs.guru</span
+                >
+                <span
+                  class="text-xs bg-primary-500/20 text-primary-300 px-2 py-1 rounded"
+                  >PublicAPIs</span
+                >
+                <span
+                  class="text-xs bg-primary-500/20 text-primary-300 px-2 py-1 rounded"
+                  >Postman</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="text-center group">
+            <div class="relative mb-6">
+              <div
+                class="w-20 h-20 bg-gradient-to-r from-secondary-500 to-secondary-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-secondary-500/50 transition-all duration-300"
+              >
+                <span class="text-2xl font-bold text-white">2</span>
+              </div>
+              <div
+                class="absolute -top-2 -right-2 w-8 h-8 bg-secondary-400 rounded-full flex items-center justify-center"
+              >
+                <svg
+                  class="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                  />
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">
+              ⚡ Generate & Customize
+            </h3>
+            <p class="text-gray-300 mb-4">
+              One-click conversion to TypeScript MCP servers with Monaco editor
+              for customization and enterprise auth integration
+            </p>
+            <div
+              class="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+            >
+              <div class="text-sm text-gray-400 mb-2">Features:</div>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <span
+                  class="text-xs bg-secondary-500/20 text-secondary-300 px-2 py-1 rounded"
+                  >TypeScript</span
+                >
+                <span
+                  class="text-xs bg-secondary-500/20 text-secondary-300 px-2 py-1 rounded"
+                  >Monaco Editor</span
+                >
+                <span
+                  class="text-xs bg-secondary-500/20 text-secondary-300 px-2 py-1 rounded"
+                  >Auth Support</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="text-center group">
+            <div class="relative mb-6">
+              <div
+                class="w-20 h-20 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-green-500/50 transition-all duration-300"
+              >
+                <span class="text-2xl font-bold text-white">3</span>
+              </div>
+              <div
+                class="absolute -top-2 -right-2 w-8 h-8 bg-green-400 rounded-full flex items-center justify-center"
+              >
+                <svg
+                  class="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">
+              🧪 Test & Validate
+            </h3>
+            <p class="text-gray-300 mb-4">
+              Interactive testing with live API validation, CORS bypass, and
+              real-time monitoring with comprehensive logging
+            </p>
+            <div
+              class="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+            >
+              <div class="text-sm text-gray-400 mb-2">Capabilities:</div>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <span
+                  class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                  >Live Testing</span
+                >
+                <span
+                  class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                  >CORS Bypass</span
+                >
+                <span
+                  class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                  >Monitoring</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="text-center group">
+            <div class="relative mb-6">
+              <div
+                class="w-20 h-20 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-purple-500/50 transition-all duration-300"
+              >
+                <span class="text-2xl font-bold text-white">4</span>
+              </div>
+              <div
+                class="absolute -top-2 -right-2 w-8 h-8 bg-purple-400 rounded-full flex items-center justify-center"
+              >
+                <svg
+                  class="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">
+              🚀 Deploy & Scale
+            </h3>
+            <p class="text-gray-300 mb-4">
+              Connect to LangGraph, IBM WatsonX, OpenAI, Anthropic with
+              multi-model AI routing for enterprise deployment
+            </p>
+            <div
+              class="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10"
+            >
+              <div class="text-sm text-gray-400 mb-2">AI Models:</div>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <span
+                  class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                  >LangGraph</span
+                >
+                <span
+                  class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                  >IBM WatsonX</span
+                >
+                <span
+                  class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                  >OpenAI</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Process Flow Visualization -->
+        <div class="mt-16 relative">
+          <div class="flex justify-center items-center space-x-8 mb-8">
+            <div
+              class="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            ></div>
+
+            <!-- Flow indicators -->
+            <div
+              class="relative z-10 w-4 h-4 bg-primary-500 rounded-full shadow-lg"
+            ></div>
+            <div
+              class="relative z-10 w-4 h-4 bg-secondary-500 rounded-full shadow-lg"
+            ></div>
+            <div
+              class="relative z-10 w-4 h-4 bg-green-500 rounded-full shadow-lg"
+            ></div>
+            <div
+              class="relative z-10 w-4 h-4 bg-purple-500 rounded-full shadow-lg"
+            ></div>
           </div>
 
           <div class="text-center">
             <div
-              class="w-16 h-16 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4"
+              class="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 max-w-2xl mx-auto"
             >
-              <span class="text-2xl font-bold text-white">2</span>
+              <h4 class="text-lg font-semibold text-white mb-2">
+                Enterprise Ready
+              </h4>
+              <p class="text-gray-300 text-sm">
+                From API discovery to production deployment with enterprise
+                authentication, monitoring, and multi-model AI routing
+              </p>
             </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              Test & Validate
-            </h3>
-            <p class="text-gray-600">
-              Test API endpoints with live data, handle authentication, and
-              validate responses.
-            </p>
-          </div>
-
-          <div class="text-center">
-            <div
-              class="w-16 h-16 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4"
-            >
-              <span class="text-2xl font-bold text-white">3</span>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              Convert to MCP
-            </h3>
-            <p class="text-gray-600">
-              One-click conversion generates production-ready TypeScript MCP
-              servers automatically.
-            </p>
-          </div>
-
-          <div class="text-center">
-            <div
-              class="w-16 h-16 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4"
-            >
-              <span class="text-2xl font-bold text-white">4</span>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-              AI Integration
-            </h3>
-            <p class="text-gray-600">
-              Use converted APIs as tools in chat with your AI assistant for
-              natural language queries.
-            </p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Tech Stack Section -->
-    <section id="tech-stack" class="py-20 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="tech-stack"
+      class="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900 relative overflow-hidden"
+    >
+      <!-- Background Elements -->
+      <div
+        class="absolute top-0 left-0 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="absolute bottom-0 right-0 w-72 h-72 bg-pink-500/10 rounded-full blur-3xl"
+      ></div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div
+            class="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium mb-6"
+          >
+            <span>🛠️</span>
+            <span>Enterprise Technology Stack</span>
+          </div>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
             Built with Modern Technologies
           </h2>
-          <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-            Powered by cutting-edge technologies for performance, security, and
-            scalability
+          <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+            Powered by enterprise-grade technologies for performance, security,
+            and scalability
           </p>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">⚛️</div>
-            <div class="text-sm font-medium text-gray-900">React 19</div>
+        <!-- Main Technologies -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <!-- Frontend Stack -->
+          <div
+            class="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-lg border border-blue-500/20 rounded-xl p-8 hover:border-blue-400/40 transition-all duration-300"
+          >
+            <div
+              class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-3">
+              Frontend Stack
+            </h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">React 19</span>
+                <span
+                  class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded flex items-center justify-center w-6 h-6"
+                >
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path
+                      d="M12,10.11C13.03,10.11 13.87,10.95 13.87,12C13.87,13 13.03,13.85 12,13.85C10.97,13.85 10.13,13 10.13,12C10.13,10.95 10.97,10.11 12,10.11M7.37,20C8,20.38 9.38,19.8 10.97,18.3C10.45,17.71 9.94,17.07 9.46,16.4C8.64,16.32 7.83,16.2 7.06,16.04C6.55,18.18 6.74,19.65 7.37,20M8.08,14.26L7.79,13.75C7.68,14.04 7.57,14.33 7.5,14.61C7.77,14.67 8.07,14.72 8.38,14.77C8.28,14.6 8.18,14.43 8.08,14.26M14.62,13.5L15.43,12L14.62,10.5C14.32,9.97 14,9.5 13.71,9.03C13.17,9 12.6,9 12,9C11.4,9 10.83,9 10.29,9.03C10,9.5 9.68,9.97 9.38,10.5L8.57,12L9.38,13.5C9.68,14.03 10,14.5 10.29,14.97C10.83,15 11.4,15 12,15C12.6,15 13.17,15 13.71,14.97C14,14.5 14.32,14.03 14.62,13.5M12,6.78C11.81,7 11.61,7.23 11.41,7.5C11.61,7.5 11.8,7.5 12,7.5C12.2,7.5 12.39,7.5 12.59,7.5C12.39,7.23 12.19,7 12,6.78M12,17.22C12.19,17 12.39,16.77 12.59,16.5C12.39,16.5 12.2,16.5 12,16.5C11.8,16.5 11.61,16.5 11.41,16.5C11.61,16.77 11.81,17 12,17.22M16.62,4C16,3.62 14.62,4.2 13.03,5.7C13.55,6.29 14.06,6.93 14.54,7.6C15.36,7.68 16.17,7.8 16.94,7.96C17.45,5.82 17.26,4.35 16.62,4M15.92,9.74L16.21,10.25C16.32,9.96 16.43,9.67 16.5,9.39C16.23,9.33 15.93,9.28 15.62,9.23C15.72,9.4 15.82,9.57 15.92,9.74M17.37,2.69C18.84,3.53 19,5.74 18.38,8.32C20.92,9.07 22.75,10.31 22.75,12C22.75,13.69 20.92,14.93 18.38,15.68C19,18.26 18.84,20.47 17.37,21.31C15.93,22.14 13.72,21.29 11.25,19.23C8.78,21.29 6.57,22.14 5.13,21.31C3.66,20.47 3.5,18.26 4.12,15.68C1.58,14.93 -0.25,13.69 -0.25,12C-0.25,10.31 1.58,9.07 4.12,8.32C3.5,5.74 3.66,3.53 5.13,2.69C6.57,1.86 8.78,2.71 11.25,4.77C13.72,2.71 15.93,1.86 17.37,2.69M17.08,12C17.42,12.75 17.72,13.5 17.97,14.26C20.07,13.63 21.25,12.73 21.25,12C21.25,11.27 20.07,10.37 17.97,9.74C17.72,10.5 17.42,11.25 17.08,12M6.92,12C6.58,11.25 6.28,10.5 6.03,9.74C3.93,10.37 2.75,11.27 2.75,12C2.75,12.73 3.93,13.63 6.03,14.26C6.28,13.5 6.58,12.75 6.92,12M15.92,14.26C15.82,14.43 15.72,14.6 15.62,14.77C15.93,14.72 16.23,14.67 16.5,14.61C16.43,14.33 16.32,14.04 16.21,13.75L15.92,14.26M8.08,9.74L7.79,10.25C7.68,9.96 7.57,9.67 7.5,9.39C7.77,9.33 8.07,9.28 8.38,9.23C8.28,9.4 8.18,9.57 8.08,9.74M7.37,4C6.74,4.35 6.55,5.82 7.06,7.96C7.83,7.8 8.64,7.68 9.46,7.6C9.94,6.93 10.45,6.29 10.97,5.7C9.38,4.2 8,3.62 7.37,4Z"
+                    />
+                  </svg>
+                </span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">TypeScript</span>
+                <span
+                  class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
+                  >🔷</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">Tailwind CSS</span>
+                <span
+                  class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
+                  >🎨</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">Material-UI</span>
+                <span
+                  class="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded"
+                  >🎯</span
+                >
+              </div>
+            </div>
           </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">📱</div>
-            <div class="text-sm font-medium text-gray-900">Electron</div>
+
+          <!-- Backend & Platform -->
+          <div
+            class="bg-gradient-to-br from-purple-500/10 to-purple-600/10 backdrop-blur-lg border border-purple-500/20 rounded-xl p-8 hover:border-purple-400/40 transition-all duration-300"
+          >
+            <div
+              class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-3">
+              Platform & Tools
+            </h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">Electron</span>
+                <span
+                  class="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded"
+                  >📱</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">Vite</span>
+                <span
+                  class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded"
+                  >�</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">Monaco Editor</span>
+                <span
+                  class="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded"
+                  >⚙️</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">MCP SDK</span>
+                <span
+                  class="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded"
+                  >🔗</span
+                >
+              </div>
+            </div>
           </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🎨</div>
-            <div class="text-sm font-medium text-gray-900">Tailwind</div>
+
+          <!-- AI & Integration -->
+          <div
+            class="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-lg border border-green-500/20 rounded-xl p-8 hover:border-green-400/40 transition-all duration-300"
+          >
+            <div
+              class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mb-4"
+            >
+              <svg
+                class="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-3">
+              AI & Integration
+            </h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">LangGraph</span>
+                <span
+                  class="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded"
+                  >🤖</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">IBM WatsonX</span>
+                <span
+                  class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                  >�</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">OpenAI</span>
+                <span
+                  class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded"
+                  >🎯</span
+                >
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-300">Anthropic</span>
+                <span
+                  class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded"
+                  >🔮</span
+                >
+              </div>
+            </div>
           </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🔷</div>
-            <div class="text-sm font-medium text-gray-900">TypeScript</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🚀</div>
-            <div class="text-sm font-medium text-gray-900">Vite</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🤖</div>
-            <div class="text-sm font-medium text-gray-900">LangGraph</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🔐</div>
-            <div class="text-sm font-medium text-gray-900">OAuth2</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🌐</div>
-            <div class="text-sm font-medium text-gray-900">OpenAPI</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🎯</div>
-            <div class="text-sm font-medium text-gray-900">Framer Motion</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🔗</div>
-            <div class="text-sm font-medium text-gray-900">MCP SDK</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">🧠</div>
-            <div class="text-sm font-medium text-gray-900">IBM WatsonX</div>
-          </div>
-          <div class="tech-badge text-center p-4 bg-gray-50 rounded-lg">
-            <div class="text-3xl mb-2">⚙️</div>
-            <div class="text-sm font-medium text-gray-900">Monaco Editor</div>
+        </div>
+
+        <!-- Enterprise Features -->
+        <div
+          class="bg-gradient-to-br from-gray-900 via-black to-gray-900 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8"
+        >
+          <h3 class="text-lg font-semibold text-white mb-6 text-center">
+            Enterprise Security & Authentication
+          </h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">🔐</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">OAuth2</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">🌐</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">OpenAPI 3.0</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">📊</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">Google SSO</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-white rounded-lg shadow-sm flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">�</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">GitHub SSO</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">🏢</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">Microsoft</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">💙</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">IBM SSO</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">📦</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">Postman</div>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 backdrop-blur-lg border border-indigo-500/30 rounded-lg flex items-center justify-center mx-auto mb-2"
+              >
+                <span class="text-lg">⚡</span>
+              </div>
+              <div class="text-xs font-medium text-gray-300">CORS Proxy</div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Screenshots Section -->
-    <section class="py-20 bg-gray-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="screenshots"
+      class="py-20 bg-gradient-to-r from-gray-900 via-[#0f0f0f] to-gray-900 relative overflow-hidden"
+    >
+      <!-- Background Elements -->
+      <div
+        class="absolute inset-0 bg-gradient-to-br from-primary-900/20 to-secondary-900/20"
+      ></div>
+      <div
+        class="absolute top-1/4 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-float"
+      ></div>
+      <div
+        class="absolute bottom-1/4 left-0 w-96 h-96 bg-secondary-500/10 rounded-full blur-3xl animate-float-delay"
+      ></div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <div
+            class="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium mb-6"
+          >
+            <span>📸</span>
+            <span>Live Interface Preview</span>
+          </div>
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
             See It in Action
           </h2>
-          <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-            Explore the beautiful, modern interface designed for productivity
+          <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+            Explore the beautiful, modern interface designed for enterprise
+            productivity
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <img
-              src="https://via.placeholder.com/600x400/1e293b/f1f5f9?text=API+Discovery"
-              alt="API Discovery Interface"
-              class="w-full h-64 object-cover"
-            />
+          <div
+            class="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300"
+          >
+            <div class="relative">
+              <div
+                class="w-full h-64 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center"
+              >
+                <div class="text-center">
+                  <div
+                    class="w-16 h-16 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4"
+                  >
+                    <svg
+                      class="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <p class="text-blue-300 font-medium">
+                    API Discovery Interface
+                  </p>
+                  <p class="text-gray-400 text-sm mt-2">Browse 1000+ APIs</p>
+                </div>
+              </div>
+              <div class="absolute top-4 right-4">
+                <span
+                  class="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs"
+                  >Live</span
+                >
+              </div>
+            </div>
             <div class="p-6">
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                API Discovery
+              <h3 class="text-xl font-semibold text-white mb-2">
+                API Discovery Engine
               </h3>
-              <p class="text-gray-600">
+              <p class="text-gray-300">
                 Browse and search through thousands of public APIs with
-                intelligent filtering and categorization.
+                intelligent filtering, real-time search, and enterprise
+                categorization.
               </p>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <img
-              src="https://via.placeholder.com/600x400/667eea/ffffff?text=Interactive+Testing"
-              alt="Interactive Testing Interface"
-              class="w-full h-64 object-cover"
-            />
+          <div
+            class="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300"
+          >
+            <div class="relative">
+              <div
+                class="w-full h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center"
+              >
+                <div class="text-center">
+                  <div
+                    class="w-16 h-16 bg-purple-500 rounded-lg flex items-center justify-center mx-auto mb-4"
+                  >
+                    <svg
+                      class="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                      />
+                    </svg>
+                  </div>
+                  <p class="text-purple-300 font-medium">Interactive Testing</p>
+                  <p class="text-gray-400 text-sm mt-2">Live API Validation</p>
+                </div>
+              </div>
+              <div class="absolute top-4 right-4">
+                <span
+                  class="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs"
+                  >Interactive</span
+                >
+              </div>
+            </div>
             <div class="p-6">
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                Interactive Testing
+              <h3 class="text-xl font-semibold text-white mb-2">
+                Interactive API Testing
               </h3>
-              <p class="text-gray-600">
-                Test API endpoints with live data, handle authentication, and
-                validate responses in real-time.
+              <p class="text-gray-300">
+                Test any API endpoint directly within the application with live
+                validation, CORS bypass, and comprehensive error handling.
               </p>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <img
-              src="https://via.placeholder.com/600x400/764ba2/ffffff?text=MCP+Server+Management"
-              alt="MCP Server Management Interface"
-              class="w-full h-64 object-cover"
-            />
+          <div
+            class="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300"
+          >
+            <div class="relative">
+              <div
+                class="w-full h-64 bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center"
+              >
+                <div class="text-center">
+                  <div
+                    class="w-16 h-16 bg-green-500 rounded-lg flex items-center justify-center mx-auto mb-4"
+                  >
+                    <svg
+                      class="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <p class="text-green-300 font-medium">
+                    MCP Server Generation
+                  </p>
+                  <p class="text-gray-400 text-sm mt-2">One-Click Conversion</p>
+                </div>
+              </div>
+              <div class="absolute top-4 right-4">
+                <span
+                  class="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs"
+                  >Auto</span
+                >
+              </div>
+            </div>
             <div class="p-6">
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                Server Management
+              <h3 class="text-xl font-semibold text-white mb-2">
+                MCP Server Generation
               </h3>
-              <p class="text-gray-600">
-                Manage your MCP servers with real-time status updates, logs, and
-                configuration options.
+              <p class="text-gray-300">
+                Transform any API into production-ready TypeScript MCP servers
+                with automatic tool generation and enterprise features.
               </p>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <img
-              src="https://via.placeholder.com/600x400/f093fb/ffffff?text=AI+Chat+Interface"
-              alt="AI Chat Interface"
-              class="w-full h-64 object-cover"
-            />
+          <div
+            class="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300"
+          >
+            <div class="relative">
+              <div
+                class="w-full h-64 bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center"
+              >
+                <div class="text-center">
+                  <div
+                    class="w-16 h-16 bg-orange-500 rounded-lg flex items-center justify-center mx-auto mb-4"
+                  >
+                    <svg
+                      class="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                      />
+                    </svg>
+                  </div>
+                  <p class="text-orange-300 font-medium">
+                    AI Assistant Integration
+                  </p>
+                  <p class="text-gray-400 text-sm mt-2">Multi-Model Routing</p>
+                </div>
+              </div>
+              <div class="absolute top-4 right-4">
+                <span
+                  class="bg-orange-500/20 text-orange-300 px-2 py-1 rounded text-xs"
+                  >AI</span
+                >
+              </div>
+            </div>
             <div class="p-6">
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                AI Chat Integration
+              <h3 class="text-xl font-semibold text-white mb-2">
+                AI Assistant Integration
               </h3>
-              <p class="text-gray-600">
-                Interact with your AI assistant using natural language and all
-                available MCP tools.
+              <p class="text-gray-300">
+                Connect to LangGraph, IBM WatsonX, OpenAI, and Anthropic with
+                intelligent AI routing for enterprise workloads.
               </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enterprise Dashboard Preview -->
+        <div class="mt-16">
+          <div
+            class="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10"
+          >
+            <div class="text-center mb-8">
+              <h3 class="text-2xl font-semibold text-white mb-4">
+                Enterprise Dashboard
+              </h3>
+              <p class="text-gray-300">
+                Real-time monitoring and management for all your MCP servers
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="text-center">
+                <div class="text-3xl font-bold text-primary-400 mb-2">
+                  1000+
+                </div>
+                <div class="text-gray-300">Public APIs</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-secondary-400 mb-2">5+</div>
+                <div class="text-gray-300">AI Models</div>
+              </div>
+              <div class="text-center">
+                <div class="text-3xl font-bold text-green-400 mb-2">8</div>
+                <div class="text-gray-300">Auth Providers</div>
+              </div>
             </div>
           </div>
         </div>
@@ -819,23 +1792,29 @@
     </section>
 
     <!-- Download Section -->
-    <section id="download" class="py-20 bg-white">
+    <section
+      id="download"
+      class="py-20 bg-gradient-to-br from-gray-900 via-black to-gray-900"
+    >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
             Download MCP Studio
           </h2>
-          <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-            Get started with MCP Studio today. Available for macOS and Windows.
+          <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+            Get started with your enterprise MCP platform today. Available for
+            macOS and Windows with enterprise-grade security.
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           <!-- macOS Download -->
           <div
-            class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center"
+            class="group bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 text-center hover:border-indigo-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/10"
           >
-            <div class="w-16 h-16 mx-auto mb-4">
+            <div
+              class="w-16 h-16 mx-auto mb-4 text-gray-300 group-hover:text-white transition-colors"
+            >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -848,12 +1827,13 @@
                 />
               </svg>
             </div>
-            <h3 class="text-2xl font-semibold text-gray-900 mb-2">macOS</h3>
-            <p class="text-gray-600 mb-6">
-              Compatible with macOS 10.15 or later
+            <h3 class="text-2xl font-semibold text-white mb-2">macOS</h3>
+            <p class="text-gray-300 mb-6">
+              Enterprise-ready for macOS 11.0 or later with Apple Silicon
+              optimization
             </p>
             <button
-              class="download-button w-full text-white px-8 py-4 rounded-lg font-semibold text-lg inline-flex items-center justify-center space-x-2 opacity-60 cursor-not-allowed"
+              class="download-button w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg inline-flex items-center justify-center space-x-2 opacity-60 cursor-not-allowed hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
             >
               <svg
                 class="w-5 h-5"
@@ -871,15 +1851,17 @@
               <span>Download for Mac</span>
             </button>
             <p class="text-xs text-gray-500 mt-2">
-              Coming Soon - DMG Installer
+              Coming Soon - Universal DMG with Code Signing
             </p>
           </div>
 
           <!-- Windows Download -->
           <div
-            class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center"
+            class="group bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 text-center hover:border-indigo-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-indigo-500/10"
           >
-            <div class="w-16 h-16 mx-auto mb-4">
+            <div
+              class="w-16 h-16 mx-auto mb-4 text-gray-300 group-hover:text-white transition-colors"
+            >
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -892,12 +1874,13 @@
                 />
               </svg>
             </div>
-            <h3 class="text-2xl font-semibold text-gray-900 mb-2">Windows</h3>
-            <p class="text-gray-600 mb-6">
-              Compatible with Windows 10 or later
+            <h3 class="text-2xl font-semibold text-white mb-2">Windows</h3>
+            <p class="text-gray-300 mb-6">
+              Enterprise deployment for Windows 10/11 with Microsoft Store
+              compatibility
             </p>
             <button
-              class="download-button w-full text-white px-8 py-4 rounded-lg font-semibold text-lg inline-flex items-center justify-center space-x-2 opacity-60 cursor-not-allowed"
+              class="download-button w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-lg font-semibold text-lg inline-flex items-center justify-center space-x-2 opacity-60 cursor-not-allowed hover:from-indigo-700 hover:to-purple-700 transition-all duration-300"
             >
               <svg
                 class="w-5 h-5"
@@ -915,98 +1898,132 @@
               <span>Download for Windows</span>
             </button>
             <p class="text-xs text-gray-500 mt-2">
-              Coming Soon - MSI Installer
+              Coming Soon - Signed MSI with Auto-Update
             </p>
           </div>
         </div>
 
         <div class="text-center mt-12">
-          <p class="text-gray-600 mb-4">Or build from source code</p>
-          <a
-            href="https://github.com/KirtiJha/langgraph-mcp-studio"
-            target="_blank"
-            class="inline-flex items-center space-x-2 text-gray-700 hover:text-gray-900 font-medium"
+          <p class="text-gray-300 mb-4">
+            For developers: Build from source or deploy with Docker
+          </p>
+          <div
+            class="flex flex-col sm:flex-row gap-4 justify-center items-center"
           >
-            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path
-                d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
-              />
-            </svg>
-            <span>View on GitHub</span>
-          </a>
+            <a
+              href="https://github.com/KirtiJha/langgraph-mcp-studio"
+              target="_blank"
+              class="inline-flex items-center space-x-2 text-gray-300 hover:text-white font-medium bg-gray-800/50 px-4 py-2 rounded-lg border border-gray-600 hover:border-gray-400 transition-all duration-300"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                />
+              </svg>
+              <span>View on GitHub</span>
+            </a>
+            <div
+              class="inline-flex items-center space-x-2 text-gray-400 bg-gray-800/30 px-4 py-2 rounded-lg border border-gray-700"
+            >
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                />
+              </svg>
+              <span>Docker Image Coming Soon</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- FAQ Section -->
-    <section class="py-20 bg-gray-50">
+    <section
+      class="py-20 bg-gradient-to-br from-gray-800 via-gray-900 to-black"
+    >
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
             Frequently Asked Questions
           </h2>
-          <p class="text-xl text-gray-600">
-            Everything you need to know about MCP Studio
+          <p class="text-xl text-gray-300">
+            Everything you need to know about MCP Studio Enterprise Platform
           </p>
         </div>
 
         <div class="space-y-8">
-          <div class="bg-white rounded-xl p-8 shadow-lg">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">
+          <div
+            class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 hover:border-indigo-500/50 transition-all duration-300"
+          >
+            <h3 class="text-xl font-semibold text-white mb-4">
               What is MCP Studio?
             </h3>
-            <p class="text-gray-600">
-              MCP Studio is a modern desktop application that helps you manage
-              Model Context Protocol (MCP) servers, discover public APIs, and
-              integrate them with AI assistants. It's built with React,
-              TypeScript, and Electron for cross-platform compatibility.
+            <p class="text-gray-300">
+              MCP Studio is an enterprise desktop platform for managing Model
+              Context Protocol (MCP) servers, discovering 1000+ public APIs, and
+              seamlessly integrating them with AI assistants. Built with React
+              19, TypeScript, and Electron for enterprise-grade cross-platform
+              compatibility.
             </p>
           </div>
 
-          <div class="bg-white rounded-xl p-8 shadow-lg">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">
-              How does API conversion work?
+          <div
+            class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 hover:border-indigo-500/50 transition-all duration-300"
+          >
+            <h3 class="text-xl font-semibold text-white mb-4">
+              How does enterprise API conversion work?
             </h3>
-            <p class="text-gray-600">
-              MCP Studio automatically analyzes OpenAPI specifications and
-              generates production-ready TypeScript MCP servers. The conversion
-              process includes parameter validation, authentication handling,
-              and error management, making APIs immediately available as tools
-              for AI assistants.
+            <p class="text-gray-300">
+              MCP Studio automatically analyzes OpenAPI 3.0+ specifications and
+              generates production-ready TypeScript MCP servers with enterprise
+              features including parameter validation, OAuth2 authentication,
+              rate limiting, error management, and monitoring. APIs become
+              immediately available as tools for AI assistants with full
+              enterprise security.
             </p>
           </div>
 
-          <div class="bg-white rounded-xl p-8 shadow-lg">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">
-              What authentication providers are supported?
+          <div
+            class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 hover:border-indigo-500/50 transition-all duration-300"
+          >
+            <h3 class="text-xl font-semibold text-white mb-4">
+              What enterprise authentication providers are supported?
             </h3>
-            <p class="text-gray-600">
-              MCP Studio supports Google OAuth2, GitHub OAuth2, Microsoft
-              OAuth2, IBM SSO, and custom enterprise SSO providers. You can
-              easily configure authentication for secure access to your MCP
-              servers and APIs.
+            <p class="text-gray-300">
+              MCP Studio supports enterprise OAuth2 providers including Google
+              Workspace, GitHub Enterprise, Microsoft Azure AD, IBM Cloud SSO,
+              and custom enterprise identity providers. Configure multi-factor
+              authentication, SAML integration, and role-based access control
+              for secure enterprise deployment.
             </p>
           </div>
 
-          <div class="bg-white rounded-xl p-8 shadow-lg">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">
-              Is MCP Studio free?
+          <div
+            class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 hover:border-indigo-500/50 transition-all duration-300"
+          >
+            <h3 class="text-xl font-semibold text-white mb-4">
+              What's the enterprise licensing model?
             </h3>
-            <p class="text-gray-600">
-              Yes! MCP Studio is 100% open source and free to use. You can
-              download the desktop application, build from source code, or
-              contribute to the project on GitHub.
+            <p class="text-gray-300">
+              MCP Studio is 100% open source and free for all enterprise use.
+              Download the desktop application, deploy with Docker, build from
+              source, or contribute to the project. Enterprise support and
+              consulting services available separately for large-scale
+              deployments.
             </p>
           </div>
 
-          <div class="bg-white rounded-xl p-8 shadow-lg">
-            <h3 class="text-xl font-semibold text-gray-900 mb-4">
-              What platforms are supported?
+          <div
+            class="bg-gradient-to-br from-gray-800/30 to-gray-900/30 backdrop-blur-lg border border-gray-700/50 rounded-xl p-8 hover:border-indigo-500/50 transition-all duration-300"
+          >
+            <h3 class="text-xl font-semibold text-white mb-4">
+              What enterprise platforms are supported?
             </h3>
-            <p class="text-gray-600">
-              MCP Studio is available for macOS (10.15 or later) and Windows (10
-              or later). The application is built with Electron, ensuring
-              consistent performance across platforms.
+            <p class="text-gray-300">
+              MCP Studio supports macOS 11.0+ (Intel & Apple Silicon), Windows
+              10/11 Enterprise, and Linux distributions. Built with Electron for
+              consistent enterprise deployment across platforms with centralized
+              management, auto-updates, and enterprise security compliance.
             </p>
           </div>
         </div>
@@ -1014,32 +2031,74 @@
     </section>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-12">
+    <footer
+      class="bg-gradient-to-br from-black via-gray-900 to-black text-white py-12 border-t border-gray-800"
+    >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div class="space-y-4">
             <div class="flex items-center space-x-2">
+              <!-- Use the same "M" logo from the app -->
               <div
-                class="w-8 h-8 gradient-bg rounded-lg flex items-center justify-center"
+                class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center relative overflow-hidden"
               >
                 <svg
-                  class="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
+                  class="w-5 h-5 text-white z-10"
                   viewBox="0 0 24 24"
+                  fill="none"
                 >
                   <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                    d="M3 20V4h3l3 8.5L12 4h3v16h-3v-9l-2.5 7h-1L6 11v9H3z"
+                    fill="white"
                   />
                 </svg>
+                <!-- Circuit pattern overlay -->
+                <div class="absolute inset-0 opacity-20">
+                  <svg class="w-full h-full" viewBox="0 0 32 32" fill="none">
+                    <circle cx="4" cy="4" r="1" fill="white" />
+                    <circle cx="28" cy="4" r="1" fill="white" />
+                    <circle cx="4" cy="28" r="1" fill="white" />
+                    <circle cx="28" cy="28" r="1" fill="white" />
+                    <line
+                      x1="4"
+                      y1="4"
+                      x2="28"
+                      y2="4"
+                      stroke="white"
+                      stroke-width="0.5"
+                    />
+                    <line
+                      x1="4"
+                      y1="28"
+                      x2="28"
+                      y2="28"
+                      stroke="white"
+                      stroke-width="0.5"
+                    />
+                    <line
+                      x1="4"
+                      y1="4"
+                      x2="4"
+                      y2="28"
+                      stroke="white"
+                      stroke-width="0.5"
+                    />
+                    <line
+                      x1="28"
+                      y1="4"
+                      x2="28"
+                      y2="28"
+                      stroke="white"
+                      stroke-width="0.5"
+                    />
+                  </svg>
+                </div>
               </div>
               <span class="text-xl font-bold">MCP Studio</span>
             </div>
             <p class="text-gray-400">
-              Your Model Context Protocol Command Center
+              Enterprise Model Context Protocol Command Center - Connecting AI
+              with your enterprise APIs seamlessly.
             </p>
           </div>
 
@@ -1059,6 +2118,11 @@
                 >
               </li>
               <li>
+                <a href="#tech-stack" class="hover:text-white transition-colors"
+                  >Tech Stack</a
+                >
+              </li>
+              <li>
                 <a href="#download" class="hover:text-white transition-colors"
                   >Download</a
                 >
@@ -1073,14 +2137,16 @@
                 <a
                   href="https://github.com/KirtiJha/langgraph-mcp-studio"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="hover:text-white transition-colors"
-                  >GitHub</a
+                  >GitHub Repository</a
                 >
               </li>
               <li>
                 <a
                   href="https://github.com/KirtiJha/langgraph-mcp-studio/blob/main/README.md"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="hover:text-white transition-colors"
                   >Documentation</a
                 >
@@ -1089,8 +2155,9 @@
                 <a
                   href="https://github.com/KirtiJha/langgraph-mcp-studio/issues"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="hover:text-white transition-colors"
-                  >Support</a
+                  >Support & Issues</a
                 >
               </li>
             </ul>
@@ -1103,6 +2170,7 @@
                 <a
                   href="https://github.com/KirtiJha"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="hover:text-white transition-colors"
                   >GitHub Profile</a
                 >
@@ -1111,16 +2179,18 @@
                 <a
                   href="https://github.com/KirtiJha/langgraph-mcp-studio/discussions"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="hover:text-white transition-colors"
-                  >Discussions</a
+                  >Community Discussions</a
                 >
               </li>
               <li>
                 <a
                   href="https://github.com/KirtiJha/langgraph-mcp-studio/blob/main/CONTRIBUTING.md"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="hover:text-white transition-colors"
-                  >Contributing</a
+                  >Contributing Guide</a
                 >
               </li>
             </ul>
@@ -1131,13 +2201,14 @@
           class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400"
         >
           <p>
-            &copy; 2024 MCP Studio. Made with ❤️ by
+            &copy; 2024 MCP Studio Enterprise Platform. Made with ❤️ by
             <a
               href="https://github.com/KirtiJha"
               target="_blank"
+              rel="noopener noreferrer"
               class="text-white hover:text-gray-300 transition-colors"
               >Kirti Jha</a
-            >. Open source and free to use.
+            >. Open source and free for enterprise use.
           </p>
         </div>
       </div>
@@ -1215,13 +2286,13 @@
       const menuButton = document.querySelector(".md\\:hidden button");
       const mobileMenu = document.createElement("div");
       mobileMenu.className =
-        "md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg hidden";
+        "md:hidden absolute top-full left-0 right-0 bg-black/95 backdrop-blur-lg border-b border-gray-700 shadow-lg hidden";
       mobileMenu.innerHTML = `
             <div class="px-4 py-2 space-y-2">
-                <a href="#features" class="block py-2 text-gray-700 hover:text-gray-900">Features</a>
-                <a href="#how-it-works" class="block py-2 text-gray-700 hover:text-gray-900">How It Works</a>
-                <a href="#tech-stack" class="block py-2 text-gray-700 hover:text-gray-900">Tech Stack</a>
-                <a href="#download" class="block py-2 text-gray-700 hover:text-gray-900">Download</a>
+                <a href="#features" class="block py-2 text-gray-300 hover:text-white">Features</a>
+                <a href="#how-it-works" class="block py-2 text-gray-300 hover:text-white">How It Works</a>
+                <a href="#tech-stack" class="block py-2 text-gray-300 hover:text-white">Tech Stack</a>
+                <a href="#download" class="block py-2 text-gray-300 hover:text-white">Download</a>
             </div>
         `;
 
@@ -1238,13 +2309,17 @@
         }
       });
 
-      // Update navigation background on scroll
+      // Update navigation background on scroll for better readability
       window.addEventListener("scroll", () => {
         const nav = document.querySelector("nav");
         if (window.scrollY > 50) {
-          nav.style.background = "rgba(255, 255, 255, 0.95)";
+          nav.style.background = "rgba(0, 0, 0, 0.95)";
+          nav.style.backdropFilter = "blur(10px)";
+          nav.style.borderBottom = "1px solid rgba(99, 102, 241, 0.2)";
         } else {
-          nav.style.background = "rgba(255, 255, 255, 0.1)";
+          nav.style.background = "rgba(0, 0, 0, 0.1)";
+          nav.style.backdropFilter = "blur(10px)";
+          nav.style.borderBottom = "1px solid transparent";
         }
       });
     </script>
